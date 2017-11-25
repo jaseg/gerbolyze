@@ -57,8 +57,8 @@ def paste_image(
         ctx.render_layer(target, settings=fg, bgsettings=bg)
         status_print('  * outline')
         ctx.render_layer(outline, settings=fg, bgsettings=bg)
-        for i, sub in enumerate(subtract_gerber):
-            status_print('  * extra layer', i)
+        for fn, sub in subtract_gerber:
+            status_print('  * extra layer', fn)
             layer = gerber.loads(sub)
             ctx.render_layer(layer, settings=fg, bgsettings=bg)
         status_print('Rendering keepout composite')
@@ -111,7 +111,9 @@ def paste_image(
     from gerber.render import rs274x_backend
     ctx = rs274x_backend.Rs274xContext(target.settings)
     target.render(ctx)
-    return ctx.dump().getvalue()
+    out = ctx.dump().getvalue()
+    status_print('Done.')
+    return out
 
 
 def plot_contours(
@@ -135,8 +137,7 @@ def plot_contours(
     xbias, ybias = offx
     def map(coord):
         x, y = coord
-        # FIXME sometimes only ybias is needed
-        return (x/scale, y/scale + ybias)
+        return (x/scale + xbias, y/scale + ybias)
     def contour_lines(c):
         return [ Line(map(start), map(end), aperture, level_polarity='dark', units=layer.settings.units)
             for start, end in zip(c, np.vstack((c[1:], c[:1]))) ]
@@ -144,12 +145,12 @@ def plot_contours(
     done = []
     process_stack = [-1]
     next_process_stack = []
-    parents = [ (i, parent) for i, (_1, _2, _3, parent) in enumerate(hierarchy[0]) ]
+    parents = [ (i, first_child != -1, parent) for i, (_1, _2, first_child, parent) in enumerate(hierarchy[0]) ]
     is_dark = True
     status_print('Converting contours to gerber primitives')
     with tqdm.tqdm(total=len(contours)) as progress:
         while len(done) != len(contours):
-            for i, parent in parents[:]:
+            for i, has_children, parent in parents[:]:
                 if parent in process_stack:
                     contour = contours[i]
                     polarity = 'dark' if is_dark else 'clear'
@@ -157,9 +158,10 @@ def plot_contours(
                     debug('process_stack is', process_stack)
                     debug()
                     layer.primitives.append(Region(contour_lines(contour[:,0]), level_polarity=polarity, units=layer.settings.units))
-                    next_process_stack.append(i)
+                    if has_children:
+                        next_process_stack.append(i)
                     done.append(i)
-                    parents.remove((i, parent))
+                    parents.remove((i, has_children, parent))
                     progress.update(1)
             debug('skipping to next level')
             process_stack, next_process_stack = next_process_stack, []
@@ -176,8 +178,9 @@ def find_gerber_in_dir(dir_path, file_or_ext):
             return lname, f.read()
 
     contents = os.listdir(dir_path)
+    exts = file_or_ext.split(',')
     for entry in contents:
-        if entry.lower().endswith(file_or_ext.lower()):
+        if any(entry.lower().endswith(ext.lower()) for ext in exts):
             lname = path.join(dir_path, entry)
             if not path.isfile(lname):
                 continue
@@ -192,8 +195,9 @@ def find_gerber_in_zip(zip_path, file_or_ext):
         if file_or_ext in nlist:
             return file_or_ext, lezip.read(file_or_ext)
 
+        exts = file_or_ext.split(',')
         for n in nlist:
-            if n.lower().endswith(file_or_ext.lower()):
+            if any(n.lower().endswith(ext.lower()) for ext in exts):
                 return n, lezip.read(n)
 
     raise ValueError('Cannot find file or suffix "{}" in zip {}'.format(file_or_ext, dir_path))
@@ -211,18 +215,17 @@ def replace_file_in_zip(zip_path, filename, contents):
 def paste_image_file(zip_or_dir, target, outline, source_img, subtract=[], status_print=lambda *args:None, debugdir=None):
     if path.isdir(zip_or_dir):
         tname, target = find_gerber_in_dir(zip_or_dir, target)
-        _, outline = find_gerber_in_dir(zip_or_dir, outline)
-        subtract = [ layer for _fn, layer in (find_gerber_in_dir(zip_or_dir, elem) for elem in subtract) ]
+        _fn, outline  = find_gerber_in_dir(zip_or_dir, outline)
+        subtract = [ (fn, layer) for fn, layer in (find_gerber_in_dir(zip_or_dir, elem) for elem in subtract) ]
         
         out = paste_image(target, outline, source_img, subtract, debugdir=debugdir, status_print=status_print)
 
-        # XXX
-        with open('/tmp/out.GTO', 'w') as f:
-#        with open(tname, 'w') as f:
+        shutil.copy(tname, tname+'.bak')
+        with open(tname, 'w') as f:
             f.write(out)
     elif zipfile.is_zipfile(zip_or_dir):
-        tname, target = find_gerber_in_zip(zip_or_dir, target)
-        _, outline = find_gerber_in_zip(zip_or_dir, outline)
+        _fn, outline  = find_gerber_in_zip(zip_or_dir, outline)
+        subtract = [ (fn, layer) for fn, layer in (find_gerber_in_zip(zip_or_dir, elem) for elem in subtract) ]
         
         out = paste_image(target, outline, source_img, subtract, debugdir=debugdir, status_print=status_print)
         replace_file_in_zip(zip_or_dir, tname, out)
@@ -235,13 +238,19 @@ def paste_image_file(zip_or_dir, target, outline, source_img, subtract=[], statu
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--target', default='.GTO', help='Target layer. Filename or extension in target folder/zip')
-    parser.add_argument('-s', '--subtract', default=['.GTS', '.TXT'], nargs='*', help='Layer to subtract. Filename or extension in target folder/zip')
-    parser.add_argument('-o', '--outline', default='.GKO', help='Target outline layer. Filename or extension in target folder/zip')
+    parser.add_argument('-b', '--bottom', action='store_true', help='Default to bottom layer file names')
+    parser.add_argument('-t', '--target', help='Target layer. Filename or extension in target folder/zip')
+    parser.add_argument('-s', '--subtract', nargs='*', help='Layer to subtract. Filename or extension in target folder/zip')
+    parser.add_argument('-o', '--outline', default='.GKO,.GM1', help='Target outline layer. Filename or extension in target folder/zip')
     parser.add_argument('-d', '--debug', type=str, help='Directory to place debug files into')
     parser.add_argument('zip_or_dir', default='.', nargs='?', help='Optional folder or zip with target files')
     parser.add_argument('source', help='Source image')
     args = parser.parse_args()
+
+    if not args.target:
+        args.target   = '.GBO' if args.bottom else '.GTO'
+    if not args.subtract:
+        args.subtract = ['.GBS', '.TXT'] if args.bottom else ['.GTS', '.TXT']
 
     source_img = cv2.imread(args.source, cv2.IMREAD_GRAYSCALE)
     paste_image_file(
