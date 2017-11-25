@@ -31,9 +31,11 @@ def paste_image(target_gerber:str, outline_gerber:str, source_img:np.ndarray, ex
         fg, bg = gerber.render.RenderSettings((1, 1, 1)), gerber.render.RenderSettings((0, 0, 0))
         ctx = GerberCairoContext(scale=scale)
         ctx.render_layer(target, settings=fg, bgsettings=bg)
+        ctx.render_layer(outline, settings=fg, bgsettings=bg)
         ctx.dump(img_file)
 
         original_img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)
+
     r = 1+2*max(1, int(extend_overlay_r_mil/1000 * scale))
     target_img = cv2.blur(original_img, (r, r))
     _, target_img = cv2.threshold(target_img, 255//(1+r), 255, cv2.THRESH_BINARY)
@@ -46,7 +48,12 @@ def paste_image(target_gerber:str, outline_gerber:str, source_img:np.ndarray, ex
     cv2.imwrite('/tmp/06thresh.png', source_img)
     tgth, tgtw = target_img.shape
     padded_img = np.zeros(shape=(max(imgh, tgth), max(imgw, tgtw)), dtype=source_img.dtype)
-    padded_img[(tgth-imgh)//2:tgth-((tgth-imgh+1)//2), (tgtw-imgw)//2:tgtw-((tgtw-imgw+1)//2)] = source_img
+
+    offx = int((minx-tminx if tminx < minx else 0)*scale)
+    offy = int((miny-tminy if tminy < miny else 0)*scale)
+    offx += int(grbw*scale - imgw) // 2
+    offy += int(grbh*scale - imgh) // 2
+    padded_img[offy:offy+imgh, offx:offx+imgw] = source_img
 
     cv2.imwrite('/tmp/10padded.png', padded_img)
     cv2.imwrite('/tmp/20target.png', target_img)
@@ -55,7 +62,7 @@ def paste_image(target_gerber:str, outline_gerber:str, source_img:np.ndarray, ex
     cv2.imwrite('/tmp/30multiplied.png', out_img)
     cv2.imwrite('/tmp/40vis.png', out_img + original_img)
 
-    plot_contours(out_img, target, offx=(tminx, tminy), scale=scale)
+    plot_contours(out_img, target, offx=(min(tminx, minx), min(tminy, miny)), scale=scale)
 
     from gerber.render import rs274x_backend
     ctx = rs274x_backend.Rs274xContext(target.settings)
