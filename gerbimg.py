@@ -14,7 +14,21 @@ from gerber.render import GerberCairoContext
 import numpy as np
 import cv2
 
-def paste_image(target_gerber:str, outline_gerber:str, source_img:np.ndarray, extend_overlay_r_mil:float=12, extend_picture_r_mil:float=2):
+def paste_image(
+        target_gerber:str,
+        outline_gerber:str,
+        source_img:np.ndarray,
+        subtract_gerber:list=[],
+        extend_overlay_r_mil:float=12,
+        extend_picture_r_mil:float=2,
+        debugdir:str=None):
+    debugctr = 0
+    def debugimg(img, name):
+        nonlocal debugctr
+        if debugdir:
+            cv2.imwrite(path.join(debugdir, '{:02d}{}.png'.format(debugctr, name)), img)
+        debugctr += 1
+
     outline = gerber.loads(outline_gerber)
     (minx, maxx), (miny, maxy) = outline.bounds
     grbw, grbh = maxx - minx, maxy - miny
@@ -32,6 +46,9 @@ def paste_image(target_gerber:str, outline_gerber:str, source_img:np.ndarray, ex
         ctx = GerberCairoContext(scale=scale)
         ctx.render_layer(target, settings=fg, bgsettings=bg)
         ctx.render_layer(outline, settings=fg, bgsettings=bg)
+        for sub in subtract_gerber:
+            layer = gerber.loads(sub)
+            ctx.render_layer(layer, settings=fg, bgsettings=bg)
         ctx.dump(img_file)
 
         original_img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)
@@ -41,11 +58,9 @@ def paste_image(target_gerber:str, outline_gerber:str, source_img:np.ndarray, ex
     _, target_img = cv2.threshold(target_img, 255//(1+r), 255, cv2.THRESH_BINARY)
 
     qr = 1+2*max(1, int(extend_picture_r_mil/1000 * scale))
-    # source_img = cv2.blur(source_img, (r, r))
-    # cv2.imwrite('/tmp/03blurred.png', source_img)
     source_img = source_img[::-1]
     _, source_img = cv2.threshold(source_img, 127, 255, cv2.THRESH_BINARY)
-    cv2.imwrite('/tmp/06thresh.png', source_img)
+    debugimg(source_img, 'thresh')
     tgth, tgtw = target_img.shape
     padded_img = np.zeros(shape=(max(imgh, tgth), max(imgw, tgtw)), dtype=source_img.dtype)
 
@@ -55,12 +70,12 @@ def paste_image(target_gerber:str, outline_gerber:str, source_img:np.ndarray, ex
     offy += int(grbh*scale - imgh) // 2
     padded_img[offy:offy+imgh, offx:offx+imgw] = source_img
 
-    cv2.imwrite('/tmp/10padded.png', padded_img)
-    cv2.imwrite('/tmp/20target.png', target_img)
+    debugimg(padded_img, 'padded')
+    debugimg(target_img, 'target')
     out_img = (np.multiply((padded_img/255.0), (target_img/255.0) * -1 + 1) * 255).astype(np.uint8)
 
-    cv2.imwrite('/tmp/30multiplied.png', out_img)
-    cv2.imwrite('/tmp/40vis.png', out_img + original_img)
+    debugimg(out_img, 'multiplied')
+    debugimg(out_img + original_img, 'vis')
 
     plot_contours(out_img, target, offx=(min(tminx, minx), min(tminy, miny)), scale=scale)
 
@@ -77,9 +92,6 @@ def plot_contours(img:np.ndarray, layer:gerber.rs274x.GerberFile, offx:tuple, sc
     img_cont_out, contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
 
     aperture = list(layer.apertures)[0]
-
-    # XXX
-    layer.primitives.clear()
 
     from gerber.primitives import Line, Region
     debug('offx', offx, 'scale', scale)
@@ -155,12 +167,13 @@ def replace_file_in_zip(zip_path, filename, contents):
             zipout.writestr(filename, contents)
         shutil.move(tempname, zip_path)
 
-def paste_image_file(zip_or_dir, target, outline, source_img):
+def paste_image_file(zip_or_dir, target, outline, source_img, subtract=[], debugdir=None):
     if path.isdir(zip_or_dir):
         tname, target = find_gerber_in_dir(zip_or_dir, target)
         _, outline = find_gerber_in_dir(zip_or_dir, outline)
+        subtract = [ layer for _fn, layer in (find_gerber_in_dir(zip_or_dir, elem) for elem in subtract) ]
         
-        out = paste_image(target, outline, source_img)
+        out = paste_image(target, outline, source_img, subtract, debugdir=debugdir)
 
         # XXX
         with open('/tmp/out.GTO', 'w') as f:
@@ -170,7 +183,7 @@ def paste_image_file(zip_or_dir, target, outline, source_img):
         tname, target = find_gerber_in_zip(zip_or_dir, target)
         _, outline = find_gerber_in_zip(zip_or_dir, outline)
         
-        out = paste_image(target, outline, source_img)
+        out = paste_image(target, outline, source_img, debugdir=debugdir)
         replace_file_in_zip(zip_or_dir, tname, out)
     else:
         raise ValueError('{} does not look like either a folder or a zip file')
@@ -182,11 +195,13 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--target', default='.GTO', help='Target layer. Filename or extension in target folder/zip')
+    parser.add_argument('-s', '--subtract', default=['.GTP', '.TXT'], nargs='*', help='Layer to subtract. Filename or extension in target folder/zip')
     parser.add_argument('-o', '--outline', default='.GKO', help='Target outline layer. Filename or extension in target folder/zip')
+    parser.add_argument('-d', '--debug', type=str, help='Directory to place debug files into')
     parser.add_argument('zip_or_dir', default='.', nargs='?', help='Optional folder or zip with target files')
     parser.add_argument('source', help='Source image')
     args = parser.parse_args()
 
     source_img = cv2.imread(args.source, cv2.IMREAD_GRAYSCALE)
-    paste_image_file(args.zip_or_dir, args.target, args.outline, source_img)
+    paste_image_file(args.zip_or_dir, args.target, args.outline, source_img, args.subtract, args.debug)
 
