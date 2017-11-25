@@ -195,7 +195,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', '--target', default='.GTO', help='Target layer. Filename or extension in target folder/zip')
-    parser.add_argument('-s', '--subtract', default=['.GTP', '.TXT'], nargs='*', help='Layer to subtract. Filename or extension in target folder/zip')
+    parser.add_argument('-s', '--subtract', default=['.GTS', '.TXT'], nargs='*', help='Layer to subtract. Filename or extension in target folder/zip')
     parser.add_argument('-o', '--outline', default='.GKO', help='Target outline layer. Filename or extension in target folder/zip')
     parser.add_argument('-d', '--debug', type=str, help='Directory to place debug files into')
     parser.add_argument('zip_or_dir', default='.', nargs='?', help='Optional folder or zip with target files')
