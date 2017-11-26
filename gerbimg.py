@@ -85,10 +85,10 @@ def paste_image(
     offx += int(grbw*scale - imgw) // 2
     offy += int(grbh*scale - imgh) // 2
     endx, endy = min(offx+imgw, tgtw), min(offy+imgh, tgth)
+    print('off', (offx, offy), 'end', (endx, endy), 'img', (imgw, imgh), 'tgt', (tgtw, tgth))
     padded_img[offy:endy, offx:endx] = source_img[:endy-offy, :endx-offx]
     debugimg(padded_img, 'padded')
     debugimg(target_img, 'target')
-    print('off', (offx, offy), 'end', (endx, endy), 'img', (imgw, imgh), 'tgt', (tgtw, tgth))
 
     status_print('Masking source image')
     out_img = (np.multiply((padded_img/255.0), (target_img/255.0) * -1 + 1) * 255).astype(np.uint8)
