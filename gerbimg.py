@@ -58,7 +58,7 @@ def paste_image(
         status_print('  * target layer')
         ctx.render_layer(target, settings=fg, bgsettings=bg)
         for fn, sub in subtract_gerber:
-            status_print('  * extra layer', fn)
+            status_print('  * extra layer', os.path.basename(fn))
             layer = gerber.loads(sub)
             ctx.render_layer(layer, settings=fg, bgsettings=bg)
         status_print('Rendering keepout composite')
@@ -210,14 +210,20 @@ def replace_file_in_zip(zip_path, filename, contents):
 def paste_image_file(zip_or_dir, target, outline, source_img, subtract=[], status_print=lambda *args:None, debugdir=None):
     if path.isdir(zip_or_dir):
         tname, target = find_gerber_in_dir(zip_or_dir, target)
-        _fn, outline  = find_gerber_in_dir(zip_or_dir, outline)
+        status_print('Target layer file {}'.format(os.path.basename(tname)))
+        oname, outline  = find_gerber_in_dir(zip_or_dir, outline)
+        status_print('Outline layer file {}'.format(os.path.basename(oname)))
         subtract = [ (fn, layer) for fn, layer in (find_gerber_in_dir(zip_or_dir, elem) for elem in subtract) ]
         
         out = paste_image(target, outline, source_img, subtract, debugdir=debugdir, status_print=status_print)
 
-        shutil.copy(tname, tname+'.bak')
-        with open(tname, 'w') as f:
-            f.write(out)
+        if not tname.endswith('.bak'):
+            shutil.copy(tname, tname+'.bak')
+            with open(tname, 'w') as f:
+                f.write(out)
+        else:
+            with open(tname[:-4], 'w') as f:
+                f.write(out)
     elif zipfile.is_zipfile(zip_or_dir):
         _fn, outline  = find_gerber_in_zip(zip_or_dir, outline)
         subtract = [ (fn, layer) for fn, layer in (find_gerber_in_zip(zip_or_dir, elem) for elem in subtract) ]
@@ -243,7 +249,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not args.target:
-        args.target   = '.GBO' if args.bottom else '.GTO'
+        args.target   = '.GBO.bak,.GBO' if args.bottom else '.GTO.bak,.GTO'
     if not args.subtract:
         args.subtract = ['.GBS', '.TXT'] if args.bottom else ['.GTS', '.TXT']
 
