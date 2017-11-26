@@ -53,10 +53,10 @@ def paste_image(
         status_print('Combining keepout composite')
         fg, bg = gerber.render.RenderSettings((1, 1, 1)), gerber.render.RenderSettings((0, 0, 0))
         ctx = GerberCairoContext(scale=scale)
-        status_print('  * target layer')
-        ctx.render_layer(target, settings=fg, bgsettings=bg)
         status_print('  * outline')
         ctx.render_layer(outline, settings=fg, bgsettings=bg)
+        status_print('  * target layer')
+        ctx.render_layer(target, settings=fg, bgsettings=bg)
         for fn, sub in subtract_gerber:
             status_print('  * extra layer', fn)
             layer = gerber.loads(sub)
@@ -79,31 +79,26 @@ def paste_image(
 
     status_print('Padding source image')
     tgth, tgtw = target_img.shape
-    padded_img = np.zeros(shape=(max(imgh, tgth), max(imgw, tgtw)), dtype=source_img.dtype)
+    padded_img = np.zeros(shape=target_img.shape, dtype=source_img.dtype)
     offx = int((minx-tminx if tminx < minx else 0)*scale)
     offy = int((miny-tminy if tminy < miny else 0)*scale)
     offx += int(grbw*scale - imgw) // 2
     offy += int(grbh*scale - imgh) // 2
-    padded_img[offy:offy+imgh, offx:offx+imgw] = source_img
+    endx, endy = min(offx+imgw, tgtw), min(offy+imgh, tgth)
+    padded_img[offy:endy, offx:endx] = source_img[:endy-offy, :endx-offx]
     debugimg(padded_img, 'padded')
-
-    status_print('Padding target image')
-    padded_target = np.zeros(shape=padded_img.shape, dtype=source_img.dtype)
-    offx = int(max(tminx, 0)*scale)
-    offy = int(max(tminy, 0)*scale)
-    padded_target[offy:offy+tgth, offx:offx+tgtw] = target_img
     debugimg(target_img, 'target')
-    debugimg(padded_target, 'target_padded')
+    print('off', (offx, offy), 'end', (endx, endy), 'img', (imgw, imgh), 'tgt', (tgtw, tgth))
 
     status_print('Masking source image')
-    out_img = (np.multiply((padded_img/255.0), (padded_target/255.0) * -1 + 1) * 255).astype(np.uint8)
+    out_img = (np.multiply((padded_img/255.0), (target_img/255.0) * -1 + 1) * 255).astype(np.uint8)
 
     debugimg(out_img, 'multiplied')
 
     status_print('Calculating contour lines')
     plot_contours(out_img,
             target,
-            offx=(min(tminx, minx), min(tminy, miny)),
+            offx=(0, 0),
             scale=scale,
             status_print=lambda *args: status_print('   ', *args))
 
@@ -132,7 +127,7 @@ def plot_contours(
     aperture = list(layer.apertures)[0]
 
     from gerber.primitives import Line, Region
-    debug('offx', offx, 'scale', scale)
+    status_print('offx', offx, 'scale', scale)
 
     xbias, ybias = offx
     def map(coord):
