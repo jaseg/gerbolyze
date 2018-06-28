@@ -98,7 +98,7 @@ def paste_image(
     status_print('Calculating contour lines')
     plot_contours(out_img,
             target,
-            offx=(0, 0),
+            offx=(tminx, tminy),
             scale=scale,
             status_print=lambda *args: status_print('   ', *args))
 
