@@ -21,7 +21,7 @@ def paste_image(
         outline_gerber:str,
         source_img:np.ndarray,
         subtract_gerber:list=[],
-        extend_overlay_r_mil:float=12,
+        extend_overlay_r_mil:float=6,
         extend_picture_r_mil:float=2,
         status_print=lambda *args:None,
         debugdir:str=None):
@@ -32,21 +32,26 @@ def paste_image(
             cv2.imwrite(path.join(debugdir, '{:02d}{}.png'.format(debugctr, name)), img)
         debugctr += 1
 
+    # Parse outline layer to get bounds of gerber file
     status_print('Parsing outline gerber')
     outline = gerber.loads(outline_gerber)
     (minx, maxx), (miny, maxy) = outline.bounds
     grbw, grbh = maxx - minx, maxy - miny
     status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
 
+    # Read source image
     imgh, imgw = source_img.shape
     scale = math.ceil(max(imgw/grbw, imgh/grbh)) # scale is in dpi
-    status_print('  * source image has size {}, going for scale {}dpi'.format((imgw, imgh), scale))
+    status_print('  * source image has size {}, going for scale {}dpmm'.format((imgw, imgh), scale))
 
+    # Parse target layer
     status_print('Parsing target gerber')
     target = gerber.loads(target_gerber)
     (tminx, tmaxx), (tminy, tmaxy) = target.bounds
     status_print('  * target layer has offset {}, size {}'.format((tminx, tminy), (tmaxx-tminx, tmaxy-tminy)))
 
+    # Render all gerber layers whose features are to be excluded from the target image, such as board outline, the
+    # original silk layer and the solder paste layer to binary images.
     with tempfile.TemporaryDirectory() as tmpdir:
         img_file = path.join(tmpdir, 'target.png')
 
@@ -64,19 +69,38 @@ def paste_image(
         status_print('Rendering keepout composite')
         ctx.dump(img_file)
 
-        original_img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)
+        # Vertically flip exported image
+        original_img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)[::-1, :]
 
-    status_print('Expanding keepout composite')
-    r = 1+2*max(1, int(extend_overlay_r_mil/1000 * scale))
+    r = 1+2*max(1, int(extend_overlay_r_mil/1000 * 25.4 * scale))
+    status_print('Expanding keepout composite by', r, extend_overlay_r_mil/1000 * 25.4 * scale, scale, grbw, grbh)
+
+    # Extend image by a few pixels and flood-fill from (0, 0) to mask out the area outside the outermost outline
+    # This ensures no polygons are generated outside the board even for non-rectangular boards.
+    border = 10
+    outh, outw = original_img.shape
+    extended_img = np.zeros((outh + 2*border, outw + 2*border), dtype=np.uint8)
+    extended_img[border:outh+border, border:outw+border] = original_img
+    cv2.floodFill(extended_img, None, (0, 0), (255,))
+    original_img = extended_img[border:outh+border, border:outw+border]
+    debugimg(extended_img, 'flooded')
+
+    # Dilate the white areas of the image using gaussian blur and threshold. Use these instead of primitive dilation
+    # here for their non-directionality.
     target_img = cv2.blur(original_img, (r, r))
     _, target_img = cv2.threshold(target_img, 255//(1+r), 255, cv2.THRESH_BINARY)
 
+    # Threshold source image. Ideally, the source image is already binary but in case it's not, or in case it's not
+    # exactly binary (having a few very dark or very light grays e.g. due to JPEG compression) we're thresholding here.
     status_print('Thresholding source image')
     qr = 1+2*max(1, int(extend_picture_r_mil/1000 * scale))
     source_img = source_img[::-1]
     _, source_img = cv2.threshold(source_img, 127, 255, cv2.THRESH_BINARY)
     debugimg(source_img, 'thresh')
 
+    # Pad image to size of target layer images generated above. After this, `scale` applies to the padded image as well
+    # as the gerber renders. For padding, zoom or shrink the image to completely fit the gerber's rectangular bounding
+    # box. Center the image vertically or horizontally if it has a different aspect ratio.
     status_print('Padding source image')
     tgth, tgtw = target_img.shape
     padded_img = np.zeros(shape=target_img.shape, dtype=source_img.dtype)
@@ -90,11 +114,13 @@ def paste_image(
     debugimg(padded_img, 'padded')
     debugimg(target_img, 'target')
 
+    # Mask out excluded gerber features (source silk, holes, solder mask etc.) from the target image
     status_print('Masking source image')
     out_img = (np.multiply((padded_img/255.0), (target_img/255.0) * -1 + 1) * 255).astype(np.uint8)
 
     debugimg(out_img, 'multiplied')
 
+    # Calculate contours from masked target image and plot them to the target gerber context
     status_print('Calculating contour lines')
     plot_contours(out_img,
             target,
@@ -102,6 +128,7 @@ def paste_image(
             scale=scale,
             status_print=lambda *args: status_print('   ', *args))
 
+    # Write target gerber context to disk
     status_print('Generating output gerber')
     from gerber.render import rs274x_backend
     ctx = rs274x_backend.Rs274xContext(target.settings)
