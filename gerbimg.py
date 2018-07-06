@@ -110,68 +110,26 @@ def generate_template(
         image,
         gerber_unit=Unit.MM,
         process_resolution:float=6, # mil
-        resolution_oversampling:float=8, # times
-        debugdir=None,
+        resolution_oversampling:float=10, # times
         status_print=lambda *args:None
         ):
 
-    debugctr = 0
-    def debugimg(img, name):
-        nonlocal debugctr
-        if debugdir:
-            cv2.imwrite(path.join(debugdir, '{:02d}{}.png'.format(debugctr, name)), img*255)
-        debugctr += 1
+    silk, mask, copper, outline, *drill = map(gerber.load_layer_data, [silk, mask, copper, outline, *drill])
+    silk.layer_class = 'topsilk'
+    mask.layer_class = 'topmask'
+    copper.layer_class = 'top'
+    outline.layer_class = 'outline'
+    scale = (1000/process_resolution) / 25.4 * resolution_oversampling # dpmm
 
-    template_scale = (1000/process_resolution) / 25.4 * resolution_oversampling # dpmm
+    # Create a new drawing context
+    ctx = GerberCairoContext(scale=scale)
 
-    silk, mask, copper, outline, *drill = map(gerber.loads, [silk, mask, copper, outline, *drill])
-
-    (minx, maxx), (miny, maxy) = outline.bounds
-    grbw, grbh = maxx - minx, maxy - miny
-    status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
-    area_mask = pcb_area_mask(outline, template_scale)
-    debugimg(area_mask, 'area_mask')
-    imgh, imgw = area_mask.shape
-
-    fr4_color       = (0.50, 0.80, 0.50)
-    copper_color    = (0.30, 0.50, 0.65)
-    mask_color      = (0.15, 0.05, 0.70)
-    silk_color      = (0.90, 0.90, 0.90)
-
-    img = np.ones((imgh, imgw, 1)) * fr4_color
-    copper_img = render_gerbers_to_image(copper, scale=template_scale, bounds=outline.bounds)
-    #copper_img = copper_img.reshape((imgh, imgw, 1)) * copper_color
-    debugimg(copper_img.astype(float)/255, 'copper_img')
-    #img = np.ones((imgh, imgw, 3)) - (1-img) * (1-copper_img) # screen blend
-    img[copper_img != 0, :] = copper_color
-    #img = area_mask.reshape((imgh, imgw, 1)) * fr4_color
-    debugimg(img, 'up_to_copper')
-
-    mask_img_raw = render_gerbers_to_image(mask, scale=template_scale, bounds=outline.bounds).astype(float)/255
-    mask_img = 1 - (1-mask_img_raw.reshape((imgh, imgw, 1))) * (1-np.array(mask_color))
-    debugimg(mask_img, 'mask_img')
-
-    img *= mask_img
-    debugimg(img, 'up_to_mask')
-
-    silk_img = render_gerbers_to_image(silk, scale=template_scale, bounds=outline.bounds).astype(float)/255 # Invert mask layer
-    silk_img *= 1-mask_img_raw
-    debugimg(silk_img, 'silk')
-
-    img[silk_img > 0.5, :] = silk_color
-    debugimg(img, 'after silk')
-
-    drill_img = render_gerbers_to_image(*drill, scale=template_scale, bounds=outline.bounds).astype(float)/255 # Invert mask layer
-    debugimg(drill_img, 'drill')
-
-    img[drill_img > 0.5, :] = (0, 0, 0)
-
-    img[:,:,0] *= area_mask
-    img[:,:,1] *= area_mask
-    img[:,:,2] *= area_mask
-    cv2.imwrite(image, img)
-    debugimg(img, 'out_img')
-    return img
+    ctx.render_layer(copper)
+    ctx.render_layer(mask)
+    ctx.render_layer(silk)
+    for dr in drill:
+        ctx.render_layer(dr)
+    ctx.dump(image)
 
 def paste_image(
         target_gerber:str,
@@ -388,7 +346,7 @@ def process_gerbers(source, target, image, side, layer, debugdir):
     with open(os.path.join(target, os.path.basename(tname)), 'w') as f:
         f.write(out)
 
-def render_preview(source, image, side, debugdir=None):
+def render_preview(source, image, side, process_resolution, resolution_oversampling):
     def load_layer(layer):
         name, grb = find_gerber_in_dir(source, LAYER_SPEC[side][layer])
         print(f'{layer} layer file {os.path.basename(name)}')
@@ -400,18 +358,20 @@ def render_preview(source, image, side, debugdir=None):
     copper = load_layer('copper')
 
     try:
-        _, npth = find_gerber_in_dir(source, '-npth.drl')
+        nm, npth = find_gerber_in_dir(source, '-npth.drl')
+        print(f'npth drill file {nm}')
     except ValueError:
         npth = None
-    drill = ([npth] if npth else []) + [find_gerber_in_dir(source, '.drl|.txt', exclude='-npth.drl')[1]]
+    nm, drill = find_gerber_in_dir(source, '.drl|.txt', exclude='-npth.drl')
+    print(f'drill file {nm}')
+    drill = ([npth] if npth else []) + [drill]
     
     generate_template(
         silk, mask, copper, outline, drill,
         image,
         gerber_unit=Unit.MM,
-        process_resolution=6, # mil
-        resolution_oversampling=8, # times
-        debugdir=debugdir
+        process_resolution=process_resolution,
+        resolution_oversampling=resolution_oversampling,
         )
 
 if __name__ == '__main__':
@@ -433,6 +393,8 @@ if __name__ == '__main__':
     vectorize_parser.add_argument('target', help='Target gerber directory')
     vectorize_parser.add_argument('image', help='Image to render')
 
+    render_parser.add_argument('--fab-resolution', '-r', type=float, nargs='?', default=6.0, help='Smallest feature size supported by PCB manufacturer, in mil. On silkscreen layers, this is the minimum font stroke width.')
+    render_parser.add_argument('--oversampling', '-o', type=float, nargs='?', default=10, help='Oversampling factor for the image. If set to say, 10 pixels, one minimum feature size (see --fab-resolution) will be 10 pixels long. The input image for vectorization should not contain any detail of smaller pixel size than this number in order to be manufacturable.')
     render_parser.add_argument('side', choices=['top', 'bottom'], help='Target board side')
     render_parser.add_argument('source', help='Source gerber directory')
     render_parser.add_argument('image', help='Output image filename')
@@ -442,7 +404,7 @@ if __name__ == '__main__':
     if args.command == 'vectorize':
         process_gerbers(args.source, args.target, args.image, args.side, args.layer, args.debugdir)
     else: # command == render
-        render_preview(args.source, args.image, args.side, args.debugdir)
+        render_preview(args.source, args.image, args.side, args.fab_resolution, args.oversampling)
     #except ValueError as e:
     #    print(*e.args, file=sys.stderr)
     #    sys.exit(1)
