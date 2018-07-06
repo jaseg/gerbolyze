@@ -15,41 +15,24 @@ import gerber
 from gerber.render import GerberCairoContext
 import numpy as np
 import cv2
+import enum
 
-def paste_image(
-        target_gerber:str,
-        outline_gerber:str,
-        source_img:np.ndarray,
-        subtract_gerber:list=[],
-        extend_overlay_r_mil:float=6,
-        extend_picture_r_mil:float=2,
-        status_print=lambda *args:None,
-        debugdir:str=None):
-    debugctr = 0
-    def debugimg(img, name):
-        nonlocal debugctr
-        if debugdir:
-            cv2.imwrite(path.join(debugdir, '{:02d}{}.png'.format(debugctr, name)), img)
-        debugctr += 1
+class Unit(enum.Enum):
+    MM = 0
+    INCH = 1
+    MIL = 2
 
-    # Parse outline layer to get bounds of gerber file
-    status_print('Parsing outline gerber')
-    outline = gerber.loads(outline_gerber)
-    (minx, maxx), (miny, maxy) = outline.bounds
-    grbw, grbh = maxx - minx, maxy - miny
-    status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
 
-    # Read source image
-    imgh, imgw = source_img.shape
-    scale = math.ceil(max(imgw/grbw, imgh/grbh)) # scale is in dpi
-    status_print('  * source image has size {}, going for scale {}dpmm'.format((imgw, imgh), scale))
-
-    # Parse target layer
-    status_print('Parsing target gerber')
-    target = gerber.loads(target_gerber)
-    (tminx, tmaxx), (tminy, tmaxy) = target.bounds
-    status_print('  * target layer has offset {}, size {}'.format((tminx, tminy), (tmaxx-tminx, tmaxy-tminy)))
-
+def generate_mask(
+        outline,
+        target,
+        scale,
+        debugimg,
+        status_print,
+        gerber_unit,
+        extend_overlay_r_mil,
+        subtract_gerber
+        ):
     # Render all gerber layers whose features are to be excluded from the target image, such as board outline, the
     # original silk layer and the solder paste layer to binary images.
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -72,8 +55,9 @@ def paste_image(
         # Vertically flip exported image
         original_img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)[::-1, :]
 
-    r = 1+2*max(1, int(extend_overlay_r_mil/1000 * 25.4 * scale))
-    status_print('Expanding keepout composite by', r, extend_overlay_r_mil/1000 * 25.4 * scale, scale, grbw, grbh)
+    f = 1 if gerber_unit == Unit.INCH else 25.4 # MM
+    r = 1+2*max(1, int(extend_overlay_r_mil/1000 * f * scale))
+    status_print('Expanding keepout composite by', r)
 
     # Extend image by a few pixels and flood-fill from (0, 0) to mask out the area outside the outermost outline
     # This ensures no polygons are generated outside the board even for non-rectangular boards.
@@ -89,6 +73,76 @@ def paste_image(
     # here for their non-directionality.
     target_img = cv2.blur(original_img, (r, r))
     _, target_img = cv2.threshold(target_img, 255//(1+r), 255, cv2.THRESH_BINARY)
+    return target_img
+
+def generate_template(
+        target_gerber:str,
+        outline_gerber:str,
+        outfile:str,
+        subtract_gerber:list=[],
+        extend_overlay_r_mil:float=6,
+        gerber_unit=Unit.MM,
+        process_resolution:float=6, # mil
+        resolution_oversampling:float=8, # times
+        status_print=lambda *args:None
+        ):
+    template_scale = (1000/process_resolution) / 25.4 * resolution_oversampling
+
+    # Parse outline layer to get bounds of gerber file
+    status_print('Parsing outline gerber')
+    outline = gerber.loads(outline_gerber)
+    (minx, maxx), (miny, maxy) = outline.bounds
+    grbw, grbh = maxx - minx, maxy - miny
+    status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
+
+    # Parse target layer
+    status_print('Parsing target gerber')
+    target = gerber.loads(target_gerber)
+    (tminx, tmaxx), (tminy, tmaxy) = target.bounds
+    status_print('  * target layer has offset {}, size {}'.format((tminx, tminy), (tmaxx-tminx, tmaxy-tminy)))
+
+    # Merge layers to target mask
+    target_img = generate_mask(outline, target, template_scale, debugimg, status_print, gerber_unit, extend_overlay_r_mil, subtract_gerber)
+    cv2.imwrite(outfile, target_img)
+
+def paste_image(
+        target_gerber:str,
+        outline_gerber:str,
+        source_img:np.ndarray,
+        subtract_gerber:list=[],
+        extend_overlay_r_mil:float=6,
+        extend_picture_r_mil:float=2,
+        status_print=lambda *args:None,
+        gerber_unit=Unit.MM,
+        debugdir:str=None):
+
+    debugctr = 0
+    def debugimg(img, name):
+        nonlocal debugctr
+        if debugdir:
+            cv2.imwrite(path.join(debugdir, '{:02d}{}.png'.format(debugctr, name)), img)
+        debugctr += 1
+
+    # Parse outline layer to get bounds of gerber file
+    status_print('Parsing outline gerber')
+    outline = gerber.loads(outline_gerber)
+    (minx, maxx), (miny, maxy) = outline.bounds
+    grbw, grbh = maxx - minx, maxy - miny
+    status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
+
+    # Parse target layer
+    status_print('Parsing target gerber')
+    target = gerber.loads(target_gerber)
+    (tminx, tmaxx), (tminy, tmaxy) = target.bounds
+    status_print('  * target layer has offset {}, size {}'.format((tminx, tminy), (tmaxx-tminx, tmaxy-tminy)))
+
+    # Read source image
+    imgh, imgw = source_img.shape
+    scale = math.ceil(max(imgw/grbw, imgh/grbh)) # scale is in dpmm
+    status_print('  * source image has size {}, going for scale {}dpmm'.format((imgw, imgh), scale))
+
+    # Merge layers to target mask
+    target_img = generate_mask(outline, target, scale, debugimg, status_print, gerber_unit, extend_overlay_r_mil, subtract_gerber)
 
     # Threshold source image. Ideally, the source image is already binary but in case it's not, or in case it's not
     # exactly binary (having a few very dark or very light grays e.g. due to JPEG compression) we're thresholding here.
@@ -147,7 +201,7 @@ def plot_contours(
         status_print=lambda *args:None):
     imgh, imgw = img.shape
 
-    # Extract contours
+    # Extract contour hierarchy using OpenCV
     status_print('Extracting contours')
     img_cont_out, contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
 
@@ -193,14 +247,9 @@ def plot_contours(
 # Utility foo
 # ===========
 
-def find_gerber_in_dir(dir_path, file_or_ext):
-    lname = path.join(dir_path, file_or_ext)
-    if path.isfile(lname):
-        with open(lname, 'r') as f:
-            return lname, f.read()
-
+def find_gerber_in_dir(dir_path, extensions):
     contents = os.listdir(dir_path)
-    exts = file_or_ext.split(',')
+    exts = extensions.split('|')
     for entry in contents:
         if any(entry.lower().endswith(ext.lower()) for ext in exts):
             lname = path.join(dir_path, entry)
@@ -209,84 +258,84 @@ def find_gerber_in_dir(dir_path, file_or_ext):
             with open(lname, 'r') as f:
                 return lname, f.read()
 
-    raise ValueError('Cannot find file or suffix "{}" in dir {}'.format(file_or_ext, dir_path))
+    raise ValueError(f'Cannot find file with suffix {extensions} in dir {dir_path}')
 
-def find_gerber_in_zip(zip_path, file_or_ext):
-    with zipfile.ZeipFile(zip_path, 'r') as lezip:
-        nlist = [ item.filename for item in zipin.infolist() ]
-        if file_or_ext in nlist:
-            return file_or_ext, lezip.read(file_or_ext)
-
-        exts = file_or_ext.split(',')
-        for n in nlist:
-            if any(n.lower().endswith(ext.lower()) for ext in exts):
-                return n, lezip.read(n)
-
-    raise ValueError('Cannot find file or suffix "{}" in zip {}'.format(file_or_ext, dir_path))
-
-def replace_file_in_zip(zip_path, filename, contents):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tempname = path.join(tmpdir, 'out.zip')
-        with zipfile.ZipFile(zip_path, 'r') as zipin, zipfile.ZipFile(tempname, 'w') as zipout:
-            for item in zipin.infolist():
-                if item.filename != filename:
-                    zipout.writestr(item, zipin.read(item.filename))
-            zipout.writestr(filename, contents)
-        shutil.move(tempname, zip_path)
-
-def paste_image_file(zip_or_dir, target, outline, source_img, subtract=[], status_print=lambda *args:None, debugdir=None):
-    if path.isdir(zip_or_dir):
-        tname, target = find_gerber_in_dir(zip_or_dir, target)
-        status_print('Target layer file {}'.format(os.path.basename(tname)))
-        oname, outline  = find_gerber_in_dir(zip_or_dir, outline)
-        status_print('Outline layer file {}'.format(os.path.basename(oname)))
-        subtract = [ (fn, layer) for fn, layer in (find_gerber_in_dir(zip_or_dir, elem) for elem in subtract) ]
-        
-        out = paste_image(target, outline, source_img, subtract, debugdir=debugdir, status_print=status_print)
-
-        if not tname.endswith('.bak'):
-            shutil.copy(tname, tname+'.bak')
-            with open(tname, 'w') as f:
-                f.write(out)
-        else:
-            with open(tname[:-4], 'w') as f:
-                f.write(out)
-    elif zipfile.is_zipfile(zip_or_dir):
-        _fn, outline  = find_gerber_in_zip(zip_or_dir, outline)
-        subtract = [ (fn, layer) for fn, layer in (find_gerber_in_zip(zip_or_dir, elem) for elem in subtract) ]
-        
-        out = paste_image(target, outline, source_img, subtract, debugdir=debugdir, status_print=status_print)
-        replace_file_in_zip(zip_or_dir, tname, out)
-    else:
-        raise ValueError('{} does not look like either a folder or a zip file')
+# Gerber file name extensions for Altium/Protel | KiCAD | Eagle
+LAYER_SPEC = {
+        'top': {
+            'paste':    '.gtp|-F.Paste.gbr|.pmc',
+            'silk':     '.gto|-F.SilkS.gbr|.plc',
+            'solder':   '.gts|-F.Mask.gbr|.stc',
+            'copper':   '.gtl|-F.Cu.bgr|.cmp',
+            'outline': '.gm1|-Edge.Cuts.gbr|.gmb'
+        },
+        'bottom': {
+            'paste':    '.gbp|-B.Paste.gbr|.pms',
+            'silk':     '.gbo|-B.SilkS.gbr|.pls',
+            'solder':   '.gbs|-B.Mask.gbr|.sts',
+            'copper':   '.gbl|-B.Cu.bgr|.sol',
+            'outline': '.gm1|-Edge.Cuts.gbr|.gmb'
+        },
+    }
 
 # Command line interface
 # ======================
 
+def process_gerbers(source, target, image, side, layer, debugdir):
+    if not os.path.isdir(source):
+        raise ValueError(f'Given source "{source}" is not a directory.')
+
+    # Load input files
+    source_img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
+    if source_img is None:
+        print(f'"{image}" is not a valid image file', file=sys.stderr)
+        sys.exit(1)
+
+    tlayer, slayer = {
+            'silk': ('silk', 'solder'),
+            'mask': ('solder', 'silk'),
+            'copper': ('copper', None)
+            }[layer]
+
+    layers = LAYER_SPEC[side]
+    tname, tgrb = find_gerber_in_dir(source, layers[tlayer])
+    print('Target layer file {}'.format(os.path.basename(tname)))
+    oname, ogrb  = find_gerber_in_dir(source, layers['outline'])
+    print('Outline layer file {}'.format(os.path.basename(oname)))
+    subtract = find_gerber_in_dir(source, layers[slayer]) if slayer else None
+    
+    # Prepare output. Do this now to error out as early as possible if there's a problem.
+    if os.path.exists(target):
+        if os.path.isdir(target) and sorted(os.listdir(target)) == sorted(os.listdir(source)):
+            shutil.rmtree(target)
+        else:
+            print('Error: Target already exists and does not look like source. Please manually remove the target dir before proceeding.', file=sys.stderr)
+            sys.exit(1)
+
+    # Generate output
+    out = paste_image(tgrb, ogrb, source_img, [subtract], debugdir=debugdir, status_print=lambda *args: print(*args, flush=True))
+
+    shutil.copytree(source, target)
+    with open(os.path.join(target, os.path.basename(tname)), 'w') as f:
+        f.write(out)
+
 if __name__ == '__main__':
+    # Parse command line arguments
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-b', '--bottom', action='store_true', help='Default to bottom layer file names')
-    parser.add_argument('-t', '--target', help='Target layer. Filename or extension in target folder/zip')
-    parser.add_argument('-s', '--subtract', nargs='*', help='Layer to subtract. Filename or extension in target folder/zip')
-    parser.add_argument('-o', '--outline', default='.GKO,.GM1', help='Target outline layer. Filename or extension in target folder/zip')
-    parser.add_argument('-d', '--debug', type=str, help='Directory to place debug files into')
-    parser.add_argument('zip_or_dir', default='.', nargs='?', help='Optional folder or zip with target files')
-    parser.add_argument('source', help='Source image')
+
+    parser.add_argument('side', choices=['top', 'bottom'], help='Target board side')
+    parser.add_argument('--layer', '-l', choices=['silk', 'mask', 'copper'], default='silk', help='Target layer on given side')
+
+    parser.add_argument('-d', '--debugdir', type=str, help='Directory to place intermediate images into for debuggin')
+
+    parser.add_argument('source', help='Source gerber directory or zip file')
+    parser.add_argument('target', help='Target gerber directory or zip file')
+    parser.add_argument('image', help='Image to render')
     args = parser.parse_args()
 
-    if not args.target:
-        args.target   = '.GBO.bak,.GBO' if args.bottom else '.GTO.bak,.GTO'
-    if not args.subtract:
-        args.subtract = ['.GBS', '.TXT'] if args.bottom else ['.GTS', '.TXT']
-
-    source_img = cv2.imread(args.source, cv2.IMREAD_GRAYSCALE)
-    paste_image_file(
-            args.zip_or_dir,
-            args.target,
-            args.outline,
-            source_img,
-            args.subtract,
-            status_print=lambda *args: print(*args, flush=True),
-            debugdir=args.debug)
-
+    try:
+        process_gerbers(args.source, args.target, args.image, args.side, args.layer, args.debugdir)
+    except ValueError as e:
+        print(*e.args, file=sys.stderr)
+        sys.exit(1)
