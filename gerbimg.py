@@ -75,35 +75,103 @@ def generate_mask(
     _, target_img = cv2.threshold(target_img, 255//(1+r), 255, cv2.THRESH_BINARY)
     return target_img
 
+def render_gerbers_to_image(*gerbers, scale, bounds=None):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        img_file = path.join(tmpdir, 'target.png')
+        fg, bg = gerber.render.RenderSettings((1, 1, 1)), gerber.render.RenderSettings((0, 0, 0))
+        ctx = GerberCairoContext(scale=scale)
+
+        for grb in gerbers:
+            ctx.render_layer(grb, settings=fg, bgsettings=bg, bounds=bounds)
+
+        ctx.dump(img_file)
+        # Vertically flip exported image to align coordinate systems
+        return cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)[::-1, :]
+
+def pcb_area_mask(outline, scale):
+    # Merge layers to target mask
+    img = render_gerbers_to_image(outline, scale=scale)
+    # Extend
+    imgh, imgw = img.shape
+    img_ext = np.zeros(shape=(imgh+2, imgw+2), dtype=np.uint8)
+    img_ext[1:-1, 1:-1] = img
+    # Binarize
+    img_ext[img_ext < 128] = 0
+    img_ext[img_ext >= 128] = 255
+    # Flood-fill
+    cv2.floodFill(img_ext, None, (0, 0), (255,)) # Flood-fill with white from top left corner (0,0)
+    img_ext_snap = img_ext.copy()
+    cv2.floodFill(img_ext, None, (0, 0), (0,)) # Flood-fill with black
+    cv2.floodFill(img_ext, None, (0, 0), (255,)) # Flood-fill with white
+    return np.logical_xor(img_ext_snap, img_ext)[1:-1, 1:-1].astype(float)
+
 def generate_template(
-        target_gerber:str,
-        outline_gerber:str,
-        outfile:str,
-        subtract_gerber:list=[],
-        extend_overlay_r_mil:float=6,
+        silk, mask, copper, outline, drill,
+        image,
         gerber_unit=Unit.MM,
         process_resolution:float=6, # mil
         resolution_oversampling:float=8, # times
+        debugdir=None,
         status_print=lambda *args:None
         ):
-    template_scale = (1000/process_resolution) / 25.4 * resolution_oversampling
 
-    # Parse outline layer to get bounds of gerber file
-    status_print('Parsing outline gerber')
-    outline = gerber.loads(outline_gerber)
+    debugctr = 0
+    def debugimg(img, name):
+        nonlocal debugctr
+        if debugdir:
+            cv2.imwrite(path.join(debugdir, '{:02d}{}.png'.format(debugctr, name)), img*255)
+        debugctr += 1
+
+    template_scale = (1000/process_resolution) / 25.4 * resolution_oversampling # dpmm
+
+    silk, mask, copper, outline, *drill = map(gerber.loads, [silk, mask, copper, outline, *drill])
+
     (minx, maxx), (miny, maxy) = outline.bounds
     grbw, grbh = maxx - minx, maxy - miny
     status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
+    area_mask = pcb_area_mask(outline, template_scale)
+    debugimg(area_mask, 'area_mask')
+    imgh, imgw = area_mask.shape
 
-    # Parse target layer
-    status_print('Parsing target gerber')
-    target = gerber.loads(target_gerber)
-    (tminx, tmaxx), (tminy, tmaxy) = target.bounds
-    status_print('  * target layer has offset {}, size {}'.format((tminx, tminy), (tmaxx-tminx, tmaxy-tminy)))
+    fr4_color       = (0.50, 0.80, 0.50)
+    copper_color    = (0.30, 0.50, 0.65)
+    mask_color      = (0.15, 0.05, 0.70)
+    silk_color      = (0.90, 0.90, 0.90)
 
-    # Merge layers to target mask
-    target_img = generate_mask(outline, target, template_scale, debugimg, status_print, gerber_unit, extend_overlay_r_mil, subtract_gerber)
-    cv2.imwrite(outfile, target_img)
+    img = np.ones((imgh, imgw, 1)) * fr4_color
+    copper_img = render_gerbers_to_image(copper, scale=template_scale, bounds=outline.bounds)
+    #copper_img = copper_img.reshape((imgh, imgw, 1)) * copper_color
+    debugimg(copper_img.astype(float)/255, 'copper_img')
+    #img = np.ones((imgh, imgw, 3)) - (1-img) * (1-copper_img) # screen blend
+    img[copper_img != 0, :] = copper_color
+    #img = area_mask.reshape((imgh, imgw, 1)) * fr4_color
+    debugimg(img, 'up_to_copper')
+
+    mask_img_raw = render_gerbers_to_image(mask, scale=template_scale, bounds=outline.bounds).astype(float)/255
+    mask_img = 1 - (1-mask_img_raw.reshape((imgh, imgw, 1))) * (1-np.array(mask_color))
+    debugimg(mask_img, 'mask_img')
+
+    img *= mask_img
+    debugimg(img, 'up_to_mask')
+
+    silk_img = render_gerbers_to_image(silk, scale=template_scale, bounds=outline.bounds).astype(float)/255 # Invert mask layer
+    silk_img *= 1-mask_img_raw
+    debugimg(silk_img, 'silk')
+
+    img[silk_img > 0.5, :] = silk_color
+    debugimg(img, 'after silk')
+
+    drill_img = render_gerbers_to_image(*drill, scale=template_scale, bounds=outline.bounds).astype(float)/255 # Invert mask layer
+    debugimg(drill_img, 'drill')
+
+    img[drill_img > 0.5, :] = (0, 0, 0)
+
+    img[:,:,0] *= area_mask
+    img[:,:,1] *= area_mask
+    img[:,:,2] *= area_mask
+    cv2.imwrite(image, img)
+    debugimg(img, 'out_img')
+    return img
 
 def paste_image(
         target_gerber:str,
@@ -247,11 +315,12 @@ def plot_contours(
 # Utility foo
 # ===========
 
-def find_gerber_in_dir(dir_path, extensions):
+def find_gerber_in_dir(dir_path, extensions, exclude=''):
     contents = os.listdir(dir_path)
     exts = extensions.split('|')
+    excs = exclude.split('|')
     for entry in contents:
-        if any(entry.lower().endswith(ext.lower()) for ext in exts):
+        if any(entry.lower().endswith(ext.lower()) for ext in exts) and not any(entry.lower().endswith(ex) for ex in excs if exclude):
             lname = path.join(dir_path, entry)
             if not path.isfile(lname):
                 continue
@@ -265,16 +334,16 @@ LAYER_SPEC = {
         'top': {
             'paste':    '.gtp|-F.Paste.gbr|.pmc',
             'silk':     '.gto|-F.SilkS.gbr|.plc',
-            'solder':   '.gts|-F.Mask.gbr|.stc',
+            'mask':     '.gts|-F.Mask.gbr|.stc',
             'copper':   '.gtl|-F.Cu.bgr|.cmp',
-            'outline': '.gm1|-Edge.Cuts.gbr|.gmb'
+            'outline':  '.gm1|-Edge.Cuts.gbr|.gmb',
         },
         'bottom': {
             'paste':    '.gbp|-B.Paste.gbr|.pms',
             'silk':     '.gbo|-B.SilkS.gbr|.pls',
-            'solder':   '.gbs|-B.Mask.gbr|.sts',
+            'mask':     '.gbs|-B.Mask.gbr|.sts',
             'copper':   '.gbl|-B.Cu.bgr|.sol',
-            'outline': '.gm1|-Edge.Cuts.gbr|.gmb'
+            'outline':  '.gm1|-Edge.Cuts.gbr|.gmb'
         },
     }
 
@@ -292,8 +361,8 @@ def process_gerbers(source, target, image, side, layer, debugdir):
         sys.exit(1)
 
     tlayer, slayer = {
-            'silk': ('silk', 'solder'),
-            'mask': ('solder', 'silk'),
+            'silk': ('silk', 'mask'),
+            'mask': ('mask', 'silk'),
             'copper': ('copper', None)
             }[layer]
 
@@ -303,7 +372,7 @@ def process_gerbers(source, target, image, side, layer, debugdir):
     oname, ogrb  = find_gerber_in_dir(source, layers['outline'])
     print('Outline layer file {}'.format(os.path.basename(oname)))
     subtract = find_gerber_in_dir(source, layers[slayer]) if slayer else None
-    
+
     # Prepare output. Do this now to error out as early as possible if there's a problem.
     if os.path.exists(target):
         if os.path.isdir(target) and sorted(os.listdir(target)) == sorted(os.listdir(source)):
@@ -319,23 +388,62 @@ def process_gerbers(source, target, image, side, layer, debugdir):
     with open(os.path.join(target, os.path.basename(tname)), 'w') as f:
         f.write(out)
 
+def render_preview(source, image, side, debugdir=None):
+    def load_layer(layer):
+        name, grb = find_gerber_in_dir(source, LAYER_SPEC[side][layer])
+        print(f'{layer} layer file {os.path.basename(name)}')
+        return grb
+    
+    outline = load_layer('outline')
+    silk = load_layer('silk')
+    mask = load_layer('mask')
+    copper = load_layer('copper')
+
+    try:
+        _, npth = find_gerber_in_dir(source, '-npth.drl')
+    except ValueError:
+        npth = None
+    drill = ([npth] if npth else []) + [find_gerber_in_dir(source, '.drl|.txt', exclude='-npth.drl')[1]]
+    
+    generate_template(
+        silk, mask, copper, outline, drill,
+        image,
+        gerber_unit=Unit.MM,
+        process_resolution=6, # mil
+        resolution_oversampling=8, # times
+        debugdir=debugdir
+        )
+
 if __name__ == '__main__':
     # Parse command line arguments
     import argparse
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('side', choices=['top', 'bottom'], help='Target board side')
-    parser.add_argument('--layer', '-l', choices=['silk', 'mask', 'copper'], default='silk', help='Target layer on given side')
+    subcommand = parser.add_subparsers(help='Sub-commands')
+    subcommand.required, subcommand.dest = True, 'command'
+    vectorize_parser = subcommand.add_parser('vectorize', help='Vectorize bitmap image onto gerber layer')
+    render_parser = subcommand.add_parser('render', help='Render bitmap preview of board suitable as a template for positioning and scaling the input image')
 
-    parser.add_argument('-d', '--debugdir', type=str, help='Directory to place intermediate images into for debuggin')
+    parser.add_argument('-d', '--debugdir', type=str, default=None, help='Directory to place intermediate images into for debuggin')
 
-    parser.add_argument('source', help='Source gerber directory or zip file')
-    parser.add_argument('target', help='Target gerber directory or zip file')
-    parser.add_argument('image', help='Image to render')
+    vectorize_parser.add_argument('side', choices=['top', 'bottom'], help='Target board side')
+    vectorize_parser.add_argument('--layer', '-l', choices=['silk', 'mask', 'copper'], default='silk', help='Target layer on given side')
+
+    vectorize_parser.add_argument('source', help='Source gerber directory')
+    vectorize_parser.add_argument('target', help='Target gerber directory')
+    vectorize_parser.add_argument('image', help='Image to render')
+
+    render_parser.add_argument('side', choices=['top', 'bottom'], help='Target board side')
+    render_parser.add_argument('source', help='Source gerber directory')
+    render_parser.add_argument('image', help='Output image filename')
     args = parser.parse_args()
 
-    try:
+    #try:
+    if args.command == 'vectorize':
         process_gerbers(args.source, args.target, args.image, args.side, args.layer, args.debugdir)
-    except ValueError as e:
-        print(*e.args, file=sys.stderr)
-        sys.exit(1)
+    else: # command == render
+        render_preview(args.source, args.image, args.side, args.debugdir)
+    #except ValueError as e:
+    #    print(*e.args, file=sys.stderr)
+    #    sys.exit(1)
+
