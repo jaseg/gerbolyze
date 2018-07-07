@@ -1,6 +1,8 @@
 Gerbolyze high-resolution image-to-PCB converter
 ================================================
 
+.. image:: sample.jpg
+
 Tooling for PCB art is quite limited in both open source and closed source ecosystems. Something as simple as putting a
 pretty picture on a PCB can be an extremely tedious task. Depending on the PCB tool used, various arcane incantations
 may be necessary and even modestly complex images will slow down most PCB tools to a crawl.
