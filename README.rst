@@ -9,7 +9,9 @@ may be necessary and even modestly complex images will slow down most PCB tools 
 
 Gerbolyze solves this problem in a toolchain-agnostic way by directly vectorizing bitmap files onto existing gerber
 layers. Gerbolyze has been tested against both the leading open-source KiCAD toolchain and the industry-standard Altium
-Designer.
+Designer. Gerbolyze is written with performance in mind and will happily vectorize tens of thousands of primitives,
+generating tens of megabytes of gerber code without crapping itself. With gerbolyze you can finally be confident that
+your PCB fab's toolchain will fall over before yours does if you overdo it with the high-poly anime silkscreen.
 
 Produce high-quality artistic PCBs in three easy steps!
 -------------------------------------------------------
