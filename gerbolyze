@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import gerbolyze
-import tqdm
 
 if __name__ == '__main__':
     # Parse command line arguments

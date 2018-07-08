@@ -13,6 +13,7 @@ from gerber.render import GerberCairoContext
 import numpy as np
 import cv2
 import enum
+import tqdm
 
 class Unit(enum.Enum):
     MM = 0
