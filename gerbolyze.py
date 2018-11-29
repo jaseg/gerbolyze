@@ -122,6 +122,7 @@ def generate_template(
     # Create a new drawing context
     ctx = GerberCairoContext(scale=scale)
 
+    ctx.render_layer(outline)
     ctx.render_layer(copper)
     ctx.render_layer(mask)
     ctx.render_layer(silk)
