@@ -292,14 +292,14 @@ LAYER_SPEC = {
             'paste':    '.gtp|-F.Paste.gbr|.pmc',
             'silk':     '.gto|-F.SilkS.gbr|.plc',
             'mask':     '.gts|-F.Mask.gbr|.stc',
-            'copper':   '.gtl|-F.Cu.bgr|.cmp',
+            'copper':   '.gtl|-F.Cu.gbr|.cmp',
             'outline':  '.gm1|-Edge.Cuts.gbr|.gmb',
         },
         'bottom': {
             'paste':    '.gbp|-B.Paste.gbr|.pms',
             'silk':     '.gbo|-B.SilkS.gbr|.pls',
             'mask':     '.gbs|-B.Mask.gbr|.sts',
-            'copper':   '.gbl|-B.Cu.bgr|.sol',
+            'copper':   '.gbl|-B.Cu.gbr|.sol',
             'outline':  '.gm1|-Edge.Cuts.gbr|.gmb'
         },
     }
