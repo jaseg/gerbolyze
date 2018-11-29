@@ -203,7 +203,7 @@ def paste_image(
     status_print('Calculating contour lines')
     plot_contours(out_img,
             target,
-            offx=(tminx, tminy),
+            offx=(minx, miny),
             scale=scale,
             status_print=lambda *args: status_print('   ', *args))
 
