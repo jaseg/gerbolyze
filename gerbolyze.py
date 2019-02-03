@@ -9,7 +9,7 @@ import shutil
 import math
 
 import gerber
-from gerber.render import GerberCairoContext
+from gerber.render.cairo_backend import GerberCairoContext
 import numpy as np
 import cv2
 import enum
@@ -240,7 +240,7 @@ def plot_contours(
         x, y = coord
         return (x/scale + xbias, y/scale + ybias)
     def contour_lines(c):
-        return [ Line(map(start), map(end), aperture, level_polarity='dark', units=layer.settings.units)
+        return [ Line(map(start), map(end), aperture, units=layer.settings.units)
             for start, end in zip(c, np.vstack((c[1:], c[:1]))) ]
 
     done = []
