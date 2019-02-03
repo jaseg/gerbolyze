@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name = 'gerbolyze',
-    version = '0.1.7',
+    version = '0.1.8',
     py_modules = ['gerbolyze'],
     scripts = ['gerbolyze'],
     description = ('A high-resolution image-to-PCB converter. Gerbolyze reads and vectorizes black-and-white raster '
