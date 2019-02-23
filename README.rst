@@ -19,9 +19,9 @@ Produce high-quality artistic PCBs in three easy steps!
 Gerbolyze works in three steps.
 
 1. Generate a scale-accurate preview of the finished PCB from your CAD tool's gerber output:
-   
+
    .. code::
-        
+
        $ gerbolyze render top my_gerber_dir preview.png
 
 2. Load the resulting preview image into the GIMP or another image editing program. Use it as a guide to position scale your artwork. Create a black-and-white image from your scaled artwork using GIMP's newsprint filter. Make sure most details are larger than about 10px to ensure manufacturing goes smooth.
