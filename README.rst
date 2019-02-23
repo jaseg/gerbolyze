@@ -1,7 +1,7 @@
 Gerbolyze high-resolution image-to-PCB converter
 ================================================
 
-.. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/sample.jpg
+.. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/sample1.jpg
 
 Tooling for PCB art is quite limited in both open source and closed source ecosystems. Something as simple as putting a
 pretty picture on a PCB can be an extremely tedious task. Depending on the PCB tool used, various arcane incantations
@@ -12,6 +12,8 @@ layers. Gerbolyze has been tested against both the leading open-source KiCAD too
 Designer. Gerbolyze is written with performance in mind and will happily vectorize tens of thousands of primitives,
 generating tens of megabytes of gerber code without crapping itself. With gerbolyze you can finally be confident that
 your PCB fab's toolchain will fall over before yours does if you overdo it with the high-poly anime silkscreen.
+
+.. contents::
 
 Produce high-quality artistic PCBs in three easy steps!
 -------------------------------------------------------
@@ -142,4 +144,11 @@ example.
 .. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/screenshots/15result_cut.png
 
 .. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/screenshots/16result_cut.png
+
+Gallery
+-------
+
+.. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/sample2.jpg
+
+.. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/sample3.jpg
 
