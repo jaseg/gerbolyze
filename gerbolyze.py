@@ -229,7 +229,7 @@ def plot_contours(
     # Extract contour hierarchy using OpenCV
     status_print('Extracting contours')
     # See https://stackoverflow.com/questions/48291581/how-to-use-cv2-findcontours-in-different-opencv-versions/48292371
-    contours, hierarchy = findContoursHack(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)[-2:]
+    contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)[-2:]
 
     aperture = list(layer.apertures)[0]
 
