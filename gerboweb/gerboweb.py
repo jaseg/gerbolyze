@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# TODO create systemd unit file
-# TODO create systemd tmpfiles.d config
-# TODO setup ansible deployment
 # TODO setup webserver user disk quota
 
 import tempfile
