@@ -16,7 +16,7 @@
 
     - name: Install host requisites
       dnf:
-          name: btrfs-progs,arch-install-scripts,nginx,uwsgi,python3-flask,python3-flask-wtf,systemd-container,uwsgi-plugin-python3
+          name: btrfs-progs,arch-install-scripts,nginx,uwsgi,python3-flask,python3-flask-wtf,systemd-container,uwsgi-plugin-python3,certbot,python3-certbot-nginx
           state: latest
 
     - name: Create container image filesystem
@@ -130,6 +130,21 @@
       copy:
           src: gerboweb-job-processor.service
           dest: /etc/systemd/system/
+
+    - name: Set SELinux to permissive mode # FIXME
+      selinux:
+        state: permissive
+        policy: targeted
+
+    - name: Create letsencrypt certificate
+      command: certbot --nginx certonly -d gerbolyze.jaseg.net -n --agree-tos --email gerboweb@jaseg.net
+      args:
+          creates: /etc/letsencrypt/live/gerbolyze.jaseg.net/fullchain.pem
+
+    - name: Enable certbot renewal timer
+      systemd:
+          name: certbot-renew.timer
+          enabled: yes
 
     - name: Enable uwsgi systemd socket
       systemd:
