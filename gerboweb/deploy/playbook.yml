@@ -1,0 +1,100 @@
+- name: Gerbolyze container setup playbook
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Download arch bootstrap image
+      get_url:
+          url: http://mirror.rackspace.com/archlinux/iso/2019.03.01/archlinux-bootstrap-2019.03.01-x86_64.tar.gz
+          dest: /tmp/arch-bootstrap.tar.xz
+          checksum: sha256:865c8a25312b663e724923eecf0dfc626f4cd621e2cfcb19eafc69a4fc666756
+
+    - name: Install host requisites
+      become: yes
+      dnf:
+          name: btrfs-progs,arch-install-scripts
+          state: latest
+
+    - name: Create container image file
+      become: yes
+      shell: truncate -s 4G /var/cache/gerbolyze_container.img
+      args:
+          creates: /var/cache/gerbolyze_container.img
+
+    - name: Create container image filesystem
+      become: yes
+      filesystem:
+          dev: /var/cache/gerbolyze_container.img
+          fstype: btrfs
+    
+    - name: Create container image fstab entry
+      become: yes
+      mount:
+          src: /var/cache/gerbolyze_container.img
+          path: /var/cache/gerbolyze_container
+          state: mounted
+          fstype: btrfs
+          opts: loop
+
+    - name: Unpack bootstrap image
+      become: yes
+      unarchive:
+          remote_src: yes
+          src: /tmp/arch-bootstrap.tar.xz
+          dest: /var/cache/gerbolyze_container
+          extra_opts: --strip-components=1
+          creates: /var/cache/gerbolyze_container/etc
+
+    - name: Copy mirrorlist into container
+      become: yes
+      copy:
+          src: mirrorlist
+          dest: /var/cache/gerbolyze_container/etc/pacman.d/mirrorlist
+
+    - name: Copy render script
+      become: yes
+      copy:
+          src: render.sh
+          dest: /usr/local/sbin/gerbolyze_render.sh
+          mode: ug+x
+
+    - name: Copy vector script
+      become: yes
+      copy:
+          src: vector.sh
+          dest: /usr/local/sbin/gerbolyze_vector.sh
+          mode: ug+x
+
+    - name: Initialize container pacman keyring
+      become: yes
+      shell: arch-chroot /var/cache/gerbolyze_container pacman-key --init && arch-chroot /var/cache/gerbolyze_container pacman-key --populate archlinux
+      args:
+          creates: /var/cache/gerbolyze_container/etc/pacman.d/gnupg
+
+    - name: Fixup pacman.conf for pacman to work in chroot without its own root fs
+      become: yes
+      lineinfile:
+          path: /var/cache/gerbolyze_container/etc/pacman.conf
+          regexp: '^CheckSpace'
+          line: '#CheckSpace'
+
+    - name: Update container and install software
+      become: yes
+      shell: arch-chroot /var/cache/gerbolyze_container pacman -Syu --noconfirm python3 opencv hdf5 gtk3 python-numpy python-pip imagemagick unzip zip
+
+      # TODO maybe install directly from local git checkout?
+    - name: Install gerbolyze
+      become: yes
+      shell: arch-chroot /var/cache/gerbolyze_container pip install -U --upgrade-strategy=eager gerbolyze
+
+      #    - name: Cleanup bootstrap image
+      #      file:
+      #    path: /tmp/arch-bootstrap.tar.xz
+      #    state: absent
+
+    - name: Create app cache directory
+      file:
+          path: /var/cache/gerboweb
+          owner: user # FIXME debug
+          group: user # FIXME debug
+          mode: 0770
+
