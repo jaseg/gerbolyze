@@ -14,7 +14,7 @@ import sqlite3
 
 from flask import Flask, url_for, redirect, session, make_response, render_template, request, send_file, abort
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField
+from flask_wtf.file import FileField, FileRequired
 from wtforms.fields import RadioField
 from wtforms.validators import DataRequired
 from werkzeug.utils import secure_filename
@@ -28,7 +28,7 @@ class UploadForm(FlaskForm):
     upload_file = FileField(validators=[DataRequired()])
 
 class OverlayForm(UploadForm):
-    upload_file = FileField(validators=[DataRequired()])
+    upload_file = FileField(validators=[FileRequired()])
     side = RadioField('Side', choices=[('top', 'Top'), ('bottom', 'Bottom')])
 
 class ResetForm(FlaskForm):

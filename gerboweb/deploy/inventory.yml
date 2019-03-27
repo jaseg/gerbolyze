@@ -1,0 +1,7 @@
+---
+all:
+  hosts:
+    wendelstein:
+      ansible_host: wendelstein.jaseg.net
+      ansible_ssh_identity_file: ~/.ssh/id_ed25519
+      ansible_user: root
