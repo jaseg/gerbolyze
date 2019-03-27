@@ -1,33 +1,30 @@
 - name: Gerbolyze container setup playbook
-  hosts: localhost
-  connection: local
+  hosts: all
   tasks:
+    - name: Create container image file
+      command: truncate -s 4G /var/cache/gerbolyze_container.img
+      args:
+          creates: /var/cache/gerbolyze_container.img
+      register: create_container
+
     - name: Download arch bootstrap image
       get_url:
           url: http://mirror.rackspace.com/archlinux/iso/2019.03.01/archlinux-bootstrap-2019.03.01-x86_64.tar.gz
           dest: /tmp/arch-bootstrap.tar.xz
           checksum: sha256:865c8a25312b663e724923eecf0dfc626f4cd621e2cfcb19eafc69a4fc666756
+      when: create_container is changed
 
     - name: Install host requisites
-      become: yes
       dnf:
-          name: btrfs-progs,arch-install-scripts
+          name: btrfs-progs,arch-install-scripts,nginx,uwsgi,python3-flask,python3-flask-wtf,systemd-container,uwsgi-plugin-python3
           state: latest
 
-    - name: Create container image file
-      become: yes
-      shell: truncate -s 4G /var/cache/gerbolyze_container.img
-      args:
-          creates: /var/cache/gerbolyze_container.img
-
     - name: Create container image filesystem
-      become: yes
       filesystem:
           dev: /var/cache/gerbolyze_container.img
           fstype: btrfs
     
     - name: Create container image fstab entry
-      become: yes
       mount:
           src: /var/cache/gerbolyze_container.img
           path: /var/cache/gerbolyze_container
@@ -36,7 +33,6 @@
           opts: loop
 
     - name: Unpack bootstrap image
-      become: yes
       unarchive:
           remote_src: yes
           src: /tmp/arch-bootstrap.tar.xz
@@ -45,56 +41,125 @@
           creates: /var/cache/gerbolyze_container/etc
 
     - name: Copy mirrorlist into container
-      become: yes
       copy:
           src: mirrorlist
           dest: /var/cache/gerbolyze_container/etc/pacman.d/mirrorlist
 
     - name: Copy render script
-      become: yes
       copy:
           src: render.sh
           dest: /usr/local/sbin/gerbolyze_render.sh
           mode: ug+x
 
     - name: Copy vector script
-      become: yes
       copy:
           src: vector.sh
           dest: /usr/local/sbin/gerbolyze_vector.sh
           mode: ug+x
 
     - name: Initialize container pacman keyring
-      become: yes
       shell: arch-chroot /var/cache/gerbolyze_container pacman-key --init && arch-chroot /var/cache/gerbolyze_container pacman-key --populate archlinux
       args:
           creates: /var/cache/gerbolyze_container/etc/pacman.d/gnupg
 
     - name: Fixup pacman.conf for pacman to work in chroot without its own root fs
-      become: yes
       lineinfile:
           path: /var/cache/gerbolyze_container/etc/pacman.conf
           regexp: '^CheckSpace'
           line: '#CheckSpace'
 
     - name: Update container and install software
-      become: yes
       shell: arch-chroot /var/cache/gerbolyze_container pacman -Syu --noconfirm python3 opencv hdf5 gtk3 python-numpy python-pip imagemagick unzip zip
 
       # TODO maybe install directly from local git checkout?
     - name: Install gerbolyze
-      become: yes
       shell: arch-chroot /var/cache/gerbolyze_container pip install -U --upgrade-strategy=eager gerbolyze
 
-      #    - name: Cleanup bootstrap image
-      #      file:
-      #    path: /tmp/arch-bootstrap.tar.xz
-      #    state: absent
-
-    - name: Create app cache directory
+    - name: Cleanup bootstrap image
       file:
-          path: /var/cache/gerboweb
-          owner: user # FIXME debug
-          group: user # FIXME debug
-          mode: 0770
+          path: /tmp/arch-bootstrap.tar.xz
+          state: absent
+
+    - name: Copy webapp sources
+      synchronize:
+        # FIXME: make this path configurable
+          src: ~/gerbolyze/gerboweb/
+          dest: /var/lib/gerboweb/
+          group: no
+          owner: no
+
+    - name: Copy nginx config
+      copy:
+          src: nginx.conf
+          dest: /etc/nginx/nginx.conf
+
+    - name: Create uwsgi worker user and group
+      user:
+          name: uwsgi-gerboweb
+          create_home: no
+          group: uwsgi
+          password: '!'
+          shell: /sbin/nologin
+          system: yes
+
+    - name: Add nginx user to uwsgi group for access to uwsgi socket
+      user:
+          name: nginx
+          groups: uwsgi
+          append: yes
+
+    - name: Copy uwsgi config
+      copy:
+          src: uwsgi-gerboweb.ini
+          dest: /etc/uwsgi.d/gerboweb.ini
+          owner: uwsgi-gerboweb
+          group: uwsgi
+          mode: 440
+
+    - name: Copy uwsgi systemd socket config
+      copy:
+          src: uwsgi-app@.socket
+          dest: /etc/systemd/system/
+
+    - name: Copy uwsgi systemd service config
+      copy:
+          src: uwsgi-app@.service
+          dest: /etc/systemd/system/
+
+    - name: Copy job processor systemd service config
+      copy:
+          src: gerboweb-job-processor.service
+          dest: /etc/systemd/system/
+
+    - name: Enable uwsgi systemd socket
+      systemd:
+          daemon-reload: yes
+          name: uwsgi-app@gerboweb.socket
+          enabled: yes
+
+    - name: Enable and launch uwsgi systemd service
+      systemd:
+          name: uwsgi-app@gerboweb.service
+          enabled: yes
+          state: restarted
+
+    - name: Enable and launch job processor
+      systemd:
+          name: gerboweb-job-processor.service
+          enabled: yes
+          state: restarted
+
+    - name: Enable and launch nginx systemd service
+      systemd:
+          name: nginx.service
+          enabled: yes
+          state: restarted
+
+    - name: Copy gerboweb cache dir tmpfiles.d config
+      copy:
+          src: tmpfiles-gerboweb.conf
+          dest: /etc/tmpfiles.d/gerboweb.conf
+          owner: root
+          group: root
+          mode: 0644
 

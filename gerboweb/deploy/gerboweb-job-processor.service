@@ -1,0 +1,9 @@
+[Unit]
+Description=Gerboweb gerber job processor
+
+[Service]
+WorkingDirectory=/var/lib/gerboweb
+ExecStart=/usr/bin/python3 job_processor.py /var/cache/gerboweb/job_queue.sqlite3
+
+[Install]
+WantedBy=uwsgi-app@gerboweb.service
