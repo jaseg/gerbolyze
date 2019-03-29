@@ -152,12 +152,6 @@
           name: uwsgi-app@gerboweb.socket
           enabled: yes
 
-    - name: Enable and launch uwsgi systemd service
-      systemd:
-          name: uwsgi-app@gerboweb.service
-          enabled: yes
-          state: restarted
-
     - name: Enable and launch job processor
       systemd:
           name: gerboweb-job-processor.service

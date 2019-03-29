@@ -1,86 +1,147 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Gerbolyze Raster image to PCB renderer</title>
-    </head>
-    <body>
-        <div class="desc">
-            <h1>Raster image to PCB converter</h1>
-            <p>
-                Gerbolyze is a tool for rendering black and white raster (PNG) images directly onto gerber layers. You can
-                use this to put art on a PCB's silkscreen, solder mask or copper layers. The input is a black-and-white PNG
-                image that is vectorized and rendered into an existing gerber file. Gerbolyze works with gerber files
-                produced with any EDA toolchain and has been tested to work with both Altium and KiCAD.
-            </p>
-        </div>
+<html lang="en">
+  <head>
+    <title>Gerbolyze Raster image to PCB renderer</title>
+    <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+  </head>
+  <body>
+    <div class="layout-container">
+      <div class="desc">
+	<h1>Raster image to PCB converter</h1>
+	<p>
+	Gerbolyze is a tool for rendering black and white raster (PNG) images directly onto gerber layers. You can
+	use this to put art on a PCB's silkscreen, solder mask or copper layers. The input is a black-and-white PNG
+	image that is vectorized and rendered into an existing gerber file. Gerbolyze works with gerber files
+	produced with any EDA toolchain and has been tested to work with both Altium and KiCAD.
+	</p>
+      </div>
 
-        <div class="step" id="step1">
-            <h2>Step 1: Upload zipped gerber files</h2>
-            <p>
-                First, upload a zip file containing all your gerber files. The default file names used by KiCAD, Eagle
-                and Altium are supported.
-            </p>
+      {% with messages = get_flashed_messages(with_categories=True) %}
+	{% if messages %}
+	  <div class="flashes">
+	    {% for category, message in messages %}
+	      <div class="flash flash-{{category}}">{{ message }}</div>
+	    {% endfor %}
+	  </div>
+	{% endif %}
+      {% endwith %}
 
-            <form method="POST" action="{{url_for('upload', namespace='gerber')}}" enctype="multipart/form-data">
-                {{gerber_form.csrf_token}}
-                {{gerber_form.upload_file.label}} {{gerber_form.upload_file(size=20)}}
-                <input type="submit" value="Submit">
-            </form>
-        </div>
+      <form id="reset-form" method="POST" action="{{url_for('session_reset')}}" class="reset-form">{{reset_form.csrf_token}}</form>
 
-        {% if 'render_job' in session or has_renders %}
-        <div class="step" id="step2">
-            <h2>Step 2: Download the target side's preview image</h2>
-            <p>
-                Second, download either the top or bottom preview image and use it to align and scale your own artwork
-                in an image editing program such as Gimp.  Then upload your overlay image below.
+      <div class="steps">
+	<div class="step" id="step1">
+	  <div class="description">
+	    <h2>Step 1: Upload zipped gerber files</h2>
+	    <p>
+	    First, upload a zip file containing all your gerber files. The default file names used by KiCAD, Eagle
+	    and Altium are supported.
+	    </p>
+	  </div>
 
-                Note that you will have to convert grayscale images into binary images yourself. Gerbolyze can't do this
-                for you since there are lots of variables involved. Our <a href="{{url_for('static',
-                filename='image_processing_guide.html')}}">Guideline on image processing</a> gives an overview on
-                <i>one</i> way to produce agreeable binary images from grayscale source material.
-            </p>
-            {% if 'render_job' in session %}
-            <strong>Processing...</strong> (this may take several minutes!)
-            {% else %}
-            <img src="{{url_for('render_preview', side='top')}}"> <a href="{{url_for('render_download', side='top')}}">Download</a>
-            <img src="{{url_for('render_preview', side='bottom')}}"> <a href="{{url_for('render_download', side='bottom')}}">Download</a>
-            {% endif %}
-            <form method="POST" action="{{url_for('session_reset')}}">
-                {{reset_form.csrf_token}}
-                <input type="submit" value="Start over">
-            </form>
-        </div>
+	  <div class="controls">
+	    <form id="gerber-upload-form" method="POST" action="{{url_for('upload', namespace='gerber')}}" enctype="multipart/form-data">
+	      {{gerber_form.csrf_token}}
+	    </form>
+	    <div class="form-controls">
+	      <div class="upload-label">Upload Gerber file:</div>
+	      <input class='upload-button' form="gerber-upload-form" name="upload_file" size="20" type="file">
+	    </div>
+	    <div class="submit-buttons">
+	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
+	      <input class='submit-button' form="gerber-upload-form" type="submit" value="Submit">
+	    </div>
+	  </div>
+	</div>
 
-        <div class="step" id="step3">
-            <h2>Step 3: Upload overlay image</h2>
-            <p>
-                Now, upload your binary overlay image as a PNG and let gerbolyze render it onto the target layer. The PNG
-                file should be a black and white binary file with details generally above about 10px size. <b>Antialiased
-                    edges are supported.</b>
-            </p>
-            <form method="POST" action="{{url_for('upload', namespace='overlay')}}" enctype="multipart/form-data">
-                {{overlay_form.csrf_token}}
-                {{overlay_form.upload_file.label}} {{overlay_form.upload_file(size=20)}}
-                {{overlay_form.side.label}} {{overlay_form.side()}}
-                <input type="submit" value="Submit">
-            </form>
-        </div>
+	{% if 'render_job' in session or has_renders %}
+	<div class="step" id="step2">
+	  <div class="description">
+	    <h2>Step 2: Download the target side's preview image</h2>
+	    <p>
+	      Second, download either the top or bottom preview image and use it to align and scale your own artwork
+	      in an image editing program such as Gimp.  Then upload your overlay image below.
 
-        {% if 'vector_job' in session or has_output %}
-        <div class="step" id="step4">
-            <h2> Step 4: Download the processed gerber files</h2>
-            {% if 'vector_job' in session %}
-            <strong>Processing...</strong> (this may take several minutes!)
-            {% else %}
-            <a href="{{url_for('output_download')}}">Download</a>
-            {% endif %}
-            <form method="POST" action="{{url_for('session_reset')}}">
-                {{reset_form.csrf_token}}
-                <input type="submit" value="Start over">
-            </form>
-        </div>
-        {% endif %} {# vector job #}
-        {% endif %} {# render job #}
-    </body>
+	      Note that you will have to convert grayscale images into binary images yourself. Gerbolyze can't do this
+	      for you since there are lots of variables involved. Our <a href="https://github.com/jaseg/gerbolyze/blob/master/README.rst#image-preprocessing-guide">Guideline on image processing</a> gives an overview on
+	      <i>one</i> way to produce agreeable binary images from grayscale source material.
+	    </p>
+	  </div>
+	  <div class="controls">
+	    {% if 'render_job' in session %}
+	    <strong>Processing...</strong> (this may take several minutes!)
+	    {% else %}
+	    <div class="preview-images">
+	      <div class="preview preview-top" style="background-image:url('{{url_for('render_preview', side='top')}}');">
+		  <a class="overlay" href="{{url_for('render_download', side='top')}}" onclick="document.querySelector('#side-0').checked=true">Download<br/>top layer</a>
+	      </div>
+	      <div class="preview preview-bottom" style="background-image:url('{{url_for('render_preview', side='bottom')}}');">
+		  <a class="overlay" href="{{url_for('render_download', side='bottom')}}" onclick="document.querySelector('#side-1').checked=true">Download<br/>bottom layer</a>
+	      </div>
+	    </div>
+	    {% endif %}
+	    <div class="submit-buttons">
+	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
+	    </div>
+	  </div>
+	</div>
+
+	<div class="step" id="step3">
+	  <div class="description">
+	    <h2>Step 3: Upload overlay image</h2>
+	    <p>
+	      Now, upload your binary overlay image as a PNG and let gerbolyze render it onto the target layer. The PNG
+	      file should be a black and white binary file with details generally above about 10px size. <b>Antialiased
+		edges are supported.</b>
+	    </p>
+	  </div>
+	  <div class="controls">
+	    <form id="overlay-upload-form" method="POST" action="{{url_for('upload', namespace='overlay')}}" enctype="multipart/form-data">
+	      {{overlay_form.csrf_token}}
+	    </form>
+	    <div class="form-controls">
+	      <div class="form-label upload-label">Upload Overlay PNG file:</div>
+	      <input class='upload-button' form="overlay-upload-form" name="upload_file" size="20" type="file">
+	    </div>
+	    <div class="form-controls">
+	      <div class="form-label target-label">Target layer:</div>
+	      <input form="overlay-upload-form" name="side" id="side-0" type="radio" value="top">
+	      <label for="side-0">Top</label>
+	      <input form="overlay-upload-form" name="side" id="side-1" type="radio" value="top">
+	      <label for="side-1">Bottom</label>
+	    </div>
+	    <div class="submit-buttons">
+	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
+	      <input class='submit-button' form="overlay-upload-form" type="submit" value="Submit">
+	    </div>
+	  </div>
+	</div>
+
+	{% if 'vector_job' in session or has_output %}
+	<div class="step" id="step4">
+	  <div class="description">
+	    <h2> Step 4: Download the processed gerber files</h2>
+	  </div>
+	  <div class="controls">
+	    {# if 'vector_job' in session FIXME #}
+	    {% if True %}
+	    <div class="loading-message">
+	      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+	      <div><strong>Processing...</strong></div>
+	      <div>(this may take several minutes!)</div>
+	    </div>
+	    {% else %}
+	    <div class='download-controls'>
+	      <a class='output-download' href="{{url_for('output_download')}}">Click to download</a>
+	    </div>
+	    {% endif %}
+	    <div class="submit-buttons">
+	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
+	    </div>
+	  </div>
+	</div>
+	{% endif %} {# vector job #}
+	{% endif %} {# render job #}
+      </div>
+    </div>
+  </body>
 </html>

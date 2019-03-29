@@ -9,7 +9,7 @@ from os import path
 import os
 import sqlite3
 
-from flask import Flask, url_for, redirect, session, make_response, render_template, request, send_file, abort
+from flask import Flask, url_for, redirect, session, make_response, render_template, request, send_file, abort, flash
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired
 from wtforms.fields import RadioField
@@ -26,7 +26,7 @@ class UploadForm(FlaskForm):
 
 class OverlayForm(UploadForm):
     upload_file = FileField(validators=[FileRequired()])
-    side = RadioField('Side', choices=[('top', 'Top'), ('bottom', 'Bottom')])
+    side = RadioField('Side', choices=[('top', 'Top'), ('bottom', 'Bottom')], default=lambda: session.get('last_download'))
 
 class ResetForm(FlaskForm):
     pass
@@ -56,6 +56,7 @@ def require_session_id(fun):
 @app.route('/')
 @require_session_id
 def index():
+    flash(f'Gerber file successfully uploaded.', 'success')
     forms = {
             'gerber_form': UploadForm(),
             'overlay_form': OverlayForm(),
@@ -108,6 +109,7 @@ def upload(namespace):
                     session_id=session['session_id'],
                     side=upload_form.side.data)
 
+        flash(f'{"Gerber" if namespace == "gerber" else "Overlay"} file successfully uploaded.', 'success')
     return redirect(url_for('index'))
 
 @app.route('/render/preview/<side>')
@@ -120,10 +122,12 @@ def render_preview(side):
 def render_download(side):
     if not side in ('top', 'bottom'):
         return abort(400, 'side must be either "top" or "bottom"')
+
+    session['last_download'] = side
     return send_file(tempfile_path(f'render_{side}.png'),
             mimetype='image/png',
             as_attachment=True,
-            attachment_filename=f'{path.splitext(session["filename"])[0]}_render.png')
+            attachment_filename=f'{path.splitext(session["filename"])[0]}_render_{side}.png')
 
 @app.route('/output/download')
 def output_download():
