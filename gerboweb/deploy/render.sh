@@ -13,8 +13,8 @@ rm -f /mnt/render_top.png /mnt/render_bottom.png /mnt/render_top.small.png /mnt/
 date; echo 'Rendering bottom layer'
 gerbolyze render top /tmp/gerber /mnt/render_top.png
 date; echo 'Scaling down'
-convert /mnt/render_top.png -resize 500x500 /mnt/render_top.small.png
+convert /mnt/render_top.png -resize 500x500 -negate -brightness-contrast 30x30 -colorspace gray /mnt/render_top.small.png
 date; echo 'Rendering top layer'
 gerbolyze render bottom /tmp/gerber /mnt/render_bottom.png
 date; echo 'Scaling down'
-convert /mnt/render_bottom.png -resize 500x500 /mnt/render_bottom.small.png"
+convert /mnt/render_bottom.png -resize 500x500 -negate -brightness-contrast 30x30 -colorspace gray /mnt/render_bottom.small.png"

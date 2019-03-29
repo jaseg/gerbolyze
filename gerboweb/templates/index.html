@@ -6,14 +6,16 @@
   </head>
   <body>
     <div class="layout-container">
-      <div class="desc">
-	<h1>Raster image to PCB converter</h1>
-	<p>
-	Gerbolyze is a tool for rendering black and white raster (PNG) images directly onto gerber layers. You can
-	use this to put art on a PCB's silkscreen, solder mask or copper layers. The input is a black-and-white PNG
-	image that is vectorized and rendered into an existing gerber file. Gerbolyze works with gerber files
-	produced with any EDA toolchain and has been tested to work with both Altium and KiCAD.
-	</p>
+      <div class="header">
+	<div class="desc">
+	  <h1>Raster image to PCB converter</h1>
+	  <p>
+	  Gerbolyze is a tool for rendering black and white raster (PNG) images directly onto gerber layers. You can
+	  use this to put art on a PCB's silkscreen, solder mask or copper layers. The input is a black-and-white PNG
+	  image that is vectorized and rendered into an existing gerber file. Gerbolyze works with gerber files
+	  produced with any EDA toolchain and has been tested to work with both Altium and KiCAD.
+	  </p>
+	</div>
       </div>
 
       {% with messages = get_flashed_messages(with_categories=True) %}
@@ -31,7 +33,7 @@
       <div class="steps">
 	<div class="step" id="step1">
 	  <div class="description">
-	    <h2>Step 1: Upload zipped gerber files</h2>
+	    <h2>Upload zipped gerber files</h2>
 	    <p>
 	    First, upload a zip file containing all your gerber files. The default file names used by KiCAD, Eagle
 	    and Altium are supported.
@@ -39,7 +41,7 @@
 	  </div>
 
 	  <div class="controls">
-	    <form id="gerber-upload-form" method="POST" action="{{url_for('upload', namespace='gerber')}}" enctype="multipart/form-data">
+	    <form id="gerber-upload-form" method="POST" action="{{url_for('upload_gerber')}}" enctype="multipart/form-data">
 	      {{gerber_form.csrf_token}}
 	    </form>
 	    <div class="form-controls">
@@ -56,7 +58,7 @@
 	{% if 'render_job' in session or has_renders %}
 	<div class="step" id="step2">
 	  <div class="description">
-	    <h2>Step 2: Download the target side's preview image</h2>
+	    <h2>Download the target side's preview image</h2>
 	    <p>
 	      Second, download either the top or bottom preview image and use it to align and scale your own artwork
 	      in an image editing program such as Gimp.  Then upload your overlay image below.
@@ -68,15 +70,19 @@
 	  </div>
 	  <div class="controls">
 	    {% if 'render_job' in session %}
-	    <strong>Processing...</strong> (this may take several minutes!)
+	    <div class="loading-message">
+	      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+	      <div><strong>Processing...</strong></div>
+	      <div>(this may take several minutes!)</div>
+	    </div>
 	    {% else %}
 	    <div class="preview-images">
-	      <div class="preview preview-top" style="background-image:url('{{url_for('render_preview', side='top')}}');">
-		  <a class="overlay" href="{{url_for('render_download', side='top')}}" onclick="document.querySelector('#side-0').checked=true">Download<br/>top layer</a>
-	      </div>
-	      <div class="preview preview-bottom" style="background-image:url('{{url_for('render_preview', side='bottom')}}');">
-		  <a class="overlay" href="{{url_for('render_download', side='bottom')}}" onclick="document.querySelector('#side-1').checked=true">Download<br/>bottom layer</a>
-	      </div>
+	      <a href="{{url_for('render_download', side='top')}}" onclick="document.querySelector('#side-0').checked=true" class="preview preview-top" style="background-image:url('{{url_for('render_preview', side='top')}}');">
+		  <div class="overlay">top</div>
+	      </a>
+	      <a href="{{url_for('render_download', side='bottom')}}" onclick="document.querySelector('#side-1').checked=true" class="preview preview-bottom" style="background-image:url('{{url_for('render_preview', side='bottom')}}');">
+		<div class="overlay">bot<br/>tom</div>
+	      </a>
 	    </div>
 	    {% endif %}
 	    <div class="submit-buttons">
@@ -87,7 +93,7 @@
 
 	<div class="step" id="step3">
 	  <div class="description">
-	    <h2>Step 3: Upload overlay image</h2>
+	    <h2>Upload overlay image</h2>
 	    <p>
 	      Now, upload your binary overlay image as a PNG and let gerbolyze render it onto the target layer. The PNG
 	      file should be a black and white binary file with details generally above about 10px size. <b>Antialiased
@@ -95,7 +101,7 @@
 	    </p>
 	  </div>
 	  <div class="controls">
-	    <form id="overlay-upload-form" method="POST" action="{{url_for('upload', namespace='overlay')}}" enctype="multipart/form-data">
+	    <form id="overlay-upload-form" method="POST" action="{{url_for('upload_overlay')}}" enctype="multipart/form-data">
 	      {{overlay_form.csrf_token}}
 	    </form>
 	    <div class="form-controls">
@@ -119,11 +125,10 @@
 	{% if 'vector_job' in session or has_output %}
 	<div class="step" id="step4">
 	  <div class="description">
-	    <h2> Step 4: Download the processed gerber files</h2>
+	    <h2>Download the processed gerber files</h2>
 	  </div>
 	  <div class="controls">
-	    {# if 'vector_job' in session FIXME #}
-	    {% if True %}
+	    {% if 'vector_job' in session %}
 	    <div class="loading-message">
 	      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
 	      <div><strong>Processing...</strong></div>
@@ -137,10 +142,22 @@
 	    <div class="submit-buttons">
 	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
 	    </div>
+	    <!--4>Debug foo</h4>
+	    <div class="loading-message">
+	      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+	      <div><strong>Processing...</strong></div>
+	      <div>(this may take several minutes!)</div>
+	    </div-->
 	  </div>
 	</div>
 	{% endif %} {# vector job #}
 	{% endif %} {# render job #}
+      </div>
+      <div class="sample-images">
+	<h1>Sample images</h1>
+	<img src="{{url_for('static', filename='sample1.jpg')}}">
+	<img src="{{url_for('static', filename='sample2.jpg')}}">
+	<img src="{{url_for('static', filename='sample3.jpg')}}">
       </div>
     </div>
   </body>

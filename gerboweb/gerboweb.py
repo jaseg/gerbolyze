@@ -26,7 +26,8 @@ class UploadForm(FlaskForm):
 
 class OverlayForm(UploadForm):
     upload_file = FileField(validators=[FileRequired()])
-    side = RadioField('Side', choices=[('top', 'Top'), ('bottom', 'Bottom')], default=lambda: session.get('last_download'))
+    side = RadioField('Side', choices=[('top', 'Top'), ('bottom', 'Bottom')],
+            default=lambda: session.get('side_selected', session.get('last_download')))
 
 class ResetForm(FlaskForm):
     pass
@@ -56,7 +57,6 @@ def require_session_id(fun):
 @app.route('/')
 @require_session_id
 def index():
-    flash(f'Gerber file successfully uploaded.', 'success')
     forms = {
             'gerber_form': UploadForm(),
             'overlay_form': OverlayForm(),
@@ -79,37 +79,49 @@ def index():
 #  * The uploaded files are deleted after a while by systemd tmpfiles.d
 # TODO: validate this setting applies *after* gzip transport compression
 
-@app.route('/upload/<namespace>', methods=['POST'])
-@require_session_id
-def upload(namespace):
-    if namespace not in ('gerber', 'overlay'):
-        return abort(400, 'Invalid upload type')
+def vectorize():
+    if 'vector_job' in session:
+        job_queue.drop(session['vector_job'])
+    session['vector_job'] = job_queue.enqueue('vector',
+            client=request.remote_addr,
+            session_id=session['session_id'],
+            side=session['side_selected'])
 
-    upload_form = UploadForm() if namespace == 'gerber' else OverlayForm()
+def render():
+    if 'render_job' in session:
+        job_queue.drop(session['render_job'])
+    session['render_job'] = job_queue.enqueue('render',
+            session_id=session['session_id'],
+            client=request.remote_addr)
+
+@app.route('/upload/gerber', methods=['POST'])
+@require_session_id
+def upload_gerber():
+    upload_form = UploadForm()
     if upload_form.validate_on_submit():
         f = upload_form.upload_file.data
+        f.save(tempfile_path('gerber.zip'))
+        session['filename'] = secure_filename(f.filename) # Cache filename for later download
 
-        if namespace == 'gerber':
-            f.save(tempfile_path('gerber.zip'))
-            session['filename'] = secure_filename(f.filename) # Cache filename for later download
-            if 'render_job' in session:
-                job_queue.drop(session['render_job'])
-            session['render_job'] = job_queue.enqueue('render',
-                    session_id=session['session_id'],
-                    client=request.remote_addr)
-        else: # namespace == 'vector'
-            f.save(tempfile_path('overlay.png'))
+        render()
+        if path.isfile(tempfile_path('overlay.png')): # Re-vectorize when gerbers change
+            vectorize()
 
-        # Re-vectorize if either file has changed
-        if path.isfile(tempfile_path('gerber.zip')) and path.isfile(tempfile_path('overlay.png')):
-            if 'vector_job' in session:
-                job_queue.drop(session['vector_job'])
-            session['vector_job'] = job_queue.enqueue('vector',
-                    client=request.remote_addr,
-                    session_id=session['session_id'],
-                    side=upload_form.side.data)
+        flash(f'Gerber file successfully uploaded.', 'success')
+    return redirect(url_for('index'))
 
-        flash(f'{"Gerber" if namespace == "gerber" else "Overlay"} file successfully uploaded.', 'success')
+@app.route('/upload/overlay', methods=['POST'])
+@require_session_id
+def upload_overlay():
+    upload_form = OverlayForm()
+    if upload_form.validate_on_submit():
+        f = upload_form.upload_file.data
+        f.save(tempfile_path('overlay.png'))
+        session['side_selected'] = upload_form.side.data
+
+        vectorize()
+
+        flash(f'Overlay file successfully uploaded.', 'success')
     return redirect(url_for('index'))
 
 @app.route('/render/preview/<side>')
@@ -144,5 +156,6 @@ def session_reset():
     if 'vector_job' in session:
         session['vector_job'].abort()
     session.clear()
+    flash('Session reset', 'success');
     return redirect(url_for('index'))
 
