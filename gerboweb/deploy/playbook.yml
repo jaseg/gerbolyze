@@ -1,6 +1,33 @@
 - name: Gerbolyze container setup playbook
-  hosts: all
+  hosts: wendelstein
   tasks:
+    - name: Set hostname
+      hostname:
+        name: wendelstein.jaseg.net
+
+    - name: Install common admin tools
+      dnf:
+        name: htop,tmux,fish,mosh,neovim
+        state: latest
+
+    - name: Install host requisites
+      dnf:
+          name: btrfs-progs,arch-install-scripts,nginx,uwsgi,python3-flask,python3-flask-wtf,systemd-container,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python
+          state: latest
+
+    - name: Disable password-based root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin without-password'
+      register: disable_root_pw_ssh
+
+    - name: Restart sshd
+      systemd:
+          name: sshd
+          state: restarted
+      when: disable_root_pw_ssh is changed
+
     - name: Create container image file
       command: truncate -s 4G /var/cache/gerbolyze_container.img
       args:
@@ -13,11 +40,6 @@
           dest: /tmp/arch-bootstrap.tar.xz
           checksum: sha256:865c8a25312b663e724923eecf0dfc626f4cd621e2cfcb19eafc69a4fc666756
       when: create_container is changed
-
-    - name: Install host requisites
-      dnf:
-          name: btrfs-progs,arch-install-scripts,nginx,uwsgi,python3-flask,python3-flask-wtf,systemd-container,uwsgi-plugin-python3,certbot,python3-certbot-nginx
-          state: latest
 
     - name: Create container image filesystem
       filesystem:
@@ -88,9 +110,9 @@
           group: no
           owner: no
 
-    - name: Copy nginx config
+    - name: Copy first stage nginx config
       copy:
-          src: nginx.conf
+          src: nginx_nossl.conf
           dest: /etc/nginx/nginx.conf
 
     - name: Create uwsgi worker user and group
@@ -136,21 +158,32 @@
         state: permissive
         policy: targeted
 
-    - name: Create letsencrypt certificate
-      command: certbot --nginx certonly -d gerbolyze.jaseg.net -n --agree-tos --email gerboweb@jaseg.net
-      args:
-          creates: /etc/letsencrypt/live/gerbolyze.jaseg.net/fullchain.pem
-
-    - name: Enable certbot renewal timer
-      systemd:
-          name: certbot-renew.timer
-          enabled: yes
-
     - name: Enable uwsgi systemd socket
       systemd:
           daemon-reload: yes
           name: uwsgi-app@gerboweb.socket
           enabled: yes
+
+    - name: Copy gerboweb cache dir tmpfiles.d config
+      copy:
+          src: tmpfiles-gerboweb.conf
+          dest: /etc/tmpfiles.d/gerboweb.conf
+          owner: root
+          group: root
+          mode: 0644
+      register: tmpfiles_config
+
+    - name: Kick systemd tmpfiles service to create cache dir
+      command: systemd-tmpfiles --create
+      when: tmpfiles_config is changed
+
+    - name: Create job queue db
+      file:
+        path: /var/cache/gerboweb/job_queue.sqlite3
+        owner: root
+        group: uwsgi
+        mode: 0660
+        state: touch
 
     - name: Enable and launch job processor
       systemd:
@@ -164,11 +197,23 @@
           enabled: yes
           state: restarted
 
-    - name: Copy gerboweb cache dir tmpfiles.d config
+    - name: Create letsencrypt certificate
+      command: certbot --nginx certonly -d gerbolyze.jaseg.net -n --agree-tos --email gerboweb@jaseg.net
+      args:
+          creates: /etc/letsencrypt/live/gerbolyze.jaseg.net/fullchain.pem
+
+    - name: Copy final nginx config
       copy:
-          src: tmpfiles-gerboweb.conf
-          dest: /etc/tmpfiles.d/gerboweb.conf
-          owner: root
-          group: root
-          mode: 0644
+          src: nginx.conf
+          dest: /etc/nginx/nginx.conf
+
+    - name: Restart nginx to load new cert
+      systemd:
+          name: nginx.service
+          state: restarted
+
+    - name: Enable certbot renewal timer
+      systemd:
+          name: certbot-renew.timer
+          enabled: yes
 

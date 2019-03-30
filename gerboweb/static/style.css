@@ -159,8 +159,7 @@ div.loading-message {
   left: 0;
   width: 60px;
 
-  line-height: 50px;
-  padding-top: 10px;
+  line-height: 60px;
 }
 
 .step > .description {
