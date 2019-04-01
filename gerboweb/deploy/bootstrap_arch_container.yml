@@ -1,0 +1,60 @@
+---
+- name: Set local path facts
+  set_fact:
+    image: "/var/cache/containers/{{ container }}.img"
+    root: "/var/cache/containers/{{ container }}_root"
+    "{{container}}_root": "/var/cache/containers/{{ container }}_root"
+
+- name: Create container image file
+  command: truncate -s 4G "{{image}}"
+  args:
+      creates: "{{image}}"
+  register: create_container
+
+- name: Download arch bootstrap image
+  get_url:
+      url: http://mirror.rackspace.com/archlinux/iso/2019.03.01/archlinux-bootstrap-2019.03.01-x86_64.tar.gz
+      dest: /tmp/arch-bootstrap.tar.xz
+      checksum: sha256:865c8a25312b663e724923eecf0dfc626f4cd621e2cfcb19eafc69a4fc666756
+  when: create_container is changed
+
+- name: Create container image filesystem
+  filesystem:
+      dev: "{{image}}"
+      fstype: btrfs
+
+- name: Create container image fstab entry
+  mount:
+      src: "{{image}}"
+      path: "{{root}}"
+      state: mounted
+      fstype: btrfs
+      opts: loop
+
+- name: Unpack bootstrap image
+  unarchive:
+      remote_src: yes
+      src: /tmp/arch-bootstrap.tar.xz
+      dest: "{{root}}"
+      extra_opts: --strip-components=1
+      creates: "{{root}}/etc"
+
+- name: Copy mirrorlist into container
+  copy:
+      src: mirrorlist
+      dest: "{{root}}/etc/pacman.d/mirrorlist"
+
+- name: Initialize container pacman keyring
+  shell: arch-chroot "{{root}}" pacman-key --init && arch-chroot "{{root}}" pacman-key --populate archlinux
+  args:
+      creates: "{{root}}/etc/pacman.d/gnupg"
+
+- name: Fixup pacman.conf for pacman to work in chroot without its own root fs
+  lineinfile:
+      path: "{{root}}/etc/pacman.conf"
+      regexp: '^CheckSpace'
+      line: '#CheckSpace'
+
+- name: Update container and install software
+  shell: arch-chroot "{{root}}" pacman -Syu --noconfirm
+

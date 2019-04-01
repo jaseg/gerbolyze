@@ -1,0 +1,4 @@
+MAX_CONTENT_LENGTH=10000000
+SECRET_KEY="{{lookup('password', 'gerboweb_flask_secret.txt length=32')}}"
+UPLOAD_PATH="{{gerboweb_cache}}/upload"
+JOB_QUEUE_DB="{{gerboweb_cache}}/job_queue.sqlite3"
