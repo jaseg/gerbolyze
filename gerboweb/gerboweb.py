@@ -63,8 +63,12 @@ def index():
             'reset_form': ResetForm() }
 
     for job in ('vector_job', 'render_job'):
-        if job in session and job_queue[session[job]].finished:
-            del session[job]
+        if job in session:
+            job = job_queue[session[job]]
+            if job.finished:
+                if job.result != 0:
+                    flash(f'Error processing gerber files', 'success') # FIXME make this an error, add CSS
+                del session[job]
 
     r = make_response(render_template('index.html',
             has_renders = path.isfile(tempfile_path('gerber.zip')),
@@ -81,7 +85,7 @@ def index():
 
 def vectorize():
     if 'vector_job' in session:
-        job_queue.drop(session['vector_job'])
+        job_queue[session['vector_job']].abort()
     session['vector_job'] = job_queue.enqueue('vector',
             client=request.remote_addr,
             session_id=session['session_id'],
@@ -89,7 +93,7 @@ def vectorize():
 
 def render():
     if 'render_job' in session:
-        job_queue.drop(session['render_job'])
+        job_queue[session['render_job']].abort()
     session['render_job'] = job_queue.enqueue('render',
             session_id=session['session_id'],
             client=request.remote_addr)
@@ -115,6 +119,7 @@ def upload_gerber():
 def upload_overlay():
     upload_form = OverlayForm()
     if upload_form.validate_on_submit():
+        # FIXME raise error when no side selected
         f = upload_form.upload_file.data
         f.save(tempfile_path('overlay.png'))
         session['side_selected'] = upload_form.side.data
@@ -152,9 +157,9 @@ def output_download():
 @require_session_id
 def session_reset():
     if 'render_job' in session:
-        session['render_job'].abort()
+        job_queue[session['render_job']].abort()
     if 'vector_job' in session:
-        session['vector_job'].abort()
+        job_queue[session['vector_job']].abort()
     session.clear()
     flash('Session reset', 'success');
     return redirect(url_for('index'))
