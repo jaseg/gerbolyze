@@ -25,22 +25,11 @@ class JobQueue:
             return conn.execute('INSERT INTO jobs(type, client, params) VALUES (?, ?, ?)',
                     (task_type, client, json.dumps(params))).lastrowid
 
-    def check_result(slef, job_id):
-        with self.db as conn:
-            job = conn.execute('SELECT * FROM jobs WHERE id=?', (job_id,)).fetchone()
-            if job is None:
-                raise IndexError('Job id not found')
-            return job.result
-
-    def drop(self, job_id):
-        with self.db as conn:
-            return conn.execute('DELETE FROM jobs WHERE id=?', (job_id,)).rowcount > 0
-
     def pop(self, task_type):
         """ Fetch the next job of the given type. Returns a sqlite3.Row object of the job or None if no jobs of the given
         type are queued. """
         with self.db as conn:
-            job = conn.execute('SELECT * FROM jobs WHERE type=? AND consumed IS NULL ORDER BY created ASC LIMIT 1',
+            job = conn.execute('SELECT * FROM jobs WHERE type=? AND consumed IS NULL AND aborted IS NULL ORDER BY created ASC LIMIT 1',
                     (task_type,)).fetchone()
             if job is None:
                 return None
@@ -73,7 +62,7 @@ class Job(dict):
         self.created = row['created']
         self.consumed = row['consumed']
         self.finished = row['finished']
-        self.result = None
+        self.result = row['result']
 
     def __enter__(self):
         return self
@@ -82,7 +71,7 @@ class Job(dict):
         with self._db as conn:
             conn.execute('UPDATE jobs SET finished=datetime("now"), result=? WHERE id=?', (self.result, self.id,))
 
-    def abort(self):
-        with self._db as conn:
+    def abort(self, job_id):
+        with self.db as conn:
             conn.execute('UPDATE jobs SET aborted=datetime("now") WHERE id=?', (self.id,))
 
