@@ -7,8 +7,8 @@ LAYER=$2
 egrep -x -q '^(top|bottom)$'<<<"$LAYER" || exit 2
 
 systemd-nspawn \
-    -D /var/cache/gerbolyze_container \
-    -x --bind=/var/cache/gerboweb/upload/$ID:/mnt \
+    -D {{gerboweb_root}} \
+    -x --bind={{gerboweb_cache}}/upload/$ID:/mnt \
     /bin/sh -c "set -euo pipefail
 cd /tmp
 unzip -j -d gerber_in /mnt/gerber.zip

@@ -7,12 +7,12 @@
 
     - name: Install common admin tools
       dnf:
-        name: htop,tmux,fish,mosh,neovim
+        name: htop,tmux,fish,mosh,neovim,sqlite
         state: latest
 
     - name: Install host requisites
       dnf:
-          name: btrfs-progs,arch-install-scripts,nginx,uwsgi,python3-flask,python3-flask-wtf,systemd-container,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python
+          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python
           state: latest
 
     - name: Disable password-based root login
@@ -28,192 +28,15 @@
           state: restarted
       when: disable_root_pw_ssh is changed
 
-    - name: Create container image file
-      command: truncate -s 4G /var/cache/gerbolyze_container.img
-      args:
-          creates: /var/cache/gerbolyze_container.img
-      register: create_container
+    - name: Create containers
+      include_tasks: setup_containers.yml
+      vars:
+        containers:
+          - gerboweb
+          - clippy
 
-    - name: Download arch bootstrap image
-      get_url:
-          url: http://mirror.rackspace.com/archlinux/iso/2019.03.01/archlinux-bootstrap-2019.03.01-x86_64.tar.gz
-          dest: /tmp/arch-bootstrap.tar.xz
-          checksum: sha256:865c8a25312b663e724923eecf0dfc626f4cd621e2cfcb19eafc69a4fc666756
-      when: create_container is changed
+    - name: Setup web server
+      include_tasks: setup_webserver.yml
 
-    - name: Create container image filesystem
-      filesystem:
-          dev: /var/cache/gerbolyze_container.img
-          fstype: btrfs
-    
-    - name: Create container image fstab entry
-      mount:
-          src: /var/cache/gerbolyze_container.img
-          path: /var/cache/gerbolyze_container
-          state: mounted
-          fstype: btrfs
-          opts: loop
-
-    - name: Unpack bootstrap image
-      unarchive:
-          remote_src: yes
-          src: /tmp/arch-bootstrap.tar.xz
-          dest: /var/cache/gerbolyze_container
-          extra_opts: --strip-components=1
-          creates: /var/cache/gerbolyze_container/etc
-
-    - name: Copy mirrorlist into container
-      copy:
-          src: mirrorlist
-          dest: /var/cache/gerbolyze_container/etc/pacman.d/mirrorlist
-
-    - name: Copy render script
-      copy:
-          src: render.sh
-          dest: /usr/local/sbin/gerbolyze_render.sh
-          mode: ug+x
-
-    - name: Copy vector script
-      copy:
-          src: vector.sh
-          dest: /usr/local/sbin/gerbolyze_vector.sh
-          mode: ug+x
-
-    - name: Initialize container pacman keyring
-      shell: arch-chroot /var/cache/gerbolyze_container pacman-key --init && arch-chroot /var/cache/gerbolyze_container pacman-key --populate archlinux
-      args:
-          creates: /var/cache/gerbolyze_container/etc/pacman.d/gnupg
-
-    - name: Fixup pacman.conf for pacman to work in chroot without its own root fs
-      lineinfile:
-          path: /var/cache/gerbolyze_container/etc/pacman.conf
-          regexp: '^CheckSpace'
-          line: '#CheckSpace'
-
-    - name: Update container and install software
-      shell: arch-chroot /var/cache/gerbolyze_container pacman -Syu --noconfirm python3 opencv hdf5 gtk3 python-numpy python-pip imagemagick unzip zip
-
-      # TODO maybe install directly from local git checkout?
-    - name: Install gerbolyze
-      shell: arch-chroot /var/cache/gerbolyze_container pip install -U --upgrade-strategy=eager gerbolyze
-
-    - name: Cleanup bootstrap image
-      file:
-          path: /tmp/arch-bootstrap.tar.xz
-          state: absent
-
-    - name: Copy webapp sources
-      synchronize:
-        # FIXME: make this path configurable
-          src: ~/gerbolyze/gerboweb/
-          dest: /var/lib/gerboweb/
-          group: no
-          owner: no
-
-    - name: Copy first stage nginx config
-      copy:
-          src: nginx_nossl.conf
-          dest: /etc/nginx/nginx.conf
-
-    - name: Create uwsgi worker user and group
-      user:
-          name: uwsgi-gerboweb
-          create_home: no
-          group: uwsgi
-          password: '!'
-          shell: /sbin/nologin
-          system: yes
-
-    - name: Add nginx user to uwsgi group for access to uwsgi socket
-      user:
-          name: nginx
-          groups: uwsgi
-          append: yes
-
-    - name: Copy uwsgi config
-      copy:
-          src: uwsgi-gerboweb.ini
-          dest: /etc/uwsgi.d/gerboweb.ini
-          owner: uwsgi-gerboweb
-          group: uwsgi
-          mode: 440
-
-    - name: Copy uwsgi systemd socket config
-      copy:
-          src: uwsgi-app@.socket
-          dest: /etc/systemd/system/
-
-    - name: Copy uwsgi systemd service config
-      copy:
-          src: uwsgi-app@.service
-          dest: /etc/systemd/system/
-
-    - name: Copy job processor systemd service config
-      copy:
-          src: gerboweb-job-processor.service
-          dest: /etc/systemd/system/
-
-    - name: Set SELinux to permissive mode # FIXME
-      selinux:
-        state: permissive
-        policy: targeted
-
-    - name: Enable uwsgi systemd socket
-      systemd:
-          daemon-reload: yes
-          name: uwsgi-app@gerboweb.socket
-          enabled: yes
-
-    - name: Copy gerboweb cache dir tmpfiles.d config
-      copy:
-          src: tmpfiles-gerboweb.conf
-          dest: /etc/tmpfiles.d/gerboweb.conf
-          owner: root
-          group: root
-          mode: 0644
-      register: tmpfiles_config
-
-    - name: Kick systemd tmpfiles service to create cache dir
-      command: systemd-tmpfiles --create
-      when: tmpfiles_config is changed
-
-    - name: Create job queue db
-      file:
-        path: /var/cache/gerboweb/job_queue.sqlite3
-        owner: root
-        group: uwsgi
-        mode: 0660
-        state: touch
-
-    - name: Enable and launch job processor
-      systemd:
-          name: gerboweb-job-processor.service
-          enabled: yes
-          state: restarted
-
-    - name: Enable and launch nginx systemd service
-      systemd:
-          name: nginx.service
-          enabled: yes
-          state: restarted
-
-    - name: Create letsencrypt certificate
-      command: certbot --nginx certonly -d gerbolyze.jaseg.net -n --agree-tos --email gerboweb@jaseg.net
-      args:
-          creates: /etc/letsencrypt/live/gerbolyze.jaseg.net/fullchain.pem
-
-    - name: Copy final nginx config
-      copy:
-          src: nginx.conf
-          dest: /etc/nginx/nginx.conf
-
-    - name: Restart nginx to load new cert
-      systemd:
-          name: nginx.service
-          state: restarted
-
-    - name: Enable certbot renewal timer
-      systemd:
-          name: certbot-renew.timer
-          enabled: yes
-
+    - name: Setup gerboweb
+      include_tasks: setup_gerboweb.yml
