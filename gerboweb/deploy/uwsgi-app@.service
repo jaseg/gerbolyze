@@ -5,7 +5,8 @@ After=syslog.target
 [Service]
 ExecStart=/usr/sbin/uwsgi \
         --ini /etc/uwsgi.d/%i.ini \
-        --socket /run/uwsgi/%i.socket
+	--chmod-socket=660 \
+        --socket=/run/uwsgi/%i.socket
 User=uwsgi-%i
 Group=uwsgi
 Restart=on-failure

@@ -1,9 +1,9 @@
 ---
 - name: Set local path facts
   set_fact:
-    image: "/var/cache/containers/{{ container }}.img"
-    root: "/var/cache/containers/{{ container }}_root"
-    "{{container}}_root": "/var/cache/containers/{{ container }}_root"
+    image: "/var/lib/machines/{{ container }}.img"
+    root: "/var/lib/machines/{{ container }}"
+    "{{container}}_root": "/var/lib/machines/{{ container }}"
 
 - name: Create container image file
   command: truncate -s 4G "{{image}}"

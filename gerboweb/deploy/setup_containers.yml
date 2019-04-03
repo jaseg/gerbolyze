@@ -4,14 +4,6 @@
       name: btrfs-progs,arch-install-scripts,systemd-container,libselinux-python
       state: latest
 
-- name: Create container dir
-  file:
-    path: /var/cache/containers
-    owner: root
-    group: root
-    mode: 0775
-    state: directory
-
 - name: Create individual containers
   include_tasks: bootstrap_arch_container.yml
   with_items: "{{ containers }}"
