@@ -1,0 +1,69 @@
+---
+- name: Clone pixelterm git
+  git:
+    repo: https://github.com/jaseg/pixelterm
+    dest: "{{clippy_root}}/var/lib/pixelterm.git"
+
+- name: Clone clippy git
+  git:
+    repo: https://github.com/jaseg/clippy
+    dest: "{{clippy_root}}/var/lib/clippy.git"
+
+- name: Setup required packages for clippy
+  command: arch-chroot "{{clippy_root}}" pacman -Syu --noconfirm python3 python-pip python-numpy python-pillow
+
+- name: Setup pixelterm
+  command: arch-chroot "{{clippy_root}}" sh -c "cd /var/lib/pixelterm.git && python3 setup.py install"
+
+- name: Setup container clippy systemd service file
+  template:
+    src: clippy.service.j2
+    dest: "{{clippy_root}}/etc/systemd/system/clippy.service"
+    owner: root
+    group: root
+    mode: 0664
+
+- name: Enable systemd machines target
+  systemd:
+    name: machines.target
+    enabled: yes
+
+- name: Copy over clippy container auto boot service file
+  copy:
+    src: clippy-nspawn.service
+    dest: /etc/systemd/system/clippy-nspawn.service
+    owner: root
+    group: root
+    mode: 0664
+
+- name: Enable clippy container auto boot
+  systemd:
+    daemon-reload: yes
+    name: clippy-nspawn.service
+    enabled: yes
+
+- name: Restart clippy container
+  shell: |
+    systemctl stop clippy-nspawn
+    sleep 1
+    systemctl start clippy-nspawn
+    for x in $(seq 0 30); do
+      systemctl -M clippy is-system-running && exit
+      sleep 1
+    done
+
+- name: Enable clippy systemd service in container
+  command: systemctl enable -M clippy clippy.service
+
+- name: Restart clippy systemd service in container
+  command: systemctl restart -M clippy clippy.service
+
+#- name: Enable host networkd
+#  systemd:
+#    name: systemd-networkd
+#    enabled: yes
+#    state: started
+
+- name: Enable clippy container networkd
+  command: systemctl enable -M clippy systemd-networkd
+

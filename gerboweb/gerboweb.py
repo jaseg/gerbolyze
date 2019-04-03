@@ -62,13 +62,13 @@ def index():
             'overlay_form': OverlayForm(),
             'reset_form': ResetForm() }
 
-    for job in ('vector_job', 'render_job'):
-        if job in session:
-            job = job_queue[session[job]]
+    for job_type in ('vector_job', 'render_job'):
+        if job_type in session:
+            job = job_queue[session[job_type]]
             if job.finished:
                 if job.result != 0:
                     flash(f'Error processing gerber files', 'success') # FIXME make this an error, add CSS
-                del session[job]
+                del session[job_type]
 
     r = make_response(render_template('index.html',
             has_renders = path.isfile(tempfile_path('gerber.zip')),

@@ -13,7 +13,7 @@ class JobQueue:
                     type TEXT,
                     params TEXT,
                     client TEXT,
-                    result TEXT DEFAULT NULL,
+                    result INTEGER DEFAULT NULL,
                     created DATETIME DEFAULT CURRENT_TIMESTAMP,
                     consumed DATETIME DEFAULT NULL,
                     aborted DATETIME DEFAULT NULL,

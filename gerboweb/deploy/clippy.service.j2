@@ -1,0 +1,9 @@
+[Unit]
+Description=Clippy listener daemon
+
+[Service]
+WorkingDirectory=/var/lib/clippy.git
+ExecStart=/usr/bin/python3 clippy.py -s -x 60x30 -e
+
+[Install]
+WantedBy=multi-user.target

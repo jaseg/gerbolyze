@@ -1,0 +1,36 @@
+#  SPDX-License-Identifier: LGPL-2.1+
+#
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Clippy container
+PartOf=machines.target
+Before=machines.target
+After=network.target systemd-resolved.service
+RequiresMountsFor=/var/lib/machines
+
+[Service]
+ExecStart=/usr/bin/systemd-nspawn --quiet --keep-unit --ephemeral --boot --network-veth --port=23:2342 -U --settings=override --machine=clippy
+KillMode=mixed
+Type=notify
+RestartForceExitStatus=133
+SuccessExitStatus=133
+WatchdogSec=3min
+Slice=machine.slice
+Delegate=yes
+TasksMax=512
+
+# Enforce a strict device policy, similar to the one nspawn configures when it
+# allocates its own scope unit. Make sure to keep these policies in sync if you
+# change them!
+DevicePolicy=closed
+DeviceAllow=/dev/net/tun rwm
+DeviceAllow=char-pts rw
+
+[Install]
+WantedBy=machines.target
