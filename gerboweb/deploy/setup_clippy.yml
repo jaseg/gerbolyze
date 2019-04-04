@@ -36,6 +36,22 @@
     group: root
     mode: 0664
 
+- name: Create systemd-nspawn config dir
+  file:
+    path: /etc/systemd/nspawn
+    state: directory
+    owner: root
+    group: root
+    mode: 0775
+
+- name: Copy over clippy container config
+  copy:
+    src: clippy.nspawn
+    dest: /etc/systemd/nspawn/clippy.nspawn
+    owner: root
+    group: root
+    mode: 0664
+
 - name: Enable clippy container auto boot
   systemd:
     daemon-reload: yes
@@ -64,6 +80,6 @@
 #    enabled: yes
 #    state: started
 
-- name: Enable clippy container networkd
-  command: systemctl enable -M clippy systemd-networkd
+#- name: Enable clippy container networkd
+#  command: systemctl enable -M clippy systemd-networkd
 
