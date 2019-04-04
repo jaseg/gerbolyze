@@ -12,7 +12,7 @@
 
     - name: Install host requisites
       dnf:
-          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git
+          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git,iptables-services
           state: latest
 
     - name: Disable password-based root login
@@ -27,6 +27,28 @@
           name: sshd
           state: restarted
       when: disable_root_pw_ssh is changed
+
+    - name: Create iptables firewall config dir
+      file:
+        path: /etc/iptables
+        state: directory
+        owner: root
+        group: root
+        mode: 0775
+
+    - name: Configure iptables firewall service
+      copy:
+        src: iptables.rules
+        dest: /etc/iptables/iptables.rules
+        owner: root
+        group: root
+        mode: 0664
+
+    - name: Enable iptables firewall service
+      systemd:
+        name: iptables
+        enabled: yes
+        state: started
 
     - name: Create containers
       include_tasks: setup_containers.yml

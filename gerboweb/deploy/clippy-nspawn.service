@@ -15,7 +15,7 @@ After=network.target systemd-resolved.service
 RequiresMountsFor=/var/lib/machines
 
 [Service]
-ExecStart=/usr/bin/systemd-nspawn --quiet --keep-unit --ephemeral --boot --network-veth --port=23:2342 -U --settings=override --machine=clippy
+ExecStart=/usr/bin/systemd-nspawn --quiet --keep-unit --ephemeral --boot -U --settings=override --machine=clippy
 KillMode=mixed
 Type=notify
 RestartForceExitStatus=133
