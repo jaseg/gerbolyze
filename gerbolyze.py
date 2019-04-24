@@ -290,18 +290,18 @@ def find_gerber_in_dir(dir_path, extensions, exclude=''):
 # Gerber file name extensions for Altium/Protel | KiCAD | Eagle
 LAYER_SPEC = {
         'top': {
-            'paste':    '.gtp|-F.Paste.gbr|.pmc',
-            'silk':     '.gto|-F.SilkS.gbr|.plc',
-            'mask':     '.gts|-F.Mask.gbr|.stc',
-            'copper':   '.gtl|-F.Cu.gbr|.cmp',
-            'outline':  '.gm1|-Edge.Cuts.gbr|.gmb',
+            'paste':    '.gtp|-F_Paste.gbr|-F.Paste.gbr|.pmc',
+            'silk':     '.gto|-F_SilkS.gbr|-F.SilkS.gbr|.plc',
+            'mask':     '.gts|-F_Mask.gbr|-F.Mask.gbr|.stc',
+            'copper':   '.gtl|-F_Cu.gbr|-F.Cu.gbr|.cmp',
+            'outline':  '.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb',
         },
         'bottom': {
-            'paste':    '.gbp|-B.Paste.gbr|.pms',
-            'silk':     '.gbo|-B.SilkS.gbr|.pls',
-            'mask':     '.gbs|-B.Mask.gbr|.sts',
-            'copper':   '.gbl|-B.Cu.gbr|.sol',
-            'outline':  '.gm1|-Edge.Cuts.gbr|.gmb'
+            'paste':    '.gbp|-B_Paste.gbr|-B.Paste.gbr|.pms',
+            'silk':     '.gbo|-B_SilkS.gbr|-B.SilkS.gbr|.pls',
+            'mask':     '.gbs|-B_Mask.gbr|-B.Mask.gbr|.sts',
+            'copper':   '.gbl|-B_Cu.gbr|-B.Cu.gbr|.sol',
+            'outline':  '.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb'
         },
     }
 
