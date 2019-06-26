@@ -9,6 +9,14 @@
       groups: uwsgi
       append: yes
 
+- name: Create blog.jaseg.net content dir
+  file:
+    path: /var/www/blog.jaseg.net
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 0550
+
 - name: Copy uwsgi systemd socket config
   copy:
       src: uwsgi-app@.socket
@@ -30,10 +38,15 @@
       enabled: yes
       state: restarted
 
-- name: Create letsencrypt certificate
+- name: Create letsencrypt certificate for gerbolyze.jaseg.net
   command: certbot --nginx certonly -d gerbolyze.jaseg.net -n --agree-tos --email gerboweb@jaseg.net
   args:
       creates: /etc/letsencrypt/live/gerbolyze.jaseg.net/fullchain.pem
+
+- name: Create letsencrypt certificate for blog.jaseg.net
+  command: certbot --nginx certonly -d blog.jaseg.net -n --agree-tos --email blog@jaseg.net
+  args:
+      creates: /etc/letsencrypt/live/blog.jaseg.net/fullchain.pem
 
 - name: Copy final nginx config
   copy:

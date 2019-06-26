@@ -12,7 +12,7 @@
 
     - name: Install host requisites
       dnf:
-          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git,iptables-services
+          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git,iptables-services,python3-pycryptodomex
           state: latest
 
     - name: Disable password-based root login
@@ -28,18 +28,10 @@
           state: restarted
       when: disable_root_pw_ssh is changed
 
-    - name: Create iptables firewall config dir
-      file:
-        path: /etc/iptables
-        state: directory
-        owner: root
-        group: root
-        mode: 0775
-
     - name: Configure iptables firewall service
       copy:
         src: iptables.rules
-        dest: /etc/iptables/iptables.rules
+        dest: /etc/sysconfig/iptables
         owner: root
         group: root
         mode: 0664
@@ -65,3 +57,6 @@
 
     - name: Setup clippy
       include_tasks: setup_clippy.yml
+
+    - name: Setup secure download
+      include_tasks: setup_secure_download.yml
