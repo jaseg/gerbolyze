@@ -1,0 +1,9 @@
+---
+- name: Copy tracespace webapp sources
+  synchronize:
+    # FIXME: make this path configurable
+      src: ~/tracespace_dist/
+      dest: /var/www/tracespace.jaseg.net/
+      group: no
+      owner: no
+

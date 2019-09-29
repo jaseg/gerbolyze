@@ -1,0 +1,3 @@
+[submodule "gerboweb/deploy/checkouts/pogojig"]
+	path = gerboweb/deploy/checkouts/pogojig
+	url = https://github.com/jaseg/pogojig.git

@@ -1,0 +1,9 @@
+---
+- name: Copy openjscad webapp sources
+  synchronize:
+    # FIXME: make this path configurable
+      src: ~/openjscad_dist/
+      dest: /var/www/openjscad.jaseg.net/
+      group: no
+      owner: no
+

@@ -9,13 +9,17 @@
       groups: uwsgi
       append: yes
 
-- name: Create blog.jaseg.net content dir
+- name: Create subdomain content dirs
   file:
-    path: /var/www/blog.jaseg.net
+    path: /var/www/{{item}}
     state: directory
     owner: nginx
     group: nginx
     mode: 0550
+  loop:
+      - blog.jaseg.net
+      - tracespace.jaseg.net
+      - openjscad.jaseg.net
 
 - name: Copy uwsgi systemd socket config
   copy:
@@ -38,15 +42,16 @@
       enabled: yes
       state: restarted
 
-- name: Create letsencrypt certificate for gerbolyze.jaseg.net
-  command: certbot --nginx certonly -d gerbolyze.jaseg.net -n --agree-tos --email gerboweb@jaseg.net
+- name: Create subdomain letsencrypt certificates
+  command: certbot --nginx certonly -d {{item}} -n --agree-tos --email {{item}}-letsencrypt@jaseg.net
   args:
-      creates: /etc/letsencrypt/live/gerbolyze.jaseg.net/fullchain.pem
-
-- name: Create letsencrypt certificate for blog.jaseg.net
-  command: certbot --nginx certonly -d blog.jaseg.net -n --agree-tos --email blog@jaseg.net
-  args:
-      creates: /etc/letsencrypt/live/blog.jaseg.net/fullchain.pem
+      creates: /etc/letsencrypt/live/{{item}}/fullchain.pem
+  loop:
+      - blog.jaseg.net
+      - gerbolyze.jaseg.net
+      - tracespace.jaseg.net
+      - openjscad.jaseg.net
+      - pogojig.jaseg.net
 
 - name: Copy final nginx config
   copy:

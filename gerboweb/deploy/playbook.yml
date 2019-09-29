@@ -48,6 +48,7 @@
         containers:
           - gerboweb
           - clippy
+          - pogojig
 
     - name: Setup web server
       include_tasks: setup_webserver.yml
@@ -60,3 +61,13 @@
 
     - name: Setup secure download
       include_tasks: setup_secure_download.yml
+
+    - name: Setup tracespace
+      include_tasks: setup_tracespace.yml
+
+    - name: Setup openjscad
+      include_tasks: setup_openjscad.yml
+
+    - name: Setup pogojig
+      include_tasks: setup_pogojig.yml
+
