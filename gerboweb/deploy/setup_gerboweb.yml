@@ -27,6 +27,8 @@
     # FIXME: make this path configurable
       src: ~/gerbolyze/gerboweb/
       dest: /var/lib/gerboweb/
+      rsync_opts:
+          - "--exclude=/deploy"
       group: no
       owner: no
 

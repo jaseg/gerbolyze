@@ -27,8 +27,15 @@
     # FIXME: make this path configurable
       src: checkouts/pogojig/webapp/
       dest: /var/lib/pogojig
+      delete: true
       group: no
       owner: no
+
+- name: Pack makefile template zip
+  archive:
+      path: "{{pogojig_root}}/var/lib/pogojig_renderer"
+      dest: /var/lib/pogojig/static/pogojig_makefile_template.zip
+      format: zip
 
 - name: Create web home for modified tracespace
   file:
