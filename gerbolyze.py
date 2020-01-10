@@ -224,6 +224,7 @@ def plot_contours(
         scale:float,
         debug=lambda *args:None,
         status_print=lambda *args:None):
+    from gerber.primitives import Line, Region, Circle
     imgh, imgw = img.shape
 
     # Extract contour hierarchy using OpenCV
@@ -231,9 +232,8 @@ def plot_contours(
     # See https://stackoverflow.com/questions/48291581/how-to-use-cv2-findcontours-in-different-opencv-versions/48292371
     contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)[-2:]
 
-    aperture = list(layer.apertures)[0]
+    aperture = list(layer.apertures)[0] if layer.apertures else Circle(None, 0.10)
 
-    from gerber.primitives import Line, Region
     status_print('offx', offx, 'scale', scale)
 
     xbias, ybias = offx
