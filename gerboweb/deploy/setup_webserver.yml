@@ -18,6 +18,7 @@
     mode: 0550
   loop:
       - blog.jaseg.net
+      - kochbuch.jaseg.net
       - tracespace.jaseg.net
       - openjscad.jaseg.net
 
@@ -48,6 +49,7 @@
       creates: /etc/letsencrypt/live/{{item}}/fullchain.pem
   loop:
       - blog.jaseg.net
+      - kochbuch.jaseg.net
       - gerbolyze.jaseg.net
       - tracespace.jaseg.net
       - openjscad.jaseg.net
