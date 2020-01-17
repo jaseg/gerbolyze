@@ -21,6 +21,7 @@
       - kochbuch.jaseg.net
       - tracespace.jaseg.net
       - openjscad.jaseg.net
+      - automation.jaseg.de
 
 - name: Copy uwsgi systemd socket config
   copy:
@@ -54,6 +55,7 @@
       - tracespace.jaseg.net
       - openjscad.jaseg.net
       - pogojig.jaseg.net
+      - automation.jaseg.de
 
 - name: Copy final nginx config
   copy:

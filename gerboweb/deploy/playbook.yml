@@ -71,3 +71,6 @@
     - name: Setup pogojig
       include_tasks: setup_pogojig.yml
 
+    - name: Setup notification proxy
+      include_tasks: setup_notification_proxy.yml
+

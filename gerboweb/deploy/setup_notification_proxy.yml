@@ -1,0 +1,48 @@
+---
+- name: Create notification proxy worker user and group
+  user:
+      name: uwsgi-notification-proxy
+      create_home: no
+      group: uwsgi
+      password: '!'
+      shell: /sbin/nologin
+      system: yes
+
+- name: Create webapp dir
+  file:
+      path: /var/lib/notification-proxy
+      state: directory
+      owner: uwsgi-notification-proxy
+      group: uwsgi
+      mode: 0550
+
+- name: Copy webapp sources
+  copy:
+      src: notification_proxy.py
+      dest: /var/lib/notification-proxy/
+      owner: uwsgi-notification-proxy
+      group: uwsgi
+      mode: 0440
+
+- name: Template webapp config
+  template:
+    src: notification_proxy_config.py.j2
+    dest: /var/lib/notification-proxy/config.py
+    owner: uwsgi-notification-proxy
+    group: root
+    mode: 0660
+
+- name: Copy uwsgi config
+  copy:
+      src: uwsgi-notification-proxy.ini
+      dest: /etc/uwsgi.d/notification-proxy.ini
+      owner: uwsgi-notification-proxy
+      group: uwsgi
+      mode: 0440
+
+- name: Enable uwsgi systemd socket
+  systemd:
+      daemon-reload: yes
+      name: uwsgi-app@notification-proxy.socket
+      enabled: yes
+
