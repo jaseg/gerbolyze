@@ -18,6 +18,9 @@
 - name: Install packages into gerbolyze container
   shell: arch-chroot "{{gerboweb_root}}" pacman -Syu --noconfirm python3 opencv hdf5 gtk3 python-numpy python-pip imagemagick unzip zip
 
+- name: Workaround for cairoffi problem
+  shell: arch-chroot "{{gerboweb_root}}" pip install -U --upgrade-strategy=eager wheel
+
   # TODO maybe install directly from local git checkout?
 - name: Install gerbolyze
   shell: arch-chroot "{{gerboweb_root}}" pip install -U --upgrade-strategy=eager gerbolyze
