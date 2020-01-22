@@ -1,4 +1,8 @@
 ---
+- name: Set local facts
+  set_fact:
+      notification_proxy_sqlite_dbfile: /var/lib/notification-proxy/db.sqlite3
+
 - name: Create notification proxy worker user and group
   user:
       name: uwsgi-notification-proxy
@@ -14,7 +18,7 @@
       state: directory
       owner: uwsgi-notification-proxy
       group: uwsgi
-      mode: 0550
+      mode: 0750
 
 - name: Copy webapp sources
   copy:
@@ -45,4 +49,13 @@
       daemon-reload: yes
       name: uwsgi-app@notification-proxy.socket
       enabled: yes
+
+- name: Create sqlite db file
+  file:
+    path: "{{notification_proxy_sqlite_dbfile}}"
+    owner: uwsgi-notification-proxy
+    group: uwsgi
+    mode: 0660
+    state: touch
+
 

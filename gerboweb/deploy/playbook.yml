@@ -12,7 +12,7 @@
 
     - name: Install host requisites
       dnf:
-          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git,iptables-services,python3-pycryptodomex,zip
+          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git,iptables-services,python3-pycryptodomex,zip,python3-uwsgidecorators
           state: latest
 
     - name: Disable password-based root login
