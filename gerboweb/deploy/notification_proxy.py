@@ -150,6 +150,9 @@ def notify(route_name):
         with db as conn:
             conn.execute('INSERT OR REPLACE INTO heartbeats_seen VALUES (?, ?, 0)', (route_name, int(time.time())))
 
+    elif scope == 'error':
+        print(f'Device error: {kwargs}')
+
     return 'success'
 
 @uwsgidecorators.timer(60)
