@@ -34,10 +34,10 @@ with db as conn:
 
 mail_routes = {}
 
-def mail_route(name, receiver, subject, secret):
+def mail_route(name, receiver, secret):
     def wrap(func):
         global routes
-        mail_routes[name] = (receiver, subject, func, secret)
+        mail_routes[name] = (receiver, func, secret)
         return func
     return wrap
 
@@ -109,9 +109,10 @@ def authenticate(route_name, secret, clock_delta_tolerance:'s'=120):
 
         return msg_time, payload['scope'], payload['d']
 
-@mail_route('klingel', 'computerstuff@jaseg.de', 'It rang!', app.config['SECRET_KLINGEL'])
-def klingel(rms=None, capture=None, **kwargs):
-    return f'rms={rms}\ncapture={capture}\nextra_args={kwargs}'
+@mail_route('klingel', 'computerstuff@jaseg.de', app.config['SECRET_KLINGEL'])
+def klingel(classification='somewhere', rms=None, capture=None, **kwargs):
+    return (f'It rang {classification}!',
+        f'rms={rms}\ncapture={capture}\nextra_args={kwargs}')
 
 
 def send_mail(route_name, receiver, subject, body):
@@ -134,13 +135,16 @@ def send_mail(route_name, receiver, subject, body):
 
 @app.route('/v1/notify/<route_name>', methods=['POST'])
 def notify(route_name):
-    receiver, notify_subject, func, secret = mail_routes[route_name]
+    receiver, func, secret = mail_routes[route_name]
     msg_time, scope, kwargs = authenticate(route_name, secret)
 
     if scope == 'default':
         # Exceptions will yield a 500 error
-        body = func(**kwargs)
-        send_mail(route_name, receiver, notify_subject, body or 'empty message')
+        subject, body = func(**kwargs)
+        send_mail(route_name, receiver, subject, body or 'empty message')
+
+    elif scope == 'info':
+        send_mail(route_name, receiver, f'System info: {kwargs["info_msg"]}', f'Logged data: {kwargs}')
 
     elif scope == 'boot':
         formatted = datetime.utcfromtimestamp(msg_time).isoformat()
