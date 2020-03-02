@@ -25,6 +25,7 @@ def generate_mask(
         outline,
         target,
         scale,
+        bounds,
         debugimg,
         status_print,
         gerber_unit,
@@ -40,13 +41,13 @@ def generate_mask(
         fg, bg = gerber.render.RenderSettings((1, 1, 1)), gerber.render.RenderSettings((0, 0, 0))
         ctx = GerberCairoContext(scale=scale)
         status_print('  * outline')
-        ctx.render_layer(outline, settings=fg, bgsettings=bg)
+        ctx.render_layer(outline, settings=fg, bgsettings=bg, bounds=bounds)
         status_print('  * target layer')
-        ctx.render_layer(target, settings=fg, bgsettings=bg)
+        ctx.render_layer(target, settings=fg, bgsettings=bg, bounds=bounds)
         for fn, sub in subtract_gerber:
             status_print('  * extra layer', os.path.basename(fn))
             layer = gerber.loads(sub)
-            ctx.render_layer(layer, settings=fg, bgsettings=bg)
+            ctx.render_layer(layer, settings=fg, bgsettings=bg, bounds=bounds)
         status_print('Rendering keepout composite')
         ctx.dump(img_file)
 
@@ -63,6 +64,7 @@ def generate_mask(
     outh, outw = original_img.shape
     extended_img = np.zeros((outh + 2*border, outw + 2*border), dtype=np.uint8)
     extended_img[border:outh+border, border:outw+border] = original_img
+    debugimg(extended_img, 'outline')
     cv2.floodFill(extended_img, None, (0, 0), (255,))
     original_img = extended_img[border:outh+border, border:outw+border]
     debugimg(extended_img, 'flooded')
@@ -86,9 +88,9 @@ def render_gerbers_to_image(*gerbers, scale, bounds=None):
         # Vertically flip exported image to align coordinate systems
         return cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)[::-1, :]
 
-def pcb_area_mask(outline, scale):
+def pcb_area_mask(outline, scale, bounds):
     # Merge layers to target mask
-    img = render_gerbers_to_image(outline, scale=scale)
+    img = render_gerbers_to_image(outline, scale=scale, bounds=bounds)
     # Extend
     imgh, imgw = img.shape
     img_ext = np.zeros(shape=(imgh+2, imgw+2), dtype=np.uint8)
@@ -119,15 +121,17 @@ def generate_template(
     outline.layer_class = 'outline'
     scale = (1000/process_resolution) / 25.4 * resolution_oversampling # dpmm
 
+    bounds = outline.cam_source.bounding_box
+
     # Create a new drawing context
     ctx = GerberCairoContext(scale=scale)
 
-    ctx.render_layer(outline)
-    ctx.render_layer(copper)
-    ctx.render_layer(mask)
-    ctx.render_layer(silk)
+    ctx.render_layer(outline, bounds=bounds)
+    ctx.render_layer(copper, bounds=bounds)
+    ctx.render_layer(mask, bounds=bounds)
+    ctx.render_layer(silk, bounds=bounds)
     for dr in drill:
-        ctx.render_layer(dr)
+        ctx.render_layer(dr, bounds=bounds)
     ctx.dump(image)
 
 def paste_image(
@@ -151,14 +155,14 @@ def paste_image(
     # Parse outline layer to get bounds of gerber file
     status_print('Parsing outline gerber')
     outline = gerber.loads(outline_gerber)
-    (minx, maxx), (miny, maxy) = outline.bounds
+    bounds = (minx, maxx), (miny, maxy) = outline.bounding_box
     grbw, grbh = maxx - minx, maxy - miny
     status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
 
     # Parse target layer
     status_print('Parsing target gerber')
     target = gerber.loads(target_gerber)
-    (tminx, tmaxx), (tminy, tmaxy) = target.bounds
+    (tminx, tmaxx), (tminy, tmaxy) = target.bounding_box
     status_print('  * target layer has offset {}, size {}'.format((tminx, tminy), (tmaxx-tminx, tmaxy-tminy)))
 
     # Read source image
@@ -167,7 +171,7 @@ def paste_image(
     status_print('  * source image has size {}, going for scale {}dpmm'.format((imgw, imgh), scale))
 
     # Merge layers to target mask
-    target_img = generate_mask(outline, target, scale, debugimg, status_print, gerber_unit, extend_overlay_r_mil, subtract_gerber)
+    target_img = generate_mask(outline, target, scale, bounds, debugimg, status_print, gerber_unit, extend_overlay_r_mil, subtract_gerber)
 
     # Threshold source image. Ideally, the source image is already binary but in case it's not, or in case it's not
     # exactly binary (having a few very dark or very light grays e.g. due to JPEG compression) we're thresholding here.
