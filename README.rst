@@ -118,7 +118,7 @@ white instead of light-gray, so they still stand out nicely in the finished pict
 Now, run the GIMP's newsprint filter, under filters, distorts, newsprint.
 
 The first important settings is the spot size, which should be larger than your PCB's minimum detail size (about 10px
-with ``gerbolyze render`` default settings).
+with ``gerbolyze render`` default settings for good-quality silkscreen). In general the cheap and fast standard option of chinese PCB houses will require a larger detail size, but when you order specialty options like large size, 4-layer or non-green color along with a longer turnaround time you'll get much better-quality silk screen.
 
 The second important setting is oversampling, which should be set to four or slightly higher. This improves the result
 of the edge reconstruction of ``gerbolyze vectorize``.
