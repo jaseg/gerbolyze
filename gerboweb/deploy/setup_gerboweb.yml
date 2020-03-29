@@ -58,7 +58,7 @@
       dest: /etc/uwsgi.d/gerboweb.ini
       owner: uwsgi-gerboweb
       group: uwsgi
-      mode: 440
+      mode: 0440
 
 - name: Copy job processor systemd service config
   template:

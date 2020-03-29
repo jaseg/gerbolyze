@@ -1,0 +1,115 @@
+- name: Install host requisites
+  dnf:
+      name: cgit,gitolite3,python3-pygments,python3-docutils,nodejs-markdown
+      state: latest
+
+- name: Copy cgit favicon
+  copy:
+      src: cgit-logo.png
+      dest: /var/www/git.jaseg.net/cgit.png
+
+- name: Create cgit instance config dir
+  file:
+    path: /var/lib/cgit
+    state: directory
+    mode: 0755
+
+- name: Copy cgit rc
+  copy:
+      src: cgitrc
+      dest: /var/lib/cgit/cgitrc-gitolite-public
+      mode: 0644
+
+- name: Create uwsgi worker user and group
+  user:
+      name: uwsgi-cgit
+      create_home: no
+      group: uwsgi
+      password: '!'
+      shell: /sbin/nologin
+      system: yes
+
+- name: Copy uwsgi config
+  copy:
+      src: uwsgi-cgit.ini
+      dest: /etc/uwsgi.d/cgit.ini
+      owner: uwsgi-cgit
+      group: uwsgi
+      mode: 0440
+
+- name: Enable uwsgi systemd socket
+  systemd:
+      daemon-reload: yes
+      name: uwsgi-app@cgit.socket
+      enabled: yes
+
+- name: Copy gitolite admin pubkey
+  copy:
+      src: ~/.ssh/id_ed25519.gitolite.pub
+      dest: /tmp/jaseg-gitolite.pub
+      owner: gitolite3
+      group: gitolite3
+
+- name: Run gitolite initialization
+  command: gitolite setup -pk /tmp/jaseg-gitolite.pub
+  become: true
+  become_method: su
+  become_user: gitolite3
+  become_flags: '-s /bin/sh'
+  args:
+      creates: /var/lib/gitolite3/projects.list
+
+- name: Remove leftover admin pubkey
+  file:
+      state: absent
+      path: /tmp/jaseg-gitolite.pub
+
+- name: Allow uwsgi group to access gitolite repo dir
+  file:
+    path: /var/lib/gitolite3
+    state: directory
+    owner: gitolite3
+    group: uwsgi
+
+- name: Add cgit uwsgi user to gitolite group
+  user:
+      name: uwsgi-cgit
+      groups: gitolite3
+      append: yes
+
+- name: Allow cgit uwsgi user to access gitolite repos
+  file:
+      path: /var/lib/gitolite3/repositories
+      mode: 0750
+
+- name: Allow cgit uwsgi user to gitolite repo list
+  file:
+      path: /var/lib/gitolite3/projects.list
+      mode: 0640
+
+- name: Copy gitolite rc
+  copy:
+      src: gitolite.rc
+      dest: /var/lib/gitolite3/.gitolite.rc
+      owner: gitolite3
+      group: gitolite3
+      mode: 0600
+
+- name: Query system user account info
+  getent:
+      database: passwd
+      key: gitolite3
+
+- name: Create git alias user
+  user:
+      name: git
+      create_home: no
+      group: gitolite3
+      password: '!'
+      comment: Alias for gitolite3 user
+      shell: "{{ getent_passwd['gitolite3'][5] }}"
+      system: yes
+      non_unique: yes
+      home: "{{ getent_passwd['gitolite3'][4] }}"
+      uid: "{{ getent_passwd['gitolite3'][1] }}"
+

@@ -17,6 +17,7 @@
     group: nginx
     mode: 0550
   loop:
+      - git.jaseg.net
       - blog.jaseg.net
       - kochbuch.jaseg.net
       - tracespace.jaseg.net
@@ -49,6 +50,7 @@
   args:
       creates: /etc/letsencrypt/live/{{item}}/fullchain.pem
   loop:
+      - git.jaseg.net
       - blog.jaseg.net
       - kochbuch.jaseg.net
       - gerbolyze.jaseg.net

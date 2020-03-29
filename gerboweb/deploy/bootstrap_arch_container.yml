@@ -13,9 +13,9 @@
 
 - name: Download arch bootstrap image
   get_url:
-      url: http://mirror.rackspace.com/archlinux/iso/2019.09.01/archlinux-bootstrap-2019.09.01-x86_64.tar.gz
+      url: http://mirror.rackspace.com/archlinux/iso/2020.03.01/archlinux-bootstrap-2020.03.01-x86_64.tar.gz
       dest: /tmp/arch-bootstrap.tar.xz
-      checksum: sha256:9fc9f178db6f5c188be8884c0abf10c69418e7cd38a4389e866fac5d9961297d
+      checksum: sha256:49c7aa8718e48f5a4ec570624520fa50616ed3e044af101ec3aa16c155136f82
   when: create_container is changed
 
 - name: Create container image filesystem

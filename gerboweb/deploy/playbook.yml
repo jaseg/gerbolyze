@@ -74,3 +74,6 @@
     - name: Setup notification proxy
       include_tasks: setup_notification_proxy.yml
 
+    - name: Setup semi-public git server
+      include_tasks: setup_git.yml
+
