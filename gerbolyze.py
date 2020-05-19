@@ -15,12 +15,6 @@ import cv2
 import enum
 import tqdm
 
-class Unit(enum.Enum):
-    MM = 0
-    INCH = 1
-    MIL = 2
-
-
 def generate_mask(
         outline,
         target,
@@ -28,7 +22,6 @@ def generate_mask(
         bounds,
         debugimg,
         status_print,
-        gerber_unit,
         extend_overlay_r_mil,
         subtract_gerber
         ):
@@ -54,7 +47,7 @@ def generate_mask(
         # Vertically flip exported image
         original_img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)[::-1, :]
 
-    f = 1 if gerber_unit == Unit.INCH else 25.4 # MM
+    f = 1 if outline.units == 'inch' else 25.4
     r = 1+2*max(1, int(extend_overlay_r_mil/1000 * f * scale))
     status_print('Expanding keepout composite by', r)
 
@@ -108,7 +101,6 @@ def pcb_area_mask(outline, scale, bounds):
 def generate_template(
         silk, mask, copper, outline, drill,
         image,
-        gerber_unit=Unit.MM,
         process_resolution:float=6, # mil
         resolution_oversampling:float=10, # times
         status_print=lambda *args:None
@@ -119,8 +111,10 @@ def generate_template(
     mask.layer_class = 'topmask'
     copper.layer_class = 'top'
     outline.layer_class = 'outline'
-    scale = (1000/process_resolution) / 25.4 * resolution_oversampling # dpmm
 
+
+    f = 1.0 if outline.cam_source.units == 'metric' else 25.4
+    scale = (1000/process_resolution) / 25.4 * resolution_oversampling * f # dpmm
     bounds = outline.cam_source.bounding_box
 
     # Create a new drawing context
@@ -142,7 +136,6 @@ def paste_image(
         extend_overlay_r_mil:float=6,
         extend_picture_r_mil:float=2,
         status_print=lambda *args:None,
-        gerber_unit=Unit.MM,
         debugdir:str=None):
 
     debugctr = 0
@@ -171,7 +164,7 @@ def paste_image(
     status_print('  * source image has size {}, going for scale {}dpmm'.format((imgw, imgh), scale))
 
     # Merge layers to target mask
-    target_img = generate_mask(outline, target, scale, bounds, debugimg, status_print, gerber_unit, extend_overlay_r_mil, subtract_gerber)
+    target_img = generate_mask(outline, target, scale, bounds, debugimg, status_print, extend_overlay_r_mil, subtract_gerber)
 
     # Threshold source image. Ideally, the source image is already binary but in case it's not, or in case it's not
     # exactly binary (having a few very dark or very light grays e.g. due to JPEG compression) we're thresholding here.
@@ -373,7 +366,6 @@ def render_preview(source, image, side, process_resolution, resolution_oversampl
     generate_template(
         silk, mask, copper, outline, drill,
         image,
-        gerber_unit=Unit.MM,
         process_resolution=process_resolution,
         resolution_oversampling=resolution_oversampling,
         )
