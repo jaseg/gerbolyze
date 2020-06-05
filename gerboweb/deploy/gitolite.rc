@@ -102,7 +102,7 @@
             # 'mirror',
             # 'readme',
             # 'sskm',
-            # 'D',
+            'D',
 
         # These FEATURES are enabled by default.
 
