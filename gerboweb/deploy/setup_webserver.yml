@@ -58,6 +58,7 @@
       - openjscad.jaseg.net
       - pogojig.jaseg.net
       - automation.jaseg.de
+      - dyndns.jaseg.de
 
 - name: Copy final nginx config
   copy:

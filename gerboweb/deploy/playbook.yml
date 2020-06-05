@@ -1,4 +1,34 @@
-- name: Gerbolyze container setup playbook
+- name: DNS setup
+  hosts: localhost
+  module_defaults:
+      inwx:
+          username: "{{lookup('ini', 'user section=inwx file=credentials.ini')}}"
+          password: "{{lookup('ini', 'pass section=inwx file=credentials.ini')}}"
+  vars:
+      subdomains:
+        - git.jaseg.net
+        - blog.jaseg.net
+        - kochbuch.jaseg.net
+        - gerbolyze.jaseg.net
+        - tracespace.jaseg.net
+        - openjscad.jaseg.net
+        - pogojig.jaseg.net
+        - automation.jaseg.de
+        - dyndns.jaseg.de
+      fastmail_domains:
+        - jaseg.net
+        - jaseg.de
+  tasks:
+      - name: Gather wendelstein facts
+        setup:
+        delegate_to: wendelstein
+        delegate_facts: True
+
+      - name: Setup DNS
+        include_tasks: dns.yml
+
+
+- name: Wendelstein setup
   hosts: wendelstein
   tasks:
     - name: Set hostname
@@ -12,7 +42,7 @@
 
     - name: Install host requisites
       dnf:
-          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git,iptables-services,python3-pycryptodomex,zip,python3-uwsgidecorators
+          name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,libselinux-python,git,iptables-services,python3-pycryptodomex,zip,python3-uwsgidecorators,nsd
           state: latest
 
     - name: Disable password-based root login
@@ -77,3 +107,5 @@
     - name: Setup semi-public git server
       include_tasks: setup_git.yml
 
+    - name: Setup private DynDNS service
+      include_tasks: setup_dyndns.yml
