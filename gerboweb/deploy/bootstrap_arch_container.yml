@@ -55,6 +55,9 @@
       regexp: '^CheckSpace'
       line: '#CheckSpace'
 
+- name: Update container keyring
+  shell: arch-chroot "{{root}}" pacman -Sy --noconfirm archlinux-keyring
+
 - name: Update container and install software
   shell: arch-chroot "{{root}}" pacman -Syu --noconfirm
 
