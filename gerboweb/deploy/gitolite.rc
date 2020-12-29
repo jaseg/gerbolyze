@@ -21,7 +21,7 @@
     UMASK                           =>  0027,
 
     # look for "git-config" in the documentation
-    GIT_CONFIG_KEYS                 =>  'core\.sharedRepository',
+    GIT_CONFIG_KEYS                 =>  'core\.sharedRepository gitweb.owner gitweb.description gitweb.category',
 
     # comment out if you don't need all the extra detail in the logfile
     LOG_EXTRA                       =>  1,
