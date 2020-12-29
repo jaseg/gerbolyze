@@ -1,0 +1,14 @@
+
+SQLITE_DB = '{{dyndns_sqlite_dbfile}}'
+
+NAMESERVER = 'ns.jaseg.de'
+NAMESERVER_MAIL = 'dns@jaseg.de'
+ZONEFILE = 'dyn.jaseg.de.zone'
+ZONE = 'dyn.jaseg.de'
+NSD_CONTROL = 'sudo -u nsd nsd-control'.split()
+
+DYNAMIC_RECORDS = {
+  'bigdata': ('v6', '{{ lookup('password', 'dyndns_secret_bigdata.txt length=32') }}'),
+  'raspi': ('v6', '{{ lookup('password', 'dyndns_secret_raspi.txt length=32') }}'),
+}
+

@@ -1,0 +1,80 @@
+---
+- name: Set local facts
+  set_fact:
+      dyndns_sqlite_dbfile: /var/lib/dyndns/db.sqlite3
+
+- name: Copy nsd config
+  copy:
+    src: nsd.conf
+    dest: /etc/nsd/nsd.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Enable and launch nsd systemd service
+  systemd:
+      name: nsd.service
+      enabled: yes
+      state: restarted
+
+- name: Create dyndns worker user and group
+  user:
+      name: uwsgi-dyndns
+      create_home: no
+      group: uwsgi
+      password: '!'
+      shell: /sbin/nologin
+      system: yes
+
+- name: Allow dyndns app to kick nsd
+  lineinfile:
+    path: /etc/sudoers
+    line: 'uwsgi-dyndns ALL=(nsd) NOPASSWD: /usr/sbin/nsd-control reload dyn.jaseg.de'
+
+- name: Create webapp dir
+  file:
+      path: /var/lib/dyndns
+      state: directory
+      owner: uwsgi-dyndns
+      group: nsd
+      mode: 0750
+
+- name: Copy webapp sources
+  copy:
+      src: dyndns.py
+      dest: /var/lib/dyndns/
+      owner: uwsgi-dyndns
+      group: uwsgi
+      mode: 0440
+
+- name: Template webapp config
+  template:
+    src: dyndns_config.py.j2
+    dest: /var/lib/dyndns/config.py
+    owner: uwsgi-dyndns
+    group: root
+    mode: 0660
+
+- name: Copy uwsgi config
+  copy:
+      src: uwsgi-dyndns.ini
+      dest: /etc/uwsgi.d/dyndns.ini
+      owner: uwsgi-dyndns
+      group: uwsgi
+      mode: 0440
+
+- name: Enable uwsgi systemd socket
+  systemd:
+      daemon-reload: yes
+      name: uwsgi-app@dyndns.socket
+      enabled: yes
+
+- name: Create sqlite db file
+  file:
+    path: "{{dyndns_sqlite_dbfile}}"
+    owner: uwsgi-dyndns
+    group: uwsgi
+    mode: 0660
+    state: touch
+
+
