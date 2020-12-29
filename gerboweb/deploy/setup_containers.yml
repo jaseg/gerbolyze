@@ -1,7 +1,7 @@
 ---
 - name: Install host requisites
   dnf:
-      name: btrfs-progs,arch-install-scripts,systemd-container,libselinux-python
+      name: btrfs-progs,arch-install-scripts,systemd-container,python3-libselinux
       state: latest
 
 - name: Create individual containers

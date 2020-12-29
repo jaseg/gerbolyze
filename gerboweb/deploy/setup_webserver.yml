@@ -17,8 +17,8 @@
     group: nginx
     mode: 0550
   loop:
-      - git.jaseg.net
-      - blog.jaseg.net
+      - git.jaseg.de
+      - blog.jaseg.de
       - kochbuch.jaseg.net
       - tracespace.jaseg.net
       - openjscad.jaseg.net
@@ -46,12 +46,14 @@
       state: restarted
 
 - name: Create subdomain letsencrypt certificates
-  command: certbot --nginx certonly -d {{item}} -n --agree-tos --email {{item}}-letsencrypt@jaseg.net
+  command: certbot --nginx certonly -d {{item}} -n --agree-tos --email {{item}}-letsencrypt@jaseg.de
   args:
       creates: /etc/letsencrypt/live/{{item}}/fullchain.pem
   loop:
       - git.jaseg.net
+      - git.jaseg.de
       - blog.jaseg.net
+      - blog.jaseg.de
       - kochbuch.jaseg.net
       - gerbolyze.jaseg.net
       - tracespace.jaseg.net

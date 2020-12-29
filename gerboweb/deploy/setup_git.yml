@@ -6,7 +6,7 @@
 - name: Copy cgit favicon
   copy:
       src: cgit-logo.png
-      dest: /var/www/git.jaseg.net/cgit.png
+      dest: /var/www/git.jaseg.de/cgit.png
 
 - name: Create cgit instance config dir
   file:
