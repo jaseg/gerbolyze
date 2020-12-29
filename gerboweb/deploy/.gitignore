@@ -1,4 +1,5 @@
 *_secret.txt
+dyndns_secret_*.txt
 *_apikey.txt
 playbook.retry
 credentials.ini
