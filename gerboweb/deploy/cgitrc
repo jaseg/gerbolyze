@@ -1,11 +1,24 @@
 css=/cgit.css
-logo= /cgit.png
+logo=/cgit.png
 
 enable-http-clone=1
 robots=noindex, nofollow
 virtual-root=/
 
 readme=:README.rst
+readme=:readme.rst
+readme=:README.md
+readme=:readme.md
+readme=:README.txt
+readme=:readme.txt
+readme=:README.mkd
+readme=:readme.mkd
+readme=:README.htm
+readme=:readme.htm
+readme=:README.html
+readme=:readme.html
+readme=:README
+readme=:readme
 about-filter=/usr/libexec/cgit/filters/about-formatting.sh
 
 enable-index-links=1
@@ -18,3 +31,11 @@ source-filter=/usr/libexec/cgit/filters/syntax-highlighting.py
 
 project-list=/var/lib/gitolite3/projects.list
 scan-path=/var/lib/gitolite3/repositories
+
+mimetype.gif=image/gif
+mimetype.html=text/html
+mimetype.jpg=image/jpeg
+mimetype.jpeg=image/jpeg
+mimetype.pdf=application/pdf
+mimetype.png=image/png
+mimetype.svg=image/svg+xml

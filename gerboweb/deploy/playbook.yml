@@ -35,20 +35,24 @@
   hosts: wendelstein
   tasks:
     - name: Set hostname
+      tags: setup
       hostname:
         name: wendelstein.jaseg.net
 
     - name: Install common admin tools
+      tags: setup
       dnf:
         name: htop,tmux,fish,mosh,neovim,sqlite
         state: latest
 
     - name: Install host requisites
+      tags: setup
       dnf:
           name: nginx,uwsgi,python3-flask,python3-flask-wtf,uwsgi-plugin-python3,certbot,python3-certbot-nginx,python3-libselinux,git,iptables-services,python3-pycryptodomex,zip,python3-uwsgidecorators,nsd
           state: latest
 
     - name: Disable password-based root login
+      tags: setup
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^PermitRootLogin'
@@ -56,12 +60,14 @@
       register: disable_root_pw_ssh
 
     - name: Restart sshd
+      tags: setup
       systemd:
           name: sshd
           state: restarted
       when: disable_root_pw_ssh is changed
 
     - name: Configure iptables firewall service
+      tags: setup
       copy:
         src: iptables.rules
         dest: /etc/sysconfig/iptables
@@ -70,13 +76,18 @@
         mode: 0664
 
     - name: Enable iptables firewall service
+      tags: setup
       systemd:
         name: iptables
         enabled: yes
         state: started
 
     - name: Create containers
-      include_tasks: setup_containers.yml
+      tags: setup
+      include_tasks:
+          file: setup_containers.yml
+          apply:
+              tags: setup
       vars:
         containers:
           - gerboweb
@@ -84,31 +95,72 @@
           - pogojig
 
     - name: Setup web server
-      include_tasks: setup_webserver.yml
+      tags: www
+      include_tasks:
+          file: setup_webserver.yml
+          apply:
+              tags: www
 
     - name: Setup gerboweb
-      include_tasks: setup_gerboweb.yml
+      tags: gerboweb
+      include_tasks:
+          file: setup_gerboweb.yml
+          apply: 
+              tags: gerboweb
 
     - name: Setup clippy
-      include_tasks: setup_clippy.yml
+      tags: clippy
+      include_tasks:
+          file: setup_clippy.yml
+          apply:
+              tags: clippy
 
     - name: Setup secure download
-      include_tasks: setup_secure_download.yml
+      tags: secure-download
+      include_tasks:
+          file: setup_secure_download.yml
+          apply:
+              tags: secure-download
 
     - name: Setup tracespace
-      include_tasks: setup_tracespace.yml
+      tags: pogojig
+      include_tasks:
+          file: setup_tracespace.yml
+          apply:
+              tags: pogojig
 
     - name: Setup openjscad
-      include_tasks: setup_openjscad.yml
+      tags: pogojig
+      include_tasks:
+          file: setup_openjscad.yml
+          apply:
+              tags: pogojig
 
     - name: Setup pogojig
-      include_tasks: setup_pogojig.yml
+      tags: pogojig
+      include_tasks:
+          file: setup_pogojig.yml
+          apply:
+              tags: pogojig
 
     - name: Setup notification proxy
-      include_tasks: setup_notification_proxy.yml
+      tags: notification-proxy
+      include_tasks:
+          file: setup_notification_proxy.yml
+          apply:
+              tags:
+                  notification-proxy
 
     - name: Setup semi-public git server
-      include_tasks: setup_git.yml
+      tags: git
+      include_tasks:
+          file: setup_git.yml
+          apply:
+              tags: git
 
     - name: Setup private DynDNS service
-      include_tasks: setup_dyndns.yml
+      tags: dyndns
+      include_tasks:
+          file: setup_dyndns.yml
+          apply:
+              tags: dyndns

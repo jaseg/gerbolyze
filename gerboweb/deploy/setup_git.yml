@@ -43,26 +43,34 @@
       name: uwsgi-app@cgit.socket
       enabled: yes
 
-- name: Copy gitolite admin pubkey
-  copy:
-      src: ~/.ssh/id_ed25519.gitolite.pub
-      dest: /tmp/jaseg-gitolite.pub
-      owner: gitolite3
-      group: gitolite3
+- name: Check if gitolite ssh config exists
+  stat:
+      path: /var/lib/gitolite3/.ssh/authorized_keys
+  register: gitolite_ssh_keys_stat
 
-- name: Run gitolite initialization
-  command: gitolite setup -pk /tmp/jaseg-gitolite.pub
-  become: true
-  become_method: su
-  become_user: gitolite3
-  become_flags: '-s /bin/sh'
-  args:
-      creates: /var/lib/gitolite3/projects.list
+- name: Gitolite admin key setup
+  block:
+    - name: Copy gitolite admin pubkey
+      copy:
+          src: ~/.ssh/id_ed25519.gitolite.pub
+          dest: /tmp/jaseg-gitolite.pub
+          owner: gitolite3
+          group: gitolite3
 
-- name: Remove leftover admin pubkey
-  file:
-      state: absent
-      path: /tmp/jaseg-gitolite.pub
+    - name: Run gitolite initialization
+      command: gitolite setup -pk /tmp/jaseg-gitolite.pub
+      become: true
+      become_method: su
+      become_user: gitolite3
+      become_flags: '-s /bin/sh'
+      args:
+          creates: /var/lib/gitolite3/projects.list
+
+    - name: Remove leftover admin pubkey
+      file:
+          state: absent
+          path: /tmp/jaseg-gitolite.pub
+  when: not gitolite_ssh_keys_stat.stat.exists
 
 - name: Allow uwsgi group to access gitolite repo dir
   file:
@@ -112,4 +120,10 @@
       non_unique: yes
       home: "{{ getent_passwd['gitolite3'][4] }}"
       uid: "{{ getent_passwd['gitolite3'][1] }}"
+
+- name: Hack to fix cgit handling for restructuredtext readmes
+  file:
+      src: /usr/bin/rst2html
+      dest: /usr/bin/rst2html.py
+      state: link
 
