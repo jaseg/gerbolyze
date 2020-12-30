@@ -1,5 +1,12 @@
 css=/cgit.css
 logo=/cgit.png
+favicon=/favicon.png
+
+root-title=git.jaseg.de
+root-desc=jaseg's git repositories
+snapshots=tar.gz tar.bz2 zip
+
+clone-url=git@git.jaseg.de:$CGIT_REPO_URL https://git.jaseg.de/$CGIT_REPO_URL
 
 enable-http-clone=1
 robots=noindex, nofollow

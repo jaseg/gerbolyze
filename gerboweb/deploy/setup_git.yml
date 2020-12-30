@@ -1,12 +1,17 @@
 - name: Install host requisites
   dnf:
-      name: cgit,gitolite3,python3-pygments,python3-docutils,nodejs-markdown
+      name: cgit,gitolite3,python3-pygments,python3-docutils,nodejs-markdown,python3-markdown
       state: latest
 
-- name: Copy cgit favicon
+- name: Copy cgit logo
   copy:
       src: cgit-logo.png
       dest: /var/www/git.jaseg.de/cgit.png
+
+- name: Copy cgit favicon
+  copy:
+      src: cgit-favicon.ico
+      dest: /var/www/git.jaseg.de/favicon.ico
 
 - name: Create cgit instance config dir
   file:
