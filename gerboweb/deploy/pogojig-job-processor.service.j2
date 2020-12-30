@@ -1,9 +1,0 @@
-[Unit]
-Description=Pogojig render job processor
-
-[Service]
-WorkingDirectory=/var/lib/pogojig
-ExecStart=/usr/bin/python3 job_processor.py {{pogojig_cache}}/job_queue.sqlite3
-
-[Install]
-WantedBy=uwsgi-app@pogojig.service

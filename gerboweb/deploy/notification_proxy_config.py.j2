@@ -1,9 +1,0 @@
-
-SENDGRID_APIKEY = '{{lookup('file', 'notification_proxy_sendgrid_apikey.txt')}}'
-DOMAIN = 'automation.jaseg.de'
-SMTP_HOST = "smtp.sendgrid.net"
-SMTP_PORT = 465
-HEARTBEAT_TIMEOUT = 300
-SQLITE_DB = '{{notification_proxy_sqlite_dbfile}}'
-
-SECRET_KLINGEL = '{{lookup('password', 'notification_proxy_klingel_secret.txt length=32')}}'

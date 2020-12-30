@@ -1,6 +1,0 @@
-[submodule "gerboweb/deploy/checkouts/pogojig"]
-	path = gerboweb/deploy/checkouts/pogojig
-	url = https://github.com/jaseg/pogojig.git
-[submodule "gerboweb/deploy/library/ansible-collection"]
-	path = gerboweb/deploy/library/inwx-collection
-	url = https://github.com/inwx/ansible-collection
