@@ -1,0 +1,9 @@
+[submodule "upstream/cpp-base64"]
+	path = upstream/cpp-base64
+	url = https://github.com/ReneNyffenegger/cpp-base64
+[submodule "upstream/voronoi"]
+	path = upstream/voronoi
+	url = https://github.com/JCash/voronoi
+[submodule "upstream/poisson-disk-sampling"]
+	path = upstream/poisson-disk-sampling
+	url = https://github.com/thinks/poisson-disk-sampling
