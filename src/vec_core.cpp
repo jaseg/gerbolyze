@@ -1,25 +1,19 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cmath>
@@ -32,7 +26,7 @@
 #include "svg_import_defs.h"
 #include "jc_voronoi.h"
 
-using namespace svg_plugin;
+using namespace gerbolyze;
 using namespace std;
 
 /* debug function */
@@ -84,7 +78,7 @@ static void voronoi_relax_points(const jcv_diagram* diagram, jcv_point* points) 
  * 4. It scales each of these voronoi cell polygons to match the input images brightness at the spot covered by this
  *    cell.
  */
-void vectorizer::vectorize_image(cairo_t *cr, const pugi::xml_node &node, double min_feature_size_px, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix) {
+void gerbolyze::vectorize_image(cairo_t *cr, const pugi::xml_node &node, double min_feature_size_px, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink) {
     /* Read XML node attributes */
     auto x = usvg_double_attr(node, "x", 0.0);
     auto y = usvg_double_attr(node, "y", 0.0);
@@ -158,8 +152,12 @@ void vectorizer::vectorize_image(cairo_t *cr, const pugi::xml_node &node, double
     cairo_save(cr);
     cairo_identity_matrix(cr);
     for (const auto &poly : rect_out) {
-        /* FIXME */
-        //export_as_gerber(cr, poly, /* dark */ false);
+        vector<array<double, 2>> out;
+        for (const auto &p : poly)
+            out.push_back(std::array<double, 2>{
+                    ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
+                    });
+        sink << GRB_POL_CLEAR << out;
     }
     cairo_restore(cr);
 
@@ -324,8 +322,12 @@ void vectorizer::vectorize_image(cairo_t *cr, const pugi::xml_node &node, double
         cairo_save(cr);
         cairo_identity_matrix(cr);
         for (const auto &poly : polys) {
-            /* FIXME */
-            //export_as_gerber(cr, poly, /* dark */ true);
+            vector<array<double, 2>> out;
+            for (const auto &p : poly)
+                out.push_back(std::array<double, 2>{
+                        ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
+                        });
+            sink << GRB_POL_DARK << out;
         }
         cairo_restore(cr);
     }

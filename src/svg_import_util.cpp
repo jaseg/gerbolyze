@@ -1,25 +1,19 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cmath>
@@ -28,7 +22,7 @@
 
 using namespace std;
 
-void svg_plugin::print_matrix(cairo_t *cr, bool print_examples) {
+void gerbolyze::print_matrix(cairo_t *cr, bool print_examples) {
     cairo_matrix_t mat;
     cairo_get_matrix(cr, &mat);
     cerr << "    xform matrix = { xx=" << mat.xx << ", yx=" << mat.yx << ", xy=" << mat.xy << ", yy=" << mat.yy << ", x0=" << mat.x0 << ", y0=" << mat.y0 << " }" << endl;
@@ -49,7 +43,7 @@ void svg_plugin::print_matrix(cairo_t *cr, bool print_examples) {
 }
 
 /* Read a double value formatted like usvg formats doubles from an SVG attribute */
-double svg_plugin::usvg_double_attr(const pugi::xml_node &node, const char *attr, double default_value) {
+double gerbolyze::usvg_double_attr(const pugi::xml_node &node, const char *attr, double default_value) {
     const auto *val = node.attribute(attr).value();
     if (*val == '\0')
         return default_value;
@@ -58,7 +52,7 @@ double svg_plugin::usvg_double_attr(const pugi::xml_node &node, const char *attr
 }
 
 /* Read an url from an usvg attribute */
-string svg_plugin::usvg_id_url(string attr) {
+string gerbolyze::usvg_id_url(string attr) {
     if (attr.rfind("url(#", 0) == string::npos)
         return string();
 
@@ -67,7 +61,7 @@ string svg_plugin::usvg_id_url(string attr) {
     return attr;
 }
 
-svg_plugin::RelativeUnits svg_plugin::map_str_to_units(string str, svg_plugin::RelativeUnits default_val) {
+gerbolyze::RelativeUnits gerbolyze::map_str_to_units(string str, gerbolyze::RelativeUnits default_val) {
     if (str == "objectBoundingBox")
         return SVG_ObjectBoundingBox;
     else if (str == "userSpaceOnUse")
@@ -75,7 +69,7 @@ svg_plugin::RelativeUnits svg_plugin::map_str_to_units(string str, svg_plugin::R
     return default_val;
 }
 
-void svg_plugin::load_cairo_matrix_from_svg(const string &transform, cairo_matrix_t &mat) {
+void gerbolyze::load_cairo_matrix_from_svg(const string &transform, cairo_matrix_t &mat) {
     if (transform.empty()) {
         cairo_matrix_init_identity(&mat);
         return;
@@ -97,14 +91,14 @@ void svg_plugin::load_cairo_matrix_from_svg(const string &transform, cairo_matri
     cairo_matrix_init(&mat, a, b, c, d, e, f);
 }
 
-void svg_plugin::apply_cairo_transform_from_svg(cairo_t *cr, const string &transform) {
+void gerbolyze::apply_cairo_transform_from_svg(cairo_t *cr, const string &transform) {
     cairo_matrix_t mat;
     load_cairo_matrix_from_svg(transform, mat);
     cairo_transform(cr, &mat); /* or cairo_transform? */
 }
 
 /* Cf. https://tools.ietf.org/html/rfc2397 */
-string svg_plugin::parse_data_iri(const string &data_url) {
+string gerbolyze::parse_data_iri(const string &data_url) {
     if (data_url.rfind("data:", 0) == string::npos) /* check if url starts with "data:" */
         return string();
 
@@ -119,7 +113,7 @@ string svg_plugin::parse_data_iri(const string &data_url) {
 }
 
 /* for debug svg output */
-void svg_plugin::apply_viewport_matrix(cairo_t *cr, cairo_matrix_t &viewport_matrix) {
+void gerbolyze::apply_viewport_matrix(cairo_t *cr, cairo_matrix_t &viewport_matrix) {
     /* Multiply viewport matrix *from the left*, i.e. as if it had been applied *before* the currently set matrix. */
     cairo_matrix_t old_matrix;
     cairo_get_matrix(cr, &old_matrix);

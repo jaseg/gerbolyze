@@ -1,29 +1,22 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SVG_IMPORT_UTIL_H
-#define SVG_IMPORT_UTIL_H
+#pragma once
 
 #include <math.h>
 #include <cmath>
@@ -46,7 +39,7 @@
 
 #include "svg_import_defs.h"
 
-namespace svg_plugin {
+namespace gerbolyze {
 
 /* Coordinate system selection for things like "patternContentUnits" */
 enum RelativeUnits {
@@ -64,6 +57,5 @@ void apply_cairo_transform_from_svg(cairo_t *cr, const std::string &transform);
 std::string parse_data_iri(const std::string &data_url);
 void apply_viewport_matrix(cairo_t *cr, cairo_matrix_t &viewport_matrix);
 
-} /* namespace svg_plugin */
+} /* namespace gerbolyze */
 
-#endif /* SVG_IMPORT_UTIL_H */

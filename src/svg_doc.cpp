@@ -1,57 +1,59 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
+#include <fstream>
+
 #include "svg_import_defs.h"
-#include "svg_doc.h"
 #include "svg_color.h"
 #include "svg_geom.h"
 #include "svg_path.h"
 #include "vec_core.h"
 
-using namespace svg_plugin;
+using namespace gerbolyze;
 using namespace std;
 using namespace ClipperLib;
-using namespace vectorizer;
 
-svg_plugin::SVGDocument::~SVGDocument() {
+gerbolyze::SVGDocument::~SVGDocument() {
     if (cr)
         cairo_destroy (cr);
     if (surface)
         cairo_surface_destroy (surface);
 }
 
-bool svg_plugin::SVGDocument::load(string filename, string debug_out_filename) {
+bool gerbolyze::SVGDocument::load(string filename, string debug_out_filename) {
+    ifstream in_f;
+    in_f.open(filename);
+
+    return in_f && load(in_f, debug_out_filename);
+}
+
+bool gerbolyze::SVGDocument::load(istream &in, string debug_out_filename) {
     /* Load XML document */
-    auto res = svg_doc.load_file(filename.c_str());
+    auto res = svg_doc.load(in);
     if (!res) {
-        cerr << "Cannot open input file \"" << filename << "\": " << res << endl;
+        cerr << "Cannot parse input file" << endl;
         return false;
     }
 
     root_elem = svg_doc.child("svg");
     if (!root_elem) {
-        cerr << "Cannot load input file \"" << filename << endl;
+        cerr << "Input file is missing root <svg> element" << endl;
         return false;
     }
 
@@ -90,7 +92,7 @@ bool svg_plugin::SVGDocument::load(string filename, string debug_out_filename) {
     return true;
 }
 
-const Paths *svg_plugin::SVGDocument::lookup_clip_path(const pugi::xml_node &node) {
+const Paths *gerbolyze::SVGDocument::lookup_clip_path(const pugi::xml_node &node) {
     string id(usvg_id_url(node.attribute("clip-path").value()));
     if (id.empty() || !clip_path_map.contains(id)) {
         return nullptr;
@@ -98,7 +100,7 @@ const Paths *svg_plugin::SVGDocument::lookup_clip_path(const pugi::xml_node &nod
     return &clip_path_map[id];
 }
 
-Pattern *svg_plugin::SVGDocument::lookup_pattern(const string id) {
+Pattern *gerbolyze::SVGDocument::lookup_pattern(const string id) {
     if (id.empty() || !pattern_map.contains(id)) {
         return nullptr;
     }
@@ -106,16 +108,16 @@ Pattern *svg_plugin::SVGDocument::lookup_pattern(const string id) {
 };
 
 /* Used to convert mm values from configuration such as the minimum feature size into document units. */
-double svg_plugin::SVGDocument::mm_to_doc_units(double mm) const {
+double gerbolyze::SVGDocument::mm_to_doc_units(double mm) const {
     return mm * (vb_w / page_w_mm);
 }
 
-double svg_plugin::SVGDocument::doc_units_to_mm(double px) const {
+double gerbolyze::SVGDocument::doc_units_to_mm(double px) const {
     return px / (vb_w / page_w_mm);
 }
 
 /* Recursively export all SVG elements in the given group. */
-void svg_plugin::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths &parent_clip_path) {
+void gerbolyze::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths &parent_clip_path) {
     /* Enter the group's coordinate system */
     cairo_save(cr);
     apply_cairo_transform_from_svg(cr, group.attribute("transform").value());
@@ -137,18 +139,11 @@ void svg_plugin::SVGDocument::export_svg_group(const pugi::xml_node &group, Path
     /* Clip against parent's clip path (both are now in document coordinates) */
     if (!parent_clip_path.empty()) {
         if (!clip_path.empty()) {
-            cerr << "Combining clip paths" << endl;
             combine_clip_paths(parent_clip_path, clip_path, clip_path);
         } else {
-            cerr << "using parent clip path" << endl;
             clip_path = parent_clip_path;
         }
     }
-
-    ClipperLib::Clipper c2;
-    c2.AddPaths(clip_path, ptSubject, /* closed */ true);
-    ClipperLib::IntRect bbox = c2.GetBounds();
-    cerr << "clip path is now: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
 
     /* Iterate over the group's children, exporting them one by one. */
     for (const auto &node : group.children()) {
@@ -162,7 +157,7 @@ void svg_plugin::SVGDocument::export_svg_group(const pugi::xml_node &group, Path
         } else if (name == "image") {
             double min_feature_size_mm = 0.1; /* TODO make configurable */
             double min_feature_size_px = mm_to_doc_units(min_feature_size_mm);
-            vectorize_image(cr, node, min_feature_size_px, clip_path, viewport_matrix);
+            vectorize_image(cr, node, min_feature_size_px, clip_path, viewport_matrix, *polygon_sink);
         } else if (name == "defs") {
             /* ignore */
         } else {
@@ -174,7 +169,7 @@ void svg_plugin::SVGDocument::export_svg_group(const pugi::xml_node &group, Path
 }
 
 /* Export an SVG path element to gerber. Apply patterns and clip on the fly. */
-void svg_plugin::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths &clip_path) {
+void gerbolyze::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths &clip_path) {
     enum gerber_color fill_color = gerber_fill_color(node);
     enum gerber_color stroke_color = gerber_stroke_color(node);
 
@@ -253,8 +248,7 @@ void svg_plugin::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths 
                     out.push_back(std::array<double, 2>{
                             ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
                             });
-                std::cerr << "calling sink" << std::endl;
-                polygon_sink(out, fill_color == GRB_DARK);
+                *polygon_sink << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
             }
             cairo_restore(cr);
         }
@@ -341,28 +335,37 @@ void svg_plugin::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths 
                     out.push_back(std::array<double, 2>{
                             ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
                             });
-                std::cerr << "calling sink" << std::endl;
-                polygon_sink(out, stroke_color == GRB_DARK);
+                *polygon_sink << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
             }
             cairo_restore(cr);
         }
     }
 }
 
-void svg_plugin::SVGDocument::do_export(string debug_out_filename) {
+void gerbolyze::SVGDocument::render(PolygonSink &sink) {
     assert(_valid);
     /* Export the actual SVG document to both SVG for debuggin and to gerber. We do this as we go, i.e. we immediately
      * process each element to gerber as we encounter it instead of first rendering everything to a giant list of gerber
      * primitives and then serializing those later. Exporting them on the fly saves a ton of memory and is much faster.
      */
+    polygon_sink = &sink;
+    sink.header({vb_x, vb_y}, {vb_w, vb_h});
     ClipperLib::Clipper c;
     c.AddPaths(vb_paths, ptSubject, /* closed */ true);
     ClipperLib::IntRect bbox = c.GetBounds();
     cerr << "document viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
     export_svg_group(root_elem, vb_paths);
+    sink.footer();
 }
 
-void svg_plugin::SVGDocument::setup_debug_output(string filename) {
+void gerbolyze::SVGDocument::render_to_list(vector<pair<Polygon, GerberPolarityToken>> &out) {
+    LambdaPolygonSink sink([&out](const Polygon &poly, GerberPolarityToken pol) {
+            out.emplace_back(pair<Polygon, GerberPolarityToken>{poly, pol});
+        });
+    render(sink);
+}
+
+void gerbolyze::SVGDocument::setup_debug_output(string filename) {
     /* Setup cairo to draw into a SVG surface (for debugging). For actual rendering, something like a recording surface
      * would work fine, too. */
     /* Cairo expects the SVG surface size to be given in pt (72.0 pt = 1.0 in = 25.4 mm) */
@@ -387,31 +390,27 @@ void svg_plugin::SVGDocument::setup_debug_output(string filename) {
     cairo_set_source_rgba (cr, 1.0, 0.0, 0.0, 1.0);
 }
 
-void svg_plugin::SVGDocument::setup_viewport_clip() {
+void gerbolyze::SVGDocument::setup_viewport_clip() {
     /* Set up view port clip path */
     Path vb_path;
     for (auto &elem : vector<pair<double, double>> {{vb_x, vb_y}, {vb_x+vb_w, vb_y}, {vb_x+vb_w, vb_y+vb_h}, {vb_x, vb_y+vb_h}}) {
         double x = elem.first, y = elem.second;
         vb_path.push_back({ (cInt)round(x * clipper_scale), (cInt)round(y * clipper_scale) });
-        cerr << "adding to path: " << (cInt)round(x * clipper_scale) << ", " << (cInt)round(y * clipper_scale) << endl;
     }
     vb_paths.push_back(vb_path);
 
     ClipperLib::Clipper c;
     c.AddPaths(vb_paths, ptSubject, /* closed */ true);
-    ClipperLib::IntRect bbox = c.GetBounds();
-    cerr << "did set up viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
-    export_svg_group(root_elem, vb_paths);
 }
 
-void svg_plugin::SVGDocument::load_patterns() {
+void gerbolyze::SVGDocument::load_patterns() {
     /* Set up document-wide pattern registry. Load patterns from <defs> node. */
     for (const auto &node : defs_node.children("pattern")) {
         pattern_map.emplace(std::piecewise_construct, std::forward_as_tuple(node.attribute("id").value()), std::forward_as_tuple(node, *this));
     }
 }
 
-void svg_plugin::SVGDocument::load_clips() {
+void gerbolyze::SVGDocument::load_clips() {
     /* Set up document-wide clip path registry: Extract clip path definitions from <defs> element */
     for (const auto &node : defs_node.children("clipPath")) {
         cairo_save(cr);

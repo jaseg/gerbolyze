@@ -1,25 +1,19 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "svg_geom.h"
@@ -35,7 +29,7 @@ using namespace ClipperLib;
 using namespace std;
 
 /* Get bounding box of a Clipper Paths */
-IntRect svg_plugin::get_paths_bounds(const Paths &paths) {
+IntRect gerbolyze::get_paths_bounds(const Paths &paths) {
     if (paths.empty()) {
         return {0, 0, 0, 0};
     }
@@ -66,7 +60,7 @@ IntRect svg_plugin::get_paths_bounds(const Paths &paths) {
     return {x0, y0, x1, y1};
 }
 
-enum ClipperLib::PolyFillType svg_plugin::clipper_fill_rule(const pugi::xml_node &node) {
+enum ClipperLib::PolyFillType gerbolyze::clipper_fill_rule(const pugi::xml_node &node) {
     string val(node.attribute("fill-rule").value());
     if (val == "evenodd")
         return ClipperLib::pftEvenOdd;
@@ -74,7 +68,7 @@ enum ClipperLib::PolyFillType svg_plugin::clipper_fill_rule(const pugi::xml_node
         return ClipperLib::pftNonZero; /* default */
 }
 
-enum ClipperLib::EndType svg_plugin::clipper_end_type(const pugi::xml_node &node) {
+enum ClipperLib::EndType gerbolyze::clipper_end_type(const pugi::xml_node &node) {
     string val(node.attribute("stroke-linecap").value());
     if (val == "round")
         return ClipperLib::etOpenRound;
@@ -85,7 +79,7 @@ enum ClipperLib::EndType svg_plugin::clipper_end_type(const pugi::xml_node &node
     return ClipperLib::etOpenButt;
 }
 
-enum ClipperLib::JoinType svg_plugin::clipper_join_type(const pugi::xml_node &node) {
+enum ClipperLib::JoinType gerbolyze::clipper_join_type(const pugi::xml_node &node) {
     string val(node.attribute("stroke-linejoin").value());
     if (val == "round")
         return ClipperLib::jtRound;
@@ -100,7 +94,7 @@ enum ClipperLib::JoinType svg_plugin::clipper_join_type(const pugi::xml_node &no
  * all holes from it. We remove holes by splitting each polygon that has a hole into two or more pieces so that the hole
  * is no more. These pieces perfectly fit each other so there is no visual or functional difference.
  */
-void svg_plugin::dehole_polytree(PolyNode &ptree, Paths &out) {
+void gerbolyze::dehole_polytree(PolyNode &ptree, Paths &out) {
     for (int i=0; i<ptree.ChildCount(); i++) {
         PolyNode *nod = ptree.Childs[i];
         assert(nod);
@@ -149,7 +143,7 @@ void svg_plugin::dehole_polytree(PolyNode &ptree, Paths &out) {
 }
 
 /* Intersect two clip paths. Both must share a coordinate system. */
-void svg_plugin::combine_clip_paths(Paths &in_a, Paths &in_b, Paths &out) {
+void gerbolyze::combine_clip_paths(Paths &in_a, Paths &in_b, Paths &out) {
     Clipper c;
     c.StrictlySimple(true);
     c.AddPaths(in_a, ptClip, /* closed */ true);
@@ -160,7 +154,7 @@ void svg_plugin::combine_clip_paths(Paths &in_a, Paths &in_b, Paths &out) {
 
 /* Transform given clipper paths under the given cairo transform. If no transform is given, use cairo's current
  * user-to-device transform. */
-void svg_plugin::transform_paths(cairo_t *cr, Paths &paths, cairo_matrix_t *mat) {
+void gerbolyze::transform_paths(cairo_t *cr, Paths &paths, cairo_matrix_t *mat) {
     cairo_save(cr);
     if (mat != nullptr) {
         cairo_set_matrix(cr, mat);

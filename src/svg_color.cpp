@@ -1,25 +1,19 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "svg_color.h"
@@ -28,7 +22,7 @@
 #include <string>
 #include <cmath>
 
-using namespace svg_plugin;
+using namespace gerbolyze;
 using namespace std;
 
 /* Map an SVG fill or stroke definition (color, but may also be a pattern) to a gerber color.
@@ -36,7 +30,7 @@ using namespace std;
  * This function handles transparency: Transparent SVG colors are mapped such that no gerber output is generated for
  * them.
  */
-enum gerber_color svg_plugin::svg_color_to_gerber(string color, string opacity, enum gerber_color default_val) {
+enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, enum gerber_color default_val) {
     float alpha = 1.0;
     if (!opacity.empty() && opacity[0] != '\0') {
         char *endptr = nullptr;
@@ -71,7 +65,7 @@ enum gerber_color svg_plugin::svg_color_to_gerber(string color, string opacity, 
     return GRB_DARK;
 }
 
-svg_plugin::RGBColor::RGBColor(string hex) {
+gerbolyze::RGBColor::RGBColor(string hex) {
     assert(hex[0] == '#');
     char *endptr = nullptr;
     const char *c = hex.data();
@@ -84,7 +78,7 @@ svg_plugin::RGBColor::RGBColor(string hex) {
     b = ((rgb >>  0) & 0xff) / 255.0f;
 };
 
-svg_plugin::HSVColor::HSVColor(const RGBColor &color) {
+gerbolyze::HSVColor::HSVColor(const RGBColor &color) {
     float xmax = fmax(color.r, fmax(color.g, color.b));
     float xmin = fmin(color.r, fmin(color.g, color.b));
     float c = xmax - xmin;
@@ -104,7 +98,7 @@ svg_plugin::HSVColor::HSVColor(const RGBColor &color) {
 }
 
 /* Invert gerber color */
-enum gerber_color svg_plugin::gerber_color_invert(enum gerber_color color) {
+enum gerber_color gerbolyze::gerber_color_invert(enum gerber_color color) {
     switch (color) {
         case GRB_CLEAR: return GRB_DARK;
         case GRB_DARK: return GRB_CLEAR;
@@ -113,12 +107,12 @@ enum gerber_color svg_plugin::gerber_color_invert(enum gerber_color color) {
 }
 
 /* Read node's fill attribute and convert it to a gerber color */
-enum gerber_color svg_plugin::gerber_fill_color(const pugi::xml_node &node) {
+enum gerber_color gerbolyze::gerber_fill_color(const pugi::xml_node &node) {
     return svg_color_to_gerber(node.attribute("fill").value(), node.attribute("fill-opacity").value(), GRB_DARK);
 }
 
 /* Read node's stroke attribute and convert it to a gerber color */
-enum gerber_color svg_plugin::gerber_stroke_color(const pugi::xml_node &node) {
+enum gerber_color gerbolyze::gerber_stroke_color(const pugi::xml_node &node) {
     return svg_color_to_gerber(node.attribute("stroke").value(), node.attribute("stroke-opacity").value(), GRB_NONE);
 }
 

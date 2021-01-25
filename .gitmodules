@@ -7,3 +7,6 @@
 [submodule "upstream/poisson-disk-sampling"]
 	path = upstream/poisson-disk-sampling
 	url = https://github.com/thinks/poisson-disk-sampling
+[submodule "upstream/argagg"]
+	path = upstream/argagg
+	url = https://github.com/vietjtnguyen/argagg

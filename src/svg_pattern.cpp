@@ -1,25 +1,19 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <assert.h>
@@ -27,11 +21,11 @@
 #include "svg_pattern.h"
 #include "svg_import_defs.h"
 #include "svg_geom.h"
-#include "svg_doc.h"
+#include <gerbolyze.hpp>
 
 using namespace std;
 
-svg_plugin::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _node(node), doc(&doc) {
+gerbolyze::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _node(node), doc(&doc) {
     /* Read pattern attributes from SVG node */
     cerr << "creating pattern for node with id \"" << node.attribute("id").value() << "\"" << endl;
     x = usvg_double_attr(node, "x");
@@ -53,7 +47,7 @@ svg_plugin::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _no
 
 /* Tile pattern into gerber. Note that this function may be called several times in case the pattern is
  * referenced from multiple places, so we must not clobber any of the object's state. */
-void svg_plugin::Pattern::tile (ClipperLib::Paths &clip) {
+void gerbolyze::Pattern::tile (ClipperLib::Paths &clip) {
     assert(doc);
     cairo_t *cr = doc->cairo();
     assert(cr);

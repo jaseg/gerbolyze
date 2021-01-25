@@ -1,25 +1,19 @@
 /*
- * This program source code file is part of KICAD, a free EDA CAD application.
- *
- * Copyright (C) 2021 Jan Sebastian Götte <kicad@jaseg.de>
- * Copyright (C) 2021 KiCad Developers, see AUTHORS.txt for contributors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "poisson_disk_sampling.h"
@@ -27,9 +21,9 @@
 #include "vec_grid.h"
 
 using namespace std;
-using namespace vectorizer;
+using namespace gerbolyze;
 
-sampling_fun vectorizer::get_sampler(enum grid_type type) {
+sampling_fun gerbolyze::get_sampler(enum grid_type type) {
     switch(type) {
         case POISSON_DISC:
             return sample_poisson_disc;
@@ -42,13 +36,13 @@ sampling_fun vectorizer::get_sampler(enum grid_type type) {
     }
 }
 
-vector<d2p> *vectorizer::sample_poisson_disc(double w, double h, double center_distance) {
+vector<d2p> *gerbolyze::sample_poisson_disc(double w, double h, double center_distance) {
     d2p top_left {0, 0};
     d2p bottom_right {w, h};
     return new auto(thinks::PoissonDiskSampling(center_distance, top_left, bottom_right));
 }
 
-vector<d2p> *vectorizer::sample_hexgrid(double w, double h, double center_distance) {
+vector<d2p> *gerbolyze::sample_hexgrid(double w, double h, double center_distance) {
     double radius = center_distance / 2.0 / (sqrt(3) / 2.0); /* radius of hexagon */
     double pitch_v = 1.5 * radius;
     double pitch_h = center_distance;
@@ -81,7 +75,7 @@ vector<d2p> *vectorizer::sample_hexgrid(double w, double h, double center_distan
     return out;
 }
 
-vector<d2p> *vectorizer::sample_squaregrid(double w, double h, double center_distance) {
+vector<d2p> *gerbolyze::sample_squaregrid(double w, double h, double center_distance) {
     /* offset of first square to make sure the entire area is covered. We use slightly larger values here to avoid
      * corner cases during clipping in the voronoi map generator.  The inaccuracies this causes at the edges are
      * negligible. */

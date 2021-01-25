@@ -16,21 +16,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <cmath>
+#include <algorithm>
+#include <string>
+#include <gerbolyze.hpp>
+#include <svg_import_defs.h>
 
-#include <cairo.h>
-#include <clipper.hpp>
-#include <pugixml.hpp>
+using namespace gerbolyze;
+using namespace std;
 
-namespace gerbolyze {
+LambdaPolygonSink& LambdaPolygonSink::operator<<(const Polygon &poly) {
+    m_lambda(poly, m_currentPolarity);
+    return *this;
+}
 
-ClipperLib::IntRect get_paths_bounds(const ClipperLib::Paths &paths);
-enum ClipperLib::PolyFillType clipper_fill_rule(const pugi::xml_node &node);
-enum ClipperLib::EndType clipper_end_type(const pugi::xml_node &node);
-enum ClipperLib::JoinType clipper_join_type(const pugi::xml_node &node);
-void dehole_polytree(ClipperLib::PolyNode &ptree, ClipperLib::Paths &out);
-void combine_clip_paths(ClipperLib::Paths &in_a, ClipperLib::Paths &in_b, ClipperLib::Paths &out);
-void transform_paths(cairo_t *cr, ClipperLib::Paths &paths, cairo_matrix_t *mat=nullptr);
-
-} /* namespace gerbolyze */
-
+LambdaPolygonSink& LambdaPolygonSink::operator<<(GerberPolarityToken pol) {
+    m_currentPolarity = pol;
+    return *this;
+}
