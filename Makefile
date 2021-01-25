@@ -18,7 +18,7 @@ SOURCES := src/svg_color.cpp \
 	src/out_gerber.cpp \
 	src/lambda_sink.cpp \
 
-CLIPPER_SOURCES := upstream/clipper-6.4.2/cpp/clipper.cpp upstream/clipper-6.4.2/cpp/cpp_cairo/cairo_clipper.cpp
+SOURCES += upstream/clipper-6.4.2/cpp/clipper.cpp upstream/clipper-6.4.2/cpp/cpp_cairo/cairo_clipper.cpp
 CLIPPER_INCLUDES := -Iupstream/clipper-6.4.2/cpp -Iupstream/clipper-6.4.2/cpp/cpp_cairo/
 VORONOI_INCLUDES := -Iupstream/voronoi/src
 POISSON_INCLUDES := -Iupstream/poisson-disk-sampling/thinks/poisson_disk_sampling/
