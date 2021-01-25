@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <string>
 #include <argagg.hpp>
 #include <gerbolyze.hpp>
@@ -19,9 +20,21 @@ int main(int argc, char **argv) {
             {"version", {"-v", "--version"},
                 "Print version and exit",
                 0},
-            {"ofmt", {"-o", "--output-format"},
+            {"ofmt", {"-o", "--format"},
                 "Output format. Supported: gerber, svg, s-exp (KiCAD S-Expression)",
                 1},
+            {"precision", {"-p", "--precision"},
+                "Number of decimal places use for exported coordinates (gerber: 1-9, SVG: 0-*)",
+                1},
+            {"svg_clear_color", {"--clear-color"},
+                "SVG color to use for \"clear\" areas (default: white)",
+                1},
+            {"svg_dark_color", {"--dark-color"},
+                "SVG color to use for \"dark\" areas (default: black)",
+                1},
+            {"no_header", {"--no-header"},
+                "Do not export output format header/footer, only export the primitives themselves",
+                0},
             {"flatten", {"-f", "--flatten"},
                 "Flatten output so it only consists of non-overlapping white polygons. This perform composition at the vector level. Potentially slow.",
                 0},
@@ -99,7 +112,36 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    SimpleGerberOutput out(*out_f);
-    doc.render(out);
+    bool only_polys = args["no_header"];
+
+    int precision = 6;
+    if (args["precision"]) {
+        precision = atoi(args["precision"]);
+    }
+
+    string fmt = args["ofmt"] ? args["ofmt"] : "gerber";
+    transform(fmt.begin(), fmt.end(), fmt.begin(), [](unsigned char c){ return std::tolower(c); });
+
+    PolygonSink *sink;
+    if (fmt == "svg") {
+        string dark_color = args["svg_dark_color"] ? args["svg_dark_color"] : "#000000";
+        string clear_color = args["svg_clear_color"] ? args["svg_clear_color"] : "#ffffff";
+        sink = new SimpleSVGOutput(*out_f, only_polys, precision, dark_color, clear_color);
+
+    } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber") {
+        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision);
+
+    } else {
+        cerr << "Unknown output format \"" << fmt << "\"" << endl;
+        argagg::fmt_ostream fmt(cerr);
+        fmt << usage.str() << argparser;
+        return EXIT_FAILURE;
+    }
+
+    if (args["version"]) {
+    }
+
+    doc.render(*sink);
+
     return EXIT_SUCCESS;
 }
