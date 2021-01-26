@@ -38,6 +38,13 @@ int main(int argc, char **argv) {
             {"flatten", {"--flatten"},
                 "Flatten output so it only consists of non-overlapping white polygons. This perform composition at the vector level. Potentially slow.",
                 0},
+            {"only_groups", {"-g", "--only-groups"},
+                "Comma-separated list of group IDs to export.",
+                1},
+            {"exclude_groups", {"-e", "--exclude-groups"},
+                "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",
+                1},
+
     }};
 
 
@@ -143,7 +150,21 @@ int main(int argc, char **argv) {
         flattener = new Flattener(*sink);
     }
 
-    doc.render(flattener ? *flattener : *sink);
+    /* Because the C++ stdlib is bullshit */
+    auto id_match = [](string in, vector<string> &out) {
+        stringstream  ss(in);
+        while (getline(ss, out.emplace_back(), ',')) {
+        }
+        out.pop_back();
+    };
+
+    ElementSelector sel;
+    if (args["only_groups"])
+        id_match(args["only_groups"], sel.include);
+    if (args["exclude_groups"])
+        id_match(args["exclude_groups"], sel.exclude);
+
+    doc.render(flattener ? *flattener : *sink, &sel);
 
     return EXIT_SUCCESS;
 }

@@ -116,8 +116,22 @@ double gerbolyze::SVGDocument::doc_units_to_mm(double px) const {
     return px / (vb_w / page_w_mm);
 }
 
+bool ElementSelector::match(const pugi::xml_node &node, bool included) const {
+    if (include.empty() && exclude.empty())
+        return true;
+
+    bool include_match = std::find(include.begin(), include.end(), node.attribute("id").value()) != include.end();
+    bool exclude_match = std::find(exclude.begin(), exclude.end(), node.attribute("id").value()) != exclude.end();
+
+    if (exclude_match || (!included && !include_match)) {
+        return false;
+    }
+
+    return true;
+}
+
 /* Recursively export all SVG elements in the given group. */
-void gerbolyze::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths &parent_clip_path) {
+void gerbolyze::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included) {
     /* Enter the group's coordinate system */
     cairo_save(cr);
     apply_cairo_transform_from_svg(cr, group.attribute("transform").value());
@@ -147,9 +161,12 @@ void gerbolyze::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths
 
     /* Iterate over the group's children, exporting them one by one. */
     for (const auto &node : group.children()) {
+        if (sel && !sel->match(node, included))
+            continue;
+
         string name(node.name());
         if (name == "g") {
-            export_svg_group(node, clip_path);
+            export_svg_group(node, clip_path, sel, true);
 
         } else if (name == "path") {
             export_svg_path(node, clip_path);
@@ -342,7 +359,7 @@ void gerbolyze::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths &
     }
 }
 
-void gerbolyze::SVGDocument::render(PolygonSink &sink) {
+void gerbolyze::SVGDocument::render(PolygonSink &sink, const ElementSelector *sel) {
     assert(_valid);
     /* Export the actual SVG document to both SVG for debuggin and to gerber. We do this as we go, i.e. we immediately
      * process each element to gerber as we encounter it instead of first rendering everything to a giant list of gerber
@@ -354,15 +371,15 @@ void gerbolyze::SVGDocument::render(PolygonSink &sink) {
     c.AddPaths(vb_paths, ptSubject, /* closed */ true);
     ClipperLib::IntRect bbox = c.GetBounds();
     cerr << "document viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
-    export_svg_group(root_elem, vb_paths);
+    export_svg_group(root_elem, vb_paths, sel, false);
     sink.footer();
 }
 
-void gerbolyze::SVGDocument::render_to_list(vector<pair<Polygon, GerberPolarityToken>> &out) {
+void gerbolyze::SVGDocument::render_to_list(vector<pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel) {
     LambdaPolygonSink sink([&out](const Polygon &poly, GerberPolarityToken pol) {
             out.emplace_back(pair<Polygon, GerberPolarityToken>{poly, pol});
         });
-    render(sink);
+    render(sink, sel);
 }
 
 void gerbolyze::SVGDocument::setup_debug_output(string filename) {

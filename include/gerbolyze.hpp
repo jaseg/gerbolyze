@@ -76,6 +76,14 @@ namespace gerbolyze {
         bool m_only_polys = false;
         std::ostream &m_out;
     };
+    
+    class ElementSelector {
+    public:
+        bool match(const pugi::xml_node &node, bool included) const;
+
+        std::vector<std::string> include;
+        std::vector<std::string> exclude;
+    };
 
     class SVGDocument {
         public:
@@ -95,8 +103,8 @@ namespace gerbolyze {
             double width() const { return page_w_mm; }
             double height() const { return page_h_mm; }
 
-            void render(PolygonSink &sink);
-            void render_to_list(std::vector<std::pair<Polygon, GerberPolarityToken>> &out);
+            void render(PolygonSink &sink, const ElementSelector *sel=nullptr);
+            void render_to_list(std::vector<std::pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel=nullptr);
 
         private:
             friend class Pattern;
@@ -105,7 +113,7 @@ namespace gerbolyze {
             const ClipperLib::Paths *lookup_clip_path(const pugi::xml_node &node);
             Pattern *lookup_pattern(const std::string id);
 
-            void export_svg_group(const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path);
+            void export_svg_group(const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true);
             void export_svg_path(const pugi::xml_node &node, ClipperLib::Paths &clip_path);
             void setup_debug_output(std::string filename="");
             void setup_viewport_clip();
