@@ -17,7 +17,6 @@
  */
 
 #include <cmath>
-#include <random>
 #include <algorithm>
 #include <string>
 #include <iostream>
@@ -72,10 +71,6 @@ void Flattener::header(d2p origin, d2p size) {
 }
 
 void Flattener::render_out_clear_polys() {
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(d->clear_polys.begin(), d->clear_polys.end(), g);
-
     for (auto &sub : d->clear_polys) {
         vector<cavc::Polyline<double>> new_dark_polys;
         new_dark_polys.reserve(d->dark_polys.size());
@@ -159,6 +154,7 @@ Flattener &Flattener::operator<<(const Polygon &poly) {
     } else { /* clear */
         cerr << "clear primitive " << j++ << endl;
         d->add_clear_polygon(poly);
+        render_out_clear_polys();
     }
 
     return *this;
