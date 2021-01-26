@@ -38,15 +38,33 @@ namespace gerbolyze {
 
     class PolygonSink {
         public:
+            virtual ~PolygonSink() {}
             virtual void header(d2p origin, d2p size) {(void) origin; (void) size;}
             virtual PolygonSink &operator<<(const Polygon &poly) = 0;
             virtual PolygonSink &operator<<(GerberPolarityToken pol) = 0;
             virtual void footer() {}
     };
 
+    class Flattener_D;
+    class Flattener : public PolygonSink {
+        public:
+            Flattener(PolygonSink &sink);
+            virtual ~Flattener();
+            virtual void header(d2p origin, d2p size);
+            virtual Flattener &operator<<(const Polygon &poly);
+            virtual Flattener &operator<<(GerberPolarityToken pol);
+            virtual void footer();
+
+        private:
+            PolygonSink &m_sink;
+            GerberPolarityToken m_current_polarity = GRB_POL_DARK;
+            Flattener_D *d;
+    };
+
     class StreamPolygonSink : public PolygonSink {
     public:
         StreamPolygonSink(std::ostream &out, bool only_polys=false) : m_only_polys(only_polys), m_out(out) {}
+        virtual ~StreamPolygonSink() {}
         virtual void header(d2p origin, d2p size) { if (!m_only_polys) header_impl(origin, size); }
         virtual void footer() { if (!m_only_polys) { footer_impl(); } m_out.flush(); }
 
@@ -130,6 +148,7 @@ namespace gerbolyze {
     class SimpleGerberOutput : public StreamPolygonSink {
     public:
         SimpleGerberOutput(std::ostream &out, bool only_polys=false, int digits_int=4, int digits_frac=6, d2p offset={0,0});
+        virtual ~SimpleGerberOutput() {}
         virtual SimpleGerberOutput &operator<<(const Polygon &poly);
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
         virtual void header_impl(d2p origin, d2p size);
@@ -147,6 +166,7 @@ namespace gerbolyze {
     class SimpleSVGOutput : public StreamPolygonSink {
     public:
         SimpleSVGOutput(std::ostream &out, bool only_polys=false, int digits_frac=6, std::string dark_color="#000000", std::string clear_color="#ffffff");
+        virtual ~SimpleSVGOutput() {}
         virtual SimpleSVGOutput &operator<<(const Polygon &poly);
         virtual SimpleSVGOutput &operator<<(GerberPolarityToken pol);
         virtual void header_impl(d2p origin, d2p size);

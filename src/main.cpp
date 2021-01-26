@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
             {"no_header", {"--no-header"},
                 "Do not export output format header/footer, only export the primitives themselves",
                 0},
-            {"flatten", {"-f", "--flatten"},
+            {"flatten", {"--flatten"},
                 "Flatten output so it only consists of non-overlapping white polygons. This perform composition at the vector level. Potentially slow.",
                 0},
     }};
@@ -122,7 +122,8 @@ int main(int argc, char **argv) {
     string fmt = args["ofmt"] ? args["ofmt"] : "gerber";
     transform(fmt.begin(), fmt.end(), fmt.begin(), [](unsigned char c){ return std::tolower(c); });
 
-    PolygonSink *sink;
+    PolygonSink *sink = nullptr;
+    PolygonSink *flattener = nullptr;
     if (fmt == "svg") {
         string dark_color = args["svg_dark_color"] ? args["svg_dark_color"] : "#000000";
         string clear_color = args["svg_clear_color"] ? args["svg_clear_color"] : "#ffffff";
@@ -138,10 +139,11 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (args["version"]) {
+    if (args["flatten"]) {
+        flattener = new Flattener(*sink);
     }
 
-    doc.render(*sink);
+    doc.render(flattener ? *flattener : *sink);
 
     return EXIT_SUCCESS;
 }

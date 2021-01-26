@@ -21,24 +21,40 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
-#include <clipper.hpp>
 #include <gerbolyze.hpp>
 #include <svg_import_defs.h>
 #include <svg_geom.h>
+#include "polylinecombine.hpp"
 
 using namespace gerbolyze;
 using namespace std;
 
+static void polygon_to_cavc (const Polygon &in, cavc::Polyline<double> &out) {
+    for (auto &p : in) {
+        out.addVertex(p[0], p[1], 0);
+    }
+    out.isClosed() = true; /* sic! */
+}
+
+static void cavc_to_polygon (const cavc::Polyline<double> &in, Polygon &out) {
+    for (auto &p : in.vertexes()) {
+        out.emplace_back(d2p{p.x(), p.y()});
+    }
+}
+
 namespace gerbolyze {
     class Flattener_D {
     public:
-        ClipperLib::Clipper c;
+        vector<cavc::Polyline<double>> dark_polys;
+
+        void add_dark_polygon(const Polygon &in) {
+            polygon_to_cavc(in, dark_polys.emplace_back());
+        }
     };
 }
 
 Flattener::Flattener(PolygonSink &sink) : m_sink(sink) {
     d = new Flattener_D();
-    d->c.StrictlySimple(true);
 }
 
 Flattener::~Flattener() {
@@ -49,6 +65,8 @@ void Flattener::header(d2p origin, d2p size) {
     m_sink.header(origin, size);
 }
 
+
+
 Flattener &Flattener::operator<<(GerberPolarityToken pol) {
     if (m_current_polarity != pol) {
         m_current_polarity = pol;
@@ -58,42 +76,85 @@ Flattener &Flattener::operator<<(GerberPolarityToken pol) {
 }
 
 Flattener &Flattener::operator<<(const Polygon &poly) {
-    ClipperLib::Path le_path;
-    for (auto &p : poly) {
-        le_path.push_back({(ClipperLib::cInt)round(p[0] * clipper_scale), (ClipperLib::cInt)round(p[1] * clipper_scale)});
-    }
-
-    ClipperLib::Paths out;
+    static int i=0, j=0;
 
     if (m_current_polarity == GRB_POL_DARK) {
-        d->c.AddPath(le_path, ClipperLib::ptSubject, true);
-        d->c.Execute(ClipperLib::ctUnion, out, ClipperLib::pftNonZero);
-
+        d->add_dark_polygon(poly);
+        cerr << "dark primitive " << i++ << endl;
     } else { /* clear */
-        d->c.AddPath(le_path, ClipperLib::ptClip, true);
-        d->c.Execute(ClipperLib::ctDifference, out, ClipperLib::pftNonZero);
-    }
+        cerr << "clear primitive " << j++ << endl;
 
-    d->c.Clear();
-    d->c.AddPaths(out, ClipperLib::ptSubject, true);
+        cavc::Polyline<double> sub;
+        polygon_to_cavc (poly, sub);
+
+        vector<cavc::Polyline<double>> new_dark_polys;
+        new_dark_polys.reserve(d->dark_polys.size());
+
+        for (cavc::Polyline<double> cavc_in : d->dark_polys) {
+            auto res = cavc::combinePolylines(cavc_in, sub, cavc::PlineCombineMode::Exclude);
+
+            if (res.subtracted.size() == 0) {
+                for (auto &rem : res.remaining) {
+                    new_dark_polys.push_back(std::move(rem));
+                }
+
+            } else {
+                assert (res.remaining.size() == 1);
+                assert (res.subtracted.size() == 1);
+
+                auto &rem = res.remaining[0];
+                auto &sub = res.subtracted[0];
+                auto bbox = getExtents(rem);
+
+                cavc::Polyline<double> quad;
+                quad.addVertex(bbox.xMin, bbox.yMin, 0);
+                if (sub.vertexes()[0].x() < sub.vertexes()[1].x()) {
+                    quad.addVertex(sub.vertexes()[0]);
+                    quad.addVertex(sub.vertexes()[1]);
+                } else {
+                    quad.addVertex(sub.vertexes()[1]);
+                    quad.addVertex(sub.vertexes()[0]);
+                }
+                quad.addVertex(bbox.xMax, bbox.yMin, 0);
+                quad.isClosed() = true; /* sic! */
+
+                auto res2 = cavc::combinePolylines(rem, quad, cavc::PlineCombineMode::Exclude);
+                assert (res2.subtracted.size() == 0);
+
+                for (auto &rem : res2.remaining) {
+                    auto res3 = cavc::combinePolylines(rem, sub, cavc::PlineCombineMode::Exclude);
+                    assert (res3.subtracted.size() == 0);
+                    for (auto &p : res3.remaining) {
+                        new_dark_polys.push_back(std::move(p));
+                    }
+                }
+
+                auto res4 = cavc::combinePolylines(rem, quad, cavc::PlineCombineMode::Intersect);
+                assert (res4.subtracted.size() == 0);
+
+                for (auto &rem : res4.remaining) {
+                    auto res5 = cavc::combinePolylines(rem, sub, cavc::PlineCombineMode::Exclude);
+                    assert (res5.subtracted.size() == 0);
+                    for (auto &p : res5.remaining) {
+                        new_dark_polys.push_back(std::move(p));
+                    }
+                }
+            }
+        }
+
+        d->dark_polys = std::move(new_dark_polys);
+    }
 
     return *this;
 }
 
 void Flattener::footer() {
-    ClipperLib::PolyTree t_out;
-    d->c.Execute(ClipperLib::ctDifference, t_out, ClipperLib::pftNonZero);
-    d->c.Clear();
-
     m_sink << GRB_POL_DARK;
 
-    ClipperLib::Paths out;
-    cerr << "deholing" << endl;
-    dehole_polytree(t_out, out);
-    for (auto &poly : out) {
+    for (auto &poly : d->dark_polys) {
         Polygon poly_out;
-        for (auto &p : poly) {
-            poly_out.push_back({p.X / clipper_scale, p.Y / clipper_scale});
+        for (auto &p : poly.vertexes()) {
+            poly_out.emplace_back(d2p{p.x(), p.y()});
         }
         m_sink << poly_out;
     }

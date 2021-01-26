@@ -16,17 +16,21 @@ SOURCES := src/svg_color.cpp \
 	src/main.cpp \
 	src/out_svg.cpp \
 	src/out_gerber.cpp \
+	src/out_flattener.cpp \
 	src/lambda_sink.cpp \
 
-SOURCES += upstream/clipper-6.4.2/cpp/clipper.cpp upstream/clipper-6.4.2/cpp/cpp_cairo/cairo_clipper.cpp
-CLIPPER_INCLUDES := -Iupstream/clipper-6.4.2/cpp -Iupstream/clipper-6.4.2/cpp/cpp_cairo/
-VORONOI_INCLUDES := -Iupstream/voronoi/src
-POISSON_INCLUDES := -Iupstream/poisson-disk-sampling/thinks/poisson_disk_sampling/
-BASE64_INCLUDES := -Iupstream/cpp-base64
-ARGAGG_INCLUDES := -Iupstream/argagg/include/argagg
-INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES)
+CLIPPER_SOURCES ?= upstream/clipper-6.4.2/cpp/clipper.cpp upstream/clipper-6.4.2/cpp/cpp_cairo/cairo_clipper.cpp
+CLIPPER_INCLUDES 	?= -Iupstream/clipper-6.4.2/cpp -Iupstream/clipper-6.4.2/cpp/cpp_cairo/
+VORONOI_INCLUDES 	?= -Iupstream/voronoi/src
+POISSON_INCLUDES 	?= -Iupstream/poisson-disk-sampling/thinks/poisson_disk_sampling/
+BASE64_INCLUDES 	?= -Iupstream/cpp-base64
+ARGAGG_INCLUDES 	?= -Iupstream/argagg/include/argagg
+CAVC_INCLUDES 		?= -Iupstream/CavalierContours/include/cavc/
 
-CXXFLAGS := -std=c++2a -g -Wall -Wextra
+SOURCES += $(CLIPPER_SOURCES)
+INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES)
+
+CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
 CXXFLAGS += $(shell $(PKG_CONFIG) --cflags pangocairo pugixml opencv4) 
 
 LDFLAGS := -lm -lc -lstdc++
@@ -41,7 +45,7 @@ $(BUILDDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@) 
 	$(CXX) -c $(CXXFLAGS) $(CXXFLAGS) $(INCLUDES) -o $@ $^
 
-$(BUILDDIR)/svg-render: $(SOURCES:%.cpp=$(BUILDDIR)/%.o) $(BUILDDIR)/upstream/cpp-base64/base64.o $(CLIPPER_SOURCES:.cpp=.o)
+$(BUILDDIR)/svg-render: $(SOURCES:%.cpp=$(BUILDDIR)/%.o) $(BUILDDIR)/upstream/cpp-base64/base64.o
 	@mkdir -p $(dir $@) 
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 	

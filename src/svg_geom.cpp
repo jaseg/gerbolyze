@@ -21,6 +21,7 @@
 #include <cmath>
 #include <string>
 #include <sstream>
+#include <queue>
 #include <assert.h>
 #include <cairo.h>
 #include "svg_import_defs.h"
@@ -90,11 +91,7 @@ enum ClipperLib::JoinType gerbolyze::clipper_join_type(const pugi::xml_node &nod
     return ClipperLib::jtMiter;
 }
 
-/* Take a Clipper polytree, i.e. a description of a set of polygons, their holes and their inner polygons, and remove
- * all holes from it. We remove holes by splitting each polygon that has a hole into two or more pieces so that the hole
- * is no more. These pieces perfectly fit each other so there is no visual or functional difference.
- */
-void gerbolyze::dehole_polytree(PolyNode &ptree, Paths &out) {
+static void dehole_polytree_worker(PolyNode &ptree, Paths &out, queue<PolyTree> &todo) {
     for (int i=0; i<ptree.ChildCount(); i++) {
         PolyNode *nod = ptree.Childs[i];
         assert(nod);
@@ -107,7 +104,7 @@ void gerbolyze::dehole_polytree(PolyNode &ptree, Paths &out) {
             assert(child->IsHole());
 
             if (child->ChildCount() > 0) {
-                dehole_polytree(*child, out);
+                dehole_polytree_worker(*child, out, todo);
             }
         }
 
@@ -129,18 +126,28 @@ void gerbolyze::dehole_polytree(PolyNode &ptree, Paths &out) {
             Path tri = { { bbox.left, bbox.top }, nod->Childs[0]->Contour[0], nod->Childs[0]->Contour[1], { bbox.right, bbox.top } };
             c.AddPath(tri, ptClip, true);
 
-            PolyTree solution;
             c.StrictlySimple(true);
             /* Execute twice, once for intersection fragment and once for difference fragment. Note that this will yield
              * at least two, but possibly more polygons. */
-            c.Execute(ctDifference, solution, pftNonZero);
-            dehole_polytree(solution, out);
-
-            c.Execute(ctIntersection, solution, pftNonZero);
-            dehole_polytree(solution, out);
+            c.Execute(ctDifference, todo.emplace(), pftNonZero);
+            c.Execute(ctIntersection, todo.emplace(), pftNonZero);
         }
     }
 }
+
+/* Take a Clipper polytree, i.e. a description of a set of polygons, their holes and their inner polygons, and remove
+ * all holes from it. We remove holes by splitting each polygon that has a hole into two or more pieces so that the hole
+ * is no more. These pieces perfectly fit each other so there is no visual or functional difference.
+ */
+void gerbolyze::dehole_polytree(PolyTree &ptree, Paths &out) {
+    queue<PolyTree> todo;
+    dehole_polytree_worker(ptree, out, todo);
+    while (!todo.empty()) {
+        dehole_polytree_worker(todo.front(), out, todo);
+        todo.pop();
+    }
+}
+
 
 /* Intersect two clip paths. Both must share a coordinate system. */
 void gerbolyze::combine_clip_paths(Paths &in_a, Paths &in_b, Paths &out) {

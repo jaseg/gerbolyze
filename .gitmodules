@@ -10,3 +10,6 @@
 [submodule "upstream/argagg"]
 	path = upstream/argagg
 	url = https://github.com/vietjtnguyen/argagg
+[submodule "upstream/CavalierContours"]
+	path = upstream/CavalierContours
+	url = https://github.com/jbuckmccready/CavalierContours
