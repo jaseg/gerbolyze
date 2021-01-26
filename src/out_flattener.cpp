@@ -17,6 +17,7 @@
  */
 
 #include <cmath>
+#include <random>
 #include <algorithm>
 #include <string>
 #include <iostream>
@@ -46,9 +47,14 @@ namespace gerbolyze {
     class Flattener_D {
     public:
         vector<cavc::Polyline<double>> dark_polys;
+        vector<cavc::Polyline<double>> clear_polys;
 
         void add_dark_polygon(const Polygon &in) {
             polygon_to_cavc(in, dark_polys.emplace_back());
+        }
+
+        void add_clear_polygon(const Polygon &in) {
+            polygon_to_cavc(in, clear_polys.emplace_back());
         }
     };
 }
@@ -65,28 +71,12 @@ void Flattener::header(d2p origin, d2p size) {
     m_sink.header(origin, size);
 }
 
+void Flattener::render_out_clear_polys() {
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(d->clear_polys.begin(), d->clear_polys.end(), g);
 
-
-Flattener &Flattener::operator<<(GerberPolarityToken pol) {
-    if (m_current_polarity != pol) {
-        m_current_polarity = pol;
-    }
-
-    return *this;
-}
-
-Flattener &Flattener::operator<<(const Polygon &poly) {
-    static int i=0, j=0;
-
-    if (m_current_polarity == GRB_POL_DARK) {
-        d->add_dark_polygon(poly);
-        cerr << "dark primitive " << i++ << endl;
-    } else { /* clear */
-        cerr << "clear primitive " << j++ << endl;
-
-        cavc::Polyline<double> sub;
-        polygon_to_cavc (poly, sub);
-
+    for (auto &sub : d->clear_polys) {
         vector<cavc::Polyline<double>> new_dark_polys;
         new_dark_polys.reserve(d->dark_polys.size());
 
@@ -98,7 +88,7 @@ Flattener &Flattener::operator<<(const Polygon &poly) {
                     new_dark_polys.push_back(std::move(rem));
                 }
 
-            } else {
+            } else { /* custom one-hole deholing code */
                 assert (res.remaining.size() == 1);
                 assert (res.subtracted.size() == 1);
 
@@ -144,11 +134,40 @@ Flattener &Flattener::operator<<(const Polygon &poly) {
 
         d->dark_polys = std::move(new_dark_polys);
     }
+    d->clear_polys.clear();
+}
+
+Flattener &Flattener::operator<<(GerberPolarityToken pol) {
+    if (m_current_polarity != pol) {
+        m_current_polarity = pol;
+
+        if (pol == GRB_POL_DARK) {
+            render_out_clear_polys();
+        }
+    }
+
+    return *this;
+}
+
+Flattener &Flattener::operator<<(const Polygon &poly) {
+    static int i=0, j=0;
+
+    if (m_current_polarity == GRB_POL_DARK) {
+        d->add_dark_polygon(poly);
+        cerr << "dark primitive " << i++ << endl;
+
+    } else { /* clear */
+        cerr << "clear primitive " << j++ << endl;
+        d->add_clear_polygon(poly);
+    }
 
     return *this;
 }
 
 void Flattener::footer() {
+    if (m_current_polarity == GRB_POL_CLEAR) {
+        render_out_clear_polys();
+    }
     m_sink << GRB_POL_DARK;
 
     for (auto &poly : d->dark_polys) {

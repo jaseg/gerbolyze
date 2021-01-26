@@ -56,6 +56,7 @@ namespace gerbolyze {
             virtual void footer();
 
         private:
+            void render_out_clear_polys();
             PolygonSink &m_sink;
             GerberPolarityToken m_current_polarity = GRB_POL_DARK;
             Flattener_D *d;
