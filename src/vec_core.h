@@ -25,6 +25,15 @@
 #include "vec_grid.h"
 
 namespace gerbolyze {
-    void vectorize_image(cairo_t *cr, const pugi::xml_node &node, double min_feature_size_px, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink);
+
+    class VoronoiVectorizer : public ImageVectorizer {
+    public:
+        VoronoiVectorizer(grid_type grid, bool relax=true) : m_relax(relax), m_grid_type(grid) {}
+
+        void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px);
+    private:
+        double m_relax;
+        grid_type m_grid_type;
+    };
 }
 

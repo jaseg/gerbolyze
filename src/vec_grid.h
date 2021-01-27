@@ -31,8 +31,6 @@ enum grid_type {
     SQUAREGRID
 };
 
-typedef std::function<std::vector<d2p> *(double, double, double)> sampling_fun;
-
 sampling_fun get_sampler(enum grid_type type);
 
 std::vector<d2p> *sample_poisson_disc(double w, double h, double center_distance);

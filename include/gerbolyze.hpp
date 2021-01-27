@@ -29,6 +29,7 @@ namespace gerbolyze {
     constexpr char lib_version[] = "2.0";
 
     typedef std::array<double, 2> d2p;
+    typedef std::function<std::vector<d2p> *(double, double, double)> sampling_fun;
     typedef std::vector<d2p> Polygon;
 
     enum GerberPolarityToken {
@@ -79,10 +80,26 @@ namespace gerbolyze {
     
     class ElementSelector {
     public:
-        bool match(const pugi::xml_node &node, bool included) const;
+        virtual bool match(const pugi::xml_node &node, bool included) const = 0;
+    };
+
+    class IDElementSelector : public ElementSelector {
+    public:
+        virtual bool match(const pugi::xml_node &node, bool included) const;
 
         std::vector<std::string> include;
         std::vector<std::string> exclude;
+    };
+
+    class ImageVectorizer {
+    public:
+        virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) = 0;
+    };
+
+    class RenderSettings {
+    public:
+        double m_minimum_feature_size_mm = 0.1;
+        ImageVectorizer *m_vec = nullptr;
     };
 
     class SVGDocument {
@@ -103,8 +120,8 @@ namespace gerbolyze {
             double width() const { return page_w_mm; }
             double height() const { return page_h_mm; }
 
-            void render(PolygonSink &sink, const ElementSelector *sel=nullptr);
-            void render_to_list(std::vector<std::pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel=nullptr);
+            void render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector *sel=nullptr);
+            void render_to_list(const RenderSettings &rset, std::vector<std::pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel=nullptr);
 
         private:
             friend class Pattern;
@@ -113,8 +130,8 @@ namespace gerbolyze {
             const ClipperLib::Paths *lookup_clip_path(const pugi::xml_node &node);
             Pattern *lookup_pattern(const std::string id);
 
-            void export_svg_group(const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true);
-            void export_svg_path(const pugi::xml_node &node, ClipperLib::Paths &clip_path);
+            void export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true);
+            void export_svg_path(const RenderSettings &rset, const pugi::xml_node &node, ClipperLib::Paths &clip_path);
             void setup_debug_output(std::string filename="");
             void setup_viewport_clip();
             void load_clips();

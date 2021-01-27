@@ -19,6 +19,7 @@
 #include <iostream>
 #include <fstream>
 
+#include <gerbolyze.hpp>
 #include "svg_import_defs.h"
 #include "svg_color.h"
 #include "svg_geom.h"
@@ -116,7 +117,7 @@ double gerbolyze::SVGDocument::doc_units_to_mm(double px) const {
     return px / (vb_w / page_w_mm);
 }
 
-bool ElementSelector::match(const pugi::xml_node &node, bool included) const {
+bool IDElementSelector::match(const pugi::xml_node &node, bool included) const {
     if (include.empty() && exclude.empty())
         return true;
 
@@ -131,7 +132,7 @@ bool ElementSelector::match(const pugi::xml_node &node, bool included) const {
 }
 
 /* Recursively export all SVG elements in the given group. */
-void gerbolyze::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included) {
+void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included) {
     /* Enter the group's coordinate system */
     cairo_save(cr);
     apply_cairo_transform_from_svg(cr, group.attribute("transform").value());
@@ -166,15 +167,17 @@ void gerbolyze::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths
 
         string name(node.name());
         if (name == "g") {
-            export_svg_group(node, clip_path, sel, true);
+            export_svg_group(rset, node, clip_path, sel, true);
 
         } else if (name == "path") {
-            export_svg_path(node, clip_path);
+            export_svg_path(rset, node, clip_path);
 
         } else if (name == "image") {
-            double min_feature_size_mm = 0.1; /* TODO make configurable */
-            double min_feature_size_px = mm_to_doc_units(min_feature_size_mm);
-            vectorize_image(cr, node, min_feature_size_px, clip_path, viewport_matrix, *polygon_sink);
+            if (!rset.m_vec)
+                continue;
+
+            double min_feature_size_px = mm_to_doc_units(rset.m_minimum_feature_size_mm);
+            rset.m_vec->vectorize_image(cr, node, clip_path, viewport_matrix, *polygon_sink, min_feature_size_px);
         } else if (name == "defs") {
             /* ignore */
         } else {
@@ -186,7 +189,7 @@ void gerbolyze::SVGDocument::export_svg_group(const pugi::xml_node &group, Paths
 }
 
 /* Export an SVG path element to gerber. Apply patterns and clip on the fly. */
-void gerbolyze::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths &clip_path) {
+void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const pugi::xml_node &node, Paths &clip_path) {
     enum gerber_color fill_color = gerber_fill_color(node);
     enum gerber_color stroke_color = gerber_stroke_color(node);
 
@@ -236,7 +239,7 @@ void gerbolyze::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths &
             } else {
                 Paths clip;
                 PolyTreeToPaths(ptree, clip);
-                pattern->tile(clip);
+                pattern->tile(rset, clip);
             }
 
         } else { /* solid fill */
@@ -325,7 +328,7 @@ void gerbolyze::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths &
             } else {
                 Paths clip;
                 PolyTreeToPaths(ptree, clip);
-                pattern->tile(clip);
+                pattern->tile(rset, clip);
             }
 
         } else {
@@ -359,7 +362,7 @@ void gerbolyze::SVGDocument::export_svg_path(const pugi::xml_node &node, Paths &
     }
 }
 
-void gerbolyze::SVGDocument::render(PolygonSink &sink, const ElementSelector *sel) {
+void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector *sel) {
     assert(_valid);
     /* Export the actual SVG document to both SVG for debuggin and to gerber. We do this as we go, i.e. we immediately
      * process each element to gerber as we encounter it instead of first rendering everything to a giant list of gerber
@@ -371,15 +374,15 @@ void gerbolyze::SVGDocument::render(PolygonSink &sink, const ElementSelector *se
     c.AddPaths(vb_paths, ptSubject, /* closed */ true);
     ClipperLib::IntRect bbox = c.GetBounds();
     cerr << "document viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
-    export_svg_group(root_elem, vb_paths, sel, false);
+    export_svg_group(rset, root_elem, vb_paths, sel, false);
     sink.footer();
 }
 
-void gerbolyze::SVGDocument::render_to_list(vector<pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel) {
+void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel) {
     LambdaPolygonSink sink([&out](const Polygon &poly, GerberPolarityToken pol) {
             out.emplace_back(pair<Polygon, GerberPolarityToken>{poly, pol});
         });
-    render(sink, sel);
+    render(rset, sink, sel);
 }
 
 void gerbolyze::SVGDocument::setup_debug_output(string filename) {

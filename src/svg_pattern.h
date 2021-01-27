@@ -20,22 +20,21 @@
 
 #include <string>
 #include <cairo.h>
-
 #include <pugixml.hpp>
 #include <clipper.hpp>
-
 #include "svg_import_util.h"
 
 namespace gerbolyze {
 
 class SVGDocument;
+class RenderSettings;
 
 class Pattern {
 public:
     Pattern() {}
     Pattern(const pugi::xml_node &node, SVGDocument &doc);
 
-    void tile (ClipperLib::Paths &clip);
+    void tile (const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip);
 
 private:
     double x, y, w, h;

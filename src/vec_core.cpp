@@ -78,7 +78,7 @@ static void voronoi_relax_points(const jcv_diagram* diagram, jcv_point* points) 
  * 4. It scales each of these voronoi cell polygons to match the input images brightness at the spot covered by this
  *    cell.
  */
-void gerbolyze::vectorize_image(cairo_t *cr, const pugi::xml_node &node, double min_feature_size_px, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink) {
+void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) {
     /* Read XML node attributes */
     auto x = usvg_double_attr(node, "x", 0.0);
     auto y = usvg_double_attr(node, "y", 0.0);
@@ -167,8 +167,8 @@ void gerbolyze::vectorize_image(cairo_t *cr, const pugi::xml_node &node, double 
                                         grayscale interpolation. Larger values -> better grayscale resolution,
                                         larger cells. */
     double center_distance = min_feature_size_px * 2.0 * (1.0 / (1.0-grayscale_overhead));
-    vector<d2p> *grid_centers = sample_poisson_disc(width, height, min_feature_size_px * 2.0 * 2.0);
-    /* TODO make these alternative grids available to callers */
+    vector<d2p> *grid_centers = get_sampler(m_grid_type)(width, height, center_distance);
+    //vector<d2p> *grid_centers = sample_poisson_disc(width, height, min_feature_size_px * 2.0 * 2.0);
     //vector<d2p> *grid_centers = sample_hexgrid(width, height, center_distance);
     //vector<d2p> *grid_centers = sample_squaregrid(width, height, center_distance);
 
@@ -197,7 +197,8 @@ void gerbolyze::vectorize_image(cairo_t *cr, const pugi::xml_node &node, double 
     jcv_point *pts = reinterpret_cast<jcv_point *>(grid_centers->data()); /* hackety hack */
     jcv_diagram_generate(grid_centers->size(), pts, &rect, 0, &diagram);
     /* Relax points, i.e. wiggle them around a little bit to equalize differences between cell sizes a little bit. */
-    voronoi_relax_points(&diagram, pts);
+    if (m_relax)
+        voronoi_relax_points(&diagram, pts);
     memset(&diagram, 0, sizeof(jcv_diagram));
     jcv_diagram_generate(grid_centers->size(), pts, &rect, 0, &diagram);
     

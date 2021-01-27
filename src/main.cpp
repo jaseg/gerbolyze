@@ -6,6 +6,7 @@
 #include <string>
 #include <argagg.hpp>
 #include <gerbolyze.hpp>
+#include "vec_core.h"
 
 using argagg::parser_results;
 using argagg::parser;
@@ -158,13 +159,19 @@ int main(int argc, char **argv) {
         out.pop_back();
     };
 
-    ElementSelector sel;
+    IDElementSelector sel;
     if (args["only_groups"])
         id_match(args["only_groups"], sel.include);
     if (args["exclude_groups"])
         id_match(args["exclude_groups"], sel.exclude);
 
-    doc.render(flattener ? *flattener : *sink, &sel);
+    VoronoiVectorizer vec(POISSON_DISC, true);
+    RenderSettings rset {
+        0.1,
+        &vec
+    };
+
+    doc.render(rset, flattener ? *flattener : *sink, &sel);
 
     return EXIT_SUCCESS;
 }

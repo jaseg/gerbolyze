@@ -39,7 +39,7 @@ sampling_fun gerbolyze::get_sampler(enum grid_type type) {
 vector<d2p> *gerbolyze::sample_poisson_disc(double w, double h, double center_distance) {
     d2p top_left {0, 0};
     d2p bottom_right {w, h};
-    return new auto(thinks::PoissonDiskSampling(center_distance, top_left, bottom_right));
+    return new auto(thinks::PoissonDiskSampling(center_distance/2.5, top_left, bottom_right));
 }
 
 vector<d2p> *gerbolyze::sample_hexgrid(double w, double h, double center_distance) {

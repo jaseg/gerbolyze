@@ -47,7 +47,7 @@ gerbolyze::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _nod
 
 /* Tile pattern into gerber. Note that this function may be called several times in case the pattern is
  * referenced from multiple places, so we must not clobber any of the object's state. */
-void gerbolyze::Pattern::tile (ClipperLib::Paths &clip) {
+void gerbolyze::Pattern::tile (const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip) {
     assert(doc);
     cairo_t *cr = doc->cairo();
     assert(cr);
@@ -104,7 +104,7 @@ void gerbolyze::Pattern::tile (ClipperLib::Paths &clip) {
             }
 
             /* Export the pattern tile's content like a group */
-            doc->export_svg_group(_node, clip);
+            doc->export_svg_group(rset, _node, clip);
             cairo_restore(cr);
         }
     }
