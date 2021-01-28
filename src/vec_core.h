@@ -30,10 +30,21 @@ namespace gerbolyze {
     public:
         VoronoiVectorizer(grid_type grid, bool relax=true) : m_relax(relax), m_grid_type(grid) {}
 
-        void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px);
+        virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px);
     private:
         double m_relax;
         grid_type m_grid_type;
     };
+
+    class OpenCVContoursVectorizer : public ImageVectorizer {
+    public:
+        OpenCVContoursVectorizer() {}
+
+        virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px);
+    };
+
+    void parse_img_meta(const pugi::xml_node &node, double &x, double &y, double &width, double &height);
+    std::string read_img_data(const pugi::xml_node &node);
+    void draw_bg_rect(cairo_t *cr, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink, cairo_matrix_t &viewport_matrix);
 }
 

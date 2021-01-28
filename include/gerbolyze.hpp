@@ -95,6 +95,8 @@ namespace gerbolyze {
     public:
         virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) = 0;
     };
+    
+    ImageVectorizer *makeVectorizer(const std::string &name);
 
     class RenderSettings {
     public:

@@ -42,6 +42,9 @@ int main(int argc, char **argv) {
             {"only_groups", {"-g", "--only-groups"},
                 "Comma-separated list of group IDs to export.",
                 1},
+            {"vectorizer", {"-b", "--vectorizer"},
+                "Vectorizer to use for bitmap images. One of poisson-disc (default), hex-grid, square-grid, binary-contours.",
+                1},
             {"exclude_groups", {"-e", "--exclude-groups"},
                 "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",
                 1},
@@ -165,10 +168,18 @@ int main(int argc, char **argv) {
     if (args["exclude_groups"])
         id_match(args["exclude_groups"], sel.exclude);
 
-    VoronoiVectorizer vec(POISSON_DISC, true);
+    string vectorizer = args["vectorizer"] ? args["vectorizer"] : "poisson-disc";
+    ImageVectorizer *vec = makeVectorizer(vectorizer);
+    if (!vec) {
+        cerr << "Unknown vectorizer \"" << vectorizer << "\"." << endl;
+        argagg::fmt_ostream fmt(cerr);
+        fmt << usage.str() << argparser;
+        return EXIT_FAILURE;
+    }
+
     RenderSettings rset {
         0.1,
-        &vec
+        vec
     };
 
     doc.render(rset, flattener ? *flattener : *sink, &sel);
