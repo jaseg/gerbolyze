@@ -173,11 +173,16 @@ void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const 
             export_svg_path(rset, node, clip_path);
 
         } else if (name == "image") {
-            if (!rset.m_vec)
+            ImageVectorizer *vec = rset.m_vec_sel.select(node);
+            if (!vec) {
+                cerr << "Cannot resolve vectorizer for node \"" << node.attribute("id").value() << "\"" << endl;
                 continue;
+            }
 
             double min_feature_size_px = mm_to_doc_units(rset.m_minimum_feature_size_mm);
-            rset.m_vec->vectorize_image(cr, node, clip_path, viewport_matrix, *polygon_sink, min_feature_size_px);
+            vec->vectorize_image(cr, node, clip_path, viewport_matrix, *polygon_sink, min_feature_size_px);
+            delete vec;
+
         } else if (name == "defs") {
             /* ignore */
         } else {

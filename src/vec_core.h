@@ -43,6 +43,13 @@ namespace gerbolyze {
         virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px);
     };
 
+    class DevNullVectorizer : public ImageVectorizer {
+    public:
+        DevNullVectorizer() {}
+
+        virtual void vectorize_image(cairo_t *, const pugi::xml_node &, ClipperLib::Paths &, cairo_matrix_t &, PolygonSink &, double) {}
+    };
+
     void parse_img_meta(const pugi::xml_node &node, double &x, double &y, double &width, double &height);
     std::string read_img_data(const pugi::xml_node &node);
     void draw_bg_rect(cairo_t *cr, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink, cairo_matrix_t &viewport_matrix);

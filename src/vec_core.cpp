@@ -39,6 +39,8 @@ ImageVectorizer *gerbolyze::makeVectorizer(const std::string &name) {
         return new VoronoiVectorizer(SQUAREGRID, /* relax */ false);
     else if (name == "binary-contours")
         return new OpenCVContoursVectorizer();
+    else if (name == "dev-null")
+        return new DevNullVectorizer();
 
     return nullptr;
 }
@@ -215,11 +217,15 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
     /* Scale intermediate image (step 1.2) to have <scale_featuresize_factor> pixels per min_feature_size. */ 
     cv::Mat scaled(cv::Size{(int)round(px_w), (int)round(px_h)}, img.type());
     cv::resize(img, scaled, scaled.size(), 0, 0);
+    cerr << "scaled " << img.cols << ", " << img.rows << " -> " << scaled.cols << ", " << scaled.rows << endl;
     img.release();
 
     /* Blur image with a kernel larger than our minimum feature size to avoid aliasing. */
     cv::Mat blurred(scaled.size(), scaled.type());
     int blur_size = (int)ceil(fmax(scaled.cols / width, scaled.rows / height) * center_distance);
+    if (blur_size%2 == 0)
+        blur_size += 1;
+    cerr << "blur size " << blur_size << endl;
     cv::GaussianBlur(scaled, blurred, {blur_size, blur_size}, 0, 0);
     scaled.release();
     
@@ -251,7 +257,11 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
         double pxd = (double)blurred.at<unsigned char>(
                 (int)round(center.y / height * blurred.rows),
                 (int)round(center.x / width * blurred.cols)) / 255.0; 
-        fill_factors[sites[i].index] = sqrt(pxd);
+        /* FIXME: This is a workaround for a memory corruption bug that happens with the square-grid setting. When using
+         * square-grid on a fairly small test image, sometimes sites[i].index will be out of bounds here.
+         */
+        if (sites[i].index < fill_factors.size())
+            fill_factors[sites[i].index] = sqrt(pxd);
     }
 
     /* Minimum gap between adjacent scaled site polygons. */
@@ -446,3 +456,38 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pug
 
     cairo_restore(cr);
 }
+
+gerbolyze::VectorizerSelectorizer::VectorizerSelectorizer(const string default_vectorizer, const string defs)
+    : m_default(default_vectorizer) {
+    istringstream foo(defs);
+    string elem;
+    while (std::getline(foo, elem, ',')) {
+        size_t pos = elem.find_first_of("=");
+        if (pos == string::npos) {
+            cerr << "Error parsing vectorizer selection string at element \"" << elem << "\"" << endl;
+            continue;
+        }
+
+        const string parsed_id = elem.substr(0, pos);
+        const string mapping = elem.substr(pos+1);
+        m_map[parsed_id] = mapping;
+    }
+
+    cerr << "parsed " << m_map.size() << " vectorizers" << endl;
+    for (auto &elem : m_map) {
+        cerr << "  " << elem.first << " -> " << elem.second << endl;
+    }
+}
+
+ImageVectorizer *gerbolyze::VectorizerSelectorizer::select(const pugi::xml_node &img) {
+    const string id = img.attribute("id").value();
+    cerr << "selecting vectorizer for image \"" << id << "\"" << endl;
+    if (m_map.contains(id)) {
+        cerr << "  -> found" << endl;
+        return makeVectorizer(m_map[id]);
+    }
+
+    cerr << "  -> default" << endl;
+    return makeVectorizer(m_default);
+}
+

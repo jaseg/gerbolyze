@@ -93,15 +93,27 @@ namespace gerbolyze {
 
     class ImageVectorizer {
     public:
+        virtual ~ImageVectorizer() {};
         virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) = 0;
     };
     
     ImageVectorizer *makeVectorizer(const std::string &name);
 
+    class VectorizerSelectorizer {
+    public:
+        VectorizerSelectorizer(const std::string default_vectorizer="dev-null", const std::string defs="");
+
+        ImageVectorizer *select(const pugi::xml_node &img);
+
+    private:
+        std::string m_default;
+        std::map<std::string, std::string> m_map;
+    };
+
     class RenderSettings {
     public:
         double m_minimum_feature_size_mm = 0.1;
-        ImageVectorizer *m_vec = nullptr;
+        VectorizerSelectorizer &m_vec_sel;
     };
 
     class SVGDocument {

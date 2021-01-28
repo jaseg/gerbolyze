@@ -43,7 +43,10 @@ int main(int argc, char **argv) {
                 "Comma-separated list of group IDs to export.",
                 1},
             {"vectorizer", {"-b", "--vectorizer"},
-                "Vectorizer to use for bitmap images. One of poisson-disc (default), hex-grid, square-grid, binary-contours.",
+                "Vectorizer to use for bitmap images. One of poisson-disc (default), hex-grid, square-grid, binary-contours, dev-null.",
+                1},
+            {"vectorizer_map", {"--vectorizer-map"},
+                "Map from image element id to vectorizer. Overrides --vectorizer. Format: id1=vectorizer,id2=vectorizer,...",
                 1},
             {"exclude_groups", {"-e", "--exclude-groups"},
                 "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",
@@ -169,6 +172,7 @@ int main(int argc, char **argv) {
         id_match(args["exclude_groups"], sel.exclude);
 
     string vectorizer = args["vectorizer"] ? args["vectorizer"] : "poisson-disc";
+    /* Check argument */
     ImageVectorizer *vec = makeVectorizer(vectorizer);
     if (!vec) {
         cerr << "Unknown vectorizer \"" << vectorizer << "\"." << endl;
@@ -176,10 +180,12 @@ int main(int argc, char **argv) {
         fmt << usage.str() << argparser;
         return EXIT_FAILURE;
     }
+    delete vec;
 
+    VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"] : "");
     RenderSettings rset {
         0.1,
-        vec
+        vec_sel,
     };
 
     doc.render(rset, flattener ? *flattener : *sink, &sel);
