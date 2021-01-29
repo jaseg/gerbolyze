@@ -26,9 +26,10 @@ POISSON_INCLUDES 	?= -Iupstream/poisson-disk-sampling/thinks/poisson_disk_sampli
 BASE64_INCLUDES 	?= -Iupstream/cpp-base64
 ARGAGG_INCLUDES 	?= -Iupstream/argagg/include/argagg
 CAVC_INCLUDES 		?= -Iupstream/CavalierContours/include/cavc/
+SUBPROCESS_INCLUDES	?= -Iupstream/subprocess.h
 
 SOURCES += $(CLIPPER_SOURCES)
-INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES)
+INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES)
 
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
 CXXFLAGS += $(shell $(PKG_CONFIG) --cflags pangocairo pugixml opencv4) 

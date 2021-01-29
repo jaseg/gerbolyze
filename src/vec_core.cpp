@@ -36,7 +36,7 @@ ImageVectorizer *gerbolyze::makeVectorizer(const std::string &name) {
     else if (name == "hex-grid")
         return new VoronoiVectorizer(HEXGRID, /* relax */ false);
     else if (name == "square-grid")
-        return new VoronoiVectorizer(SQUAREGRID, /* relax */ false);
+        return new VoronoiVectorizer(SQUAREGRID, /* relax */ true);
     else if (name == "binary-contours")
         return new OpenCVContoursVectorizer();
     else if (name == "dev-null")

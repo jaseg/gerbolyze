@@ -1,12 +1,16 @@
 
 #include <cstdlib>
+#include <cstdio>
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <string>
 #include <argagg.hpp>
+#include <subprocess.h>
 #include <gerbolyze.hpp>
 #include "vec_core.h"
+#include <base64.h>
 
 using argagg::parser_results;
 using argagg::parser;
@@ -33,6 +37,9 @@ int main(int argc, char **argv) {
             {"svg_dark_color", {"--dark-color"},
                 "SVG color to use for \"dark\" areas (default: black)",
                 1},
+            {"min_feature_size", {"-d", "--trace-space"},
+                "Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.",
+                1},
             {"no_header", {"--no-header"},
                 "Do not export output format header/footer, only export the primitives themselves",
                 0},
@@ -48,6 +55,18 @@ int main(int argc, char **argv) {
             {"vectorizer_map", {"--vectorizer-map"},
                 "Map from image element id to vectorizer. Overrides --vectorizer. Format: id1=vectorizer,id2=vectorizer,...",
                 1},
+            {"force_svg", {"--force-svg"},
+                "Force SVG input irrespective of file name",
+                0},
+            {"force_png", {"--force-png"},
+                "Force bitmap graphics input irrespective of file name",
+                0},
+            {"size", {"-s", "--size"},
+                "Bitmap mode only: Physical size of output image in mm. Format: 12.34x56.78",
+                1},
+            {"skip_usvg", {"--no-usvg"},
+                "Do not preprocess input using usvg (do not use unless you know *exactly* what you're doing)",
+                0},
             {"exclude_groups", {"-e", "--exclude-groups"},
                 "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",
                 1},
@@ -119,13 +138,6 @@ int main(int argc, char **argv) {
         out_f = &out_f_file;
     }
 
-
-    SVGDocument doc;
-    if (!doc.load(*in_f)) {
-        cerr <<  "Error loading input file \"" << in_f_name << "\", exiting." << endl;
-        return EXIT_FAILURE;
-    }
-
     bool only_polys = args["no_header"];
 
     int precision = 6;
@@ -134,7 +146,7 @@ int main(int argc, char **argv) {
     }
 
     string fmt = args["ofmt"] ? args["ofmt"] : "gerber";
-    transform(fmt.begin(), fmt.end(), fmt.begin(), [](unsigned char c){ return std::tolower(c); });
+    transform(fmt.begin(), fmt.end(), fmt.begin(), [](unsigned char c){ return std::tolower(c); }); /* c++ yeah */
 
     PolygonSink *sink = nullptr;
     PolygonSink *flattener = nullptr;
@@ -182,13 +194,142 @@ int main(int argc, char **argv) {
     }
     delete vec;
 
+    /*
+            double min_feature_size_px = mm_to_doc_units(rset.m_minimum_feature_size_mm);
+            vec->vectorize_image(cr, node, clip_path, viewport_matrix, *polygon_sink, min_feature_size_px);
+            delete vec;
+    */
+    double min_feature_size = 0.1; /* mm */
+    if (args["min_feature_size"]) {
+        min_feature_size = args["min_feature_size"].as<double>();
+    }
+
+    string ending = "";
+    auto idx = in_f_name.rfind(".");
+    if (idx != string::npos) {
+        ending = in_f_name.substr(idx);
+        transform(ending.begin(), ending.end(), ending.begin(), [](unsigned char c){ return std::tolower(c); }); /* c++ yeah */
+    }
+    
+    filesystem::path barf = { filesystem::temp_directory_path() /= (std::tmpnam(nullptr) + string(".svg")) };
+    filesystem::path frob = { filesystem::temp_directory_path() /= (std::tmpnam(nullptr) + string(".svg")) };
+
+    bool is_svg = args["force_svg"] || (ending == ".svg" && !args["force_png"]);
+    if (!is_svg) {
+        cerr << "writing bitmap into svg" << endl; 
+        if (!args["size"]) {
+            cerr << "Error: --size must be given when using bitmap input." << endl;
+            argagg::fmt_ostream fmt(cerr);
+            fmt << usage.str() << argparser;
+            return EXIT_FAILURE;
+        }
+
+        string sz = args["size"].as<string>();
+        auto pos = sz.find_first_of("x*,");
+        if (pos == string::npos) {
+            cerr << "Error: --size must be of form 12.34x56.78" << endl;
+            argagg::fmt_ostream fmt(cerr);
+            fmt << usage.str() << argparser;
+            return EXIT_FAILURE;
+        }
+
+        string x_str = sz.substr(0, pos);
+        string y_str = sz.substr(pos+1);
+
+        double width = std::strtod(x_str.c_str(), nullptr);
+        double height = std::strtod(y_str.c_str(), nullptr);
+
+        if (width < 1 || height < 1) {
+            cerr << "Error: --size must be of form 12.34x56.78 and values must be positive floating-point numbers in mm" << endl;
+            argagg::fmt_ostream fmt(cerr);
+            fmt << usage.str() << argparser;
+            return EXIT_FAILURE;
+        }
+
+        ofstream svg(barf.c_str());
+
+        svg << "<svg width=\"" << width << "mm\" height=\"" << height << "mm\" viewBox=\"0 0 "
+            << width << " " << height << "\" "
+            << "xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">" << endl;
+
+        svg << "<image width=\"" << width << "\" height=\"" << height << "\" x=\"0\" y=\"0\" xlink:href=\"data:image/png;base64,";
+        
+        /* c++ has the best hacks */
+        std::ostringstream sstr;
+        sstr << in_f->rdbuf();
+        string le_data = sstr.str();
+
+        svg << base64_encode(le_data);
+        svg << "\"/>" << endl;
+
+        svg << "</svg>" << endl;
+        svg.close();
+
+    } else { /* svg file */
+        cerr << "copying svg input into temp svg" << endl; 
+
+        /* c++ has the best hacks */
+        std::ostringstream sstr;
+        sstr << in_f->rdbuf();
+
+        ofstream tmp_out(barf.c_str());
+        tmp_out << sstr.str();
+        tmp_out.close();
+
+    }
+
+    if (args["skip_usvg"]) {
+        cerr << "skippint usvg" << endl; 
+        frob = barf;
+
+    } else {
+        cerr << "calling usvg on " << barf << " and " << frob << endl; 
+        const char *command_line[] = {"usvg", barf.c_str(), frob.c_str(), NULL};
+        struct subprocess_s subprocess;
+        int rc = subprocess_create(command_line, subprocess_option_inherit_environment, &subprocess);
+        if (rc) {
+            cerr << "Error calling usvg!" << endl;
+            return EXIT_FAILURE;
+        }
+
+        int usvg_rc = 0;
+        rc = subprocess_join(&subprocess, &usvg_rc);
+        if (rc) {
+            cerr << "Error calling usvg!" << endl;
+            return EXIT_FAILURE;
+        }
+        if (usvg_rc) {
+            cerr << "usvg returned an error code: " << usvg_rc << endl;
+            return EXIT_FAILURE;
+        }
+
+        rc = subprocess_destroy(&subprocess);
+        if (rc) {
+            cerr << "Error calling usvg!" << endl;
+            return EXIT_FAILURE;
+        }
+    }
+
     VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"] : "");
     RenderSettings rset {
-        0.1,
+        min_feature_size,
         vec_sel,
     };
 
+    SVGDocument doc;
+    cerr << "Loading temporary file " << frob << endl;
+    ifstream load_f(frob);
+    if (!doc.load(load_f)) {
+        cerr <<  "Error loading input file \"" << in_f_name << "\", exiting." << endl;
+        return EXIT_FAILURE;
+    }
+
     doc.render(rset, flattener ? *flattener : *sink, &sel);
 
+    if (!is_svg) {
+        remove(frob.c_str());
+        remove(barf.c_str());
+    }
     return EXIT_SUCCESS;
 }
+

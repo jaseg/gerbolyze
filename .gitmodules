@@ -13,3 +13,6 @@
 [submodule "upstream/CavalierContours"]
 	path = upstream/CavalierContours
 	url = https://github.com/jbuckmccready/CavalierContours
+[submodule "upstream/subprocess.h"]
+	path = upstream/subprocess.h
+	url = https://github.com/sheredom/subprocess.h
