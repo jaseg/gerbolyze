@@ -21,6 +21,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <regex>
 #include <opencv2/opencv.hpp>
 #include "svg_import_util.h"
 #include "vec_core.h"
@@ -36,7 +37,7 @@ ImageVectorizer *gerbolyze::makeVectorizer(const std::string &name) {
     else if (name == "hex-grid")
         return new VoronoiVectorizer(HEXGRID, /* relax */ false);
     else if (name == "square-grid")
-        return new VoronoiVectorizer(SQUAREGRID, /* relax */ true);
+        return new VoronoiVectorizer(SQUAREGRID, /* relax */ false);
     else if (name == "binary-contours")
         return new OpenCVContoursVectorizer();
     else if (name == "dev-null")
@@ -189,6 +190,15 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
     apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
     cairo_translate(cr, x, y);
 
+    double orig_rows = img.rows;
+    double orig_cols = img.cols;
+    double scale_x = (double)width / orig_cols;
+    double scale_y = (double)height / orig_rows;
+    double off_x = 0;
+    double off_y = 0;
+    handle_aspect_ratio(node.attribute("preserveAspectRatio").value(),
+            scale_x, scale_y, off_x, off_y, orig_cols, orig_rows);
+
     /* Adjust minimum feature size given in mm and translate into px document units in our local coordinate system. */
     double f_x = min_feature_size_px, f_y = 0;
     cairo_device_to_user_distance(cr, &f_x, &f_y);
@@ -202,7 +212,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
                                         grayscale interpolation. Larger values -> better grayscale resolution,
                                         larger cells. */
     double center_distance = min_feature_size_px * 2.0 * (1.0 / (1.0-grayscale_overhead));
-    vector<d2p> *grid_centers = get_sampler(m_grid_type)(width, height, center_distance);
+    vector<d2p> *grid_centers = get_sampler(m_grid_type)(scale_x * orig_cols, scale_y*orig_rows, center_distance);
     //vector<d2p> *grid_centers = sample_poisson_disc(width, height, min_feature_size_px * 2.0 * 2.0);
     //vector<d2p> *grid_centers = sample_hexgrid(width, height, center_distance);
     //vector<d2p> *grid_centers = sample_squaregrid(width, height, center_distance);
@@ -232,7 +242,9 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
     /* Calculate voronoi diagram for the grid generated above. */
     jcv_diagram diagram;
     memset(&diagram, 0, sizeof(jcv_diagram));
-    jcv_rect rect {{0.0, 0.0}, {width, height}};
+    cerr << "adjusted scale " << scale_x << " " << scale_y << endl;
+    cerr << "voronoi clip rect " << (scale_x * orig_cols) << " " << (scale_y * orig_rows) << endl;
+    jcv_rect rect {{0.0, 0.0}, {scale_x * orig_cols, scale_y * orig_rows}};
     jcv_point *pts = reinterpret_cast<jcv_point *>(grid_centers->data()); /* hackety hack */
     jcv_diagram_generate(grid_centers->size(), pts, &rect, 0, &diagram);
     /* Relax points, i.e. wiggle them around a little bit to equalize differences between cell sizes a little bit. */
@@ -255,8 +267,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
         const jcv_point center = sites[i].p;
 
         double pxd = (double)blurred.at<unsigned char>(
-                (int)round(center.y / height * blurred.rows),
-                (int)round(center.x / width * blurred.cols)) / 255.0; 
+                (int)round(center.y / (scale_y * orig_rows / blurred.rows)),
+                (int)round(center.x / (scale_x * orig_cols / blurred.cols))) / 255.0; 
         /* FIXME: This is a workaround for a memory corruption bug that happens with the square-grid setting. When using
          * square-grid on a fairly small test image, sometimes sites[i].index will be out of bounds here.
          */
@@ -321,8 +333,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
                  * "step". */
                 double x = e->pos[0].x;
                 double y = e->pos[0].y;
-                x = center.x + (x - center.x) * fill_factor;
-                y = center.y + (y - center.y) * fill_factor;
+                x = off_x + center.x + (x - center.x) * fill_factor;
+                y = off_y + center.y + (y - center.y) * fill_factor;
 
                 cairo_user_to_device(cr, &x, &y);
                 cell_path.push_back({ (ClipperLib::cInt)round(x * clipper_scale), (ClipperLib::cInt)round(y * clipper_scale) });
@@ -331,8 +343,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
             /* Emit endpoint of current edge */
             double x = e->pos[1].x;
             double y = e->pos[1].y;
-            x = center.x + (x - center.x) * fill_factor;
-            y = center.y + (y - center.y) * fill_factor;
+            x = off_x + center.x + (x - center.x) * fill_factor;
+            y = off_y + center.y + (y - center.y) * fill_factor;
 
             cairo_user_to_device(cr, &x, &y);
             cell_path.push_back({ (ClipperLib::cInt)round(x * clipper_scale), (ClipperLib::cInt)round(y * clipper_scale) });
@@ -379,6 +391,61 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
     cairo_restore(cr);
 }
 
+void gerbolyze::handle_aspect_ratio(string spec, double &scale_x, double &scale_y, double &off_x, double &off_y, double cols, double rows) {
+
+    if (spec.empty()) {
+        spec = "xMidYMid meet";
+    }
+
+    auto idx = spec.find(" ");
+    string par_align = spec;
+    string par_meet = "meet";
+    if (idx != string::npos) {
+        par_align = spec.substr(0, idx);
+        par_meet = spec.substr(idx+1);
+    }
+
+    if (par_align != "none") {
+        double scale = scale_x;
+        if (par_meet == "slice") {
+            scale = std::max(scale_x, scale_y);
+        } else {
+            scale = std::min(scale_x, scale_y);
+        }
+
+        std::regex reg("x(Min|Mid|Max)Y(Min|Mid|Max)");
+        std::smatch match;
+
+        cerr << "data: " <<" "<< scale_x << "/" << scale_y << ": " << scale << endl;
+        off_x = (scale_x - scale) * cols;
+        off_y = (scale_y - scale) * rows;
+        cerr << rows <<","<<cols<<" " << off_x << "," << off_y << endl;
+        if (std::regex_match(par_align, match, reg)) {
+            assert (match.size() == 3);
+            if (match[1].str() == "Min") {
+                off_x = 0;
+            } else if (match[1].str() == "Mid") {
+                off_x *= 0.5;
+            }
+
+            if (match[2].str() == "Min") {
+                off_y = 0;
+            } else if (match[2].str() == "Mid") {
+                off_y *= 0.5;
+            }
+
+        } else {
+            cerr << "Invalid preserveAspectRatio meetOrSlice value \"" << par_align << "\"" << endl;
+            off_x *= 0.5;
+            off_y *= 0.5;
+        }
+
+        scale_x = scale_y = scale;
+    }
+    cerr << "res: "<< off_x << "," << off_y << endl;
+}
+
+
 void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) {
     double x, y, width, height;
     parse_img_meta(node, x, y, width, height);
@@ -390,6 +457,13 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pug
     /* Set up target transform using SVG transform and x/y attributes */
     apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
     cairo_translate(cr, x, y);
+
+    double scale_x = (double)width / (double)img.cols;
+    double scale_y = (double)height / (double)img.rows;
+    double off_x = 0;
+    double off_y = 0;
+    handle_aspect_ratio(node.attribute("preserveAspectRatio").value(),
+            scale_x, scale_y, off_x, off_y, img.cols, img.rows);
 
     draw_bg_rect(cr, width, height, clip_path, sink, viewport_matrix);
 
@@ -415,8 +489,8 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pug
 
             ClipperLib::Path out;
             for (const auto &p : contours[i]) {
-                double x = (double)p.x / (double)img.cols * (double)width;
-                double y = (double)p.y / (double)img.rows * (double)height;
+                double x = off_x + (double)p.x * scale_x;
+                double y = off_y + (double)p.y * scale_y;
                 cairo_user_to_device(cr, &x, &y);
                 out.push_back({ (ClipperLib::cInt)round(x * clipper_scale), (ClipperLib::cInt)round(y * clipper_scale) });
             }

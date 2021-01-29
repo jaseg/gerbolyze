@@ -64,6 +64,9 @@ int main(int argc, char **argv) {
             {"size", {"-s", "--size"},
                 "Bitmap mode only: Physical size of output image in mm. Format: 12.34x56.78",
                 1},
+            {"preserve_aspect_ratio", {"-a", "--preserve-aspect-ratio"},
+                "Bitmap mode only: Preserve aspect ratio of image. Allowed values are meet, slice. Can also parse full SVG preserveAspectRatio syntax.",
+                1},
             {"skip_usvg", {"--no-usvg"},
                 "Do not preprocess input using usvg (do not use unless you know *exactly* what you're doing)",
                 0},
@@ -252,7 +255,19 @@ int main(int argc, char **argv) {
             << width << " " << height << "\" "
             << "xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">" << endl;
 
-        svg << "<image width=\"" << width << "\" height=\"" << height << "\" x=\"0\" y=\"0\" xlink:href=\"data:image/png;base64,";
+        string par_attr = "none";
+        if (args["preserve_aspect_ratio"]) {
+            string aspect_ratio = args["preserve_aspect_ratio"].as<string>();
+            if (aspect_ratio == "meet") {
+                par_attr = "xMidYMid meet";
+            } else if (aspect_ratio == "slice") {
+                par_attr = "xMidYMid slice";
+            } else {
+                par_attr = aspect_ratio;
+            }
+        }
+        svg << "<image width=\"" << width << "\" height=\"" << height << "\" x=\"0\" y=\"0\" preserveAspectRatio=\""
+            << par_attr << "\" xlink:href=\"data:image/png;base64,";
         
         /* c++ has the best hacks */
         std::ostringstream sstr;
