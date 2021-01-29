@@ -16,6 +16,7 @@ SOURCES := src/svg_color.cpp \
 	src/main.cpp \
 	src/out_svg.cpp \
 	src/out_gerber.cpp \
+	src/out_sexp.cpp \
 	src/out_flattener.cpp \
 	src/lambda_sink.cpp \
 
@@ -37,7 +38,9 @@ CXXFLAGS += $(shell $(PKG_CONFIG) --cflags pangocairo pugixml opencv4)
 LDFLAGS := -lm -lc -lstdc++
 LDFLAGS += $(shell $(PKG_CONFIG) --libs pangocairo pugixml opencv4)
 
-all: $(BUILDDIR)/svg-render
+TARGET := svg-render
+
+all: $(BUILDDIR)/$(TARGET)
 
 test.gbr test.svg &: render
 	./render test.svg > test.gbr
@@ -46,7 +49,7 @@ $(BUILDDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@) 
 	$(CXX) -c $(CXXFLAGS) $(CXXFLAGS) $(INCLUDES) -o $@ $^
 
-$(BUILDDIR)/svg-render: $(SOURCES:%.cpp=$(BUILDDIR)/%.o) $(BUILDDIR)/upstream/cpp-base64/base64.o
+$(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o) $(BUILDDIR)/upstream/cpp-base64/base64.o
 	@mkdir -p $(dir $@) 
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 	

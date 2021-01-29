@@ -220,6 +220,25 @@ namespace gerbolyze {
         d2p m_offset;
     };
 
+    class KicadSexpOutput : public StreamPolygonSink {
+    public:
+        KicadSexpOutput(std::ostream &out, std::string mod_name, std::string layer, bool only_polys=false, std::string m_ref_text="", std::string m_val_text="G*****", d2p ref_pos={0,10}, d2p val_pos={0,-10});
+        virtual ~KicadSexpOutput() {}
+        virtual KicadSexpOutput &operator<<(const Polygon &poly);
+        virtual KicadSexpOutput &operator<<(GerberPolarityToken pol);
+        virtual void header_impl(d2p origin, d2p size);
+        virtual void footer_impl();
+
+    private:
+        std::string m_mod_name;
+        std::string m_layer;
+        std::string m_ref_text;
+        std::string m_val_text;
+        d2p m_ref_pos;
+        d2p m_val_pos;
+    };
+
+
     /* TODO
     class SExpOutput : public StreamPolygonSink {
     public:

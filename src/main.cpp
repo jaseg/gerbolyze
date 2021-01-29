@@ -46,6 +46,9 @@ int main(int argc, char **argv) {
             {"flatten", {"--flatten"},
                 "Flatten output so it only consists of non-overlapping white polygons. This perform composition at the vector level. Potentially slow.",
                 0},
+            {"no_flatten", {"--no-flatten"},
+                "Disable automatic flattening for KiCAD S-Exp export",
+                0},
             {"only_groups", {"-g", "--only-groups"},
                 "Comma-separated list of group IDs to export.",
                 1},
@@ -63,6 +66,12 @@ int main(int argc, char **argv) {
                 0},
             {"size", {"-s", "--size"},
                 "Bitmap mode only: Physical size of output image in mm. Format: 12.34x56.78",
+                1},
+            {"sexp_mod_name", {"--sexp-mod-name"},
+                "Module name for KiCAD S-Exp output",
+                1},
+            {"sexp_layer", {"--sexp-layer"},
+                "Layer for KiCAD S-Exp output",
                 1},
             {"preserve_aspect_ratio", {"-a", "--preserve-aspect-ratio"},
                 "Bitmap mode only: Preserve aspect ratio of image. Allowed values are meet, slice. Can also parse full SVG preserveAspectRatio syntax.",
@@ -151,6 +160,7 @@ int main(int argc, char **argv) {
     string fmt = args["ofmt"] ? args["ofmt"] : "gerber";
     transform(fmt.begin(), fmt.end(), fmt.begin(), [](unsigned char c){ return std::tolower(c); }); /* c++ yeah */
 
+    bool force_flatten = false;
     PolygonSink *sink = nullptr;
     PolygonSink *flattener = nullptr;
     if (fmt == "svg") {
@@ -161,6 +171,17 @@ int main(int argc, char **argv) {
     } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber") {
         sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision);
 
+    } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
+        if (!args["sexp_mod_name"] || !args["sexp_layer"]) {
+            cerr << "--sexp-mod-name and --sexp-layer must be given for sexp export" << endl;
+            argagg::fmt_ostream fmt(cerr);
+            fmt << usage.str() << argparser;
+            return EXIT_FAILURE;
+        }
+
+        sink = new KicadSexpOutput(*out_f, args["sexp_mod_name"], args["sexp_layer"], only_polys);
+        force_flatten = true;
+
     } else {
         cerr << "Unknown output format \"" << fmt << "\"" << endl;
         argagg::fmt_ostream fmt(cerr);
@@ -168,7 +189,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (args["flatten"]) {
+    if (args["flatten"] || (force_flatten && !args["no_flatten"])) {
         flattener = new Flattener(*sink);
     }
 
@@ -294,7 +315,7 @@ int main(int argc, char **argv) {
     }
 
     if (args["skip_usvg"]) {
-        cerr << "skippint usvg" << endl; 
+        cerr << "skipping usvg" << endl; 
         frob = barf;
 
     } else {
