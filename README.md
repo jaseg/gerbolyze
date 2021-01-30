@@ -28,6 +28,9 @@ Specify "-" for stdin/stdout.
         polygons. This perform composition at the vector level. Potentially slow.
     --no-flatten
         Disable automatic flattening for KiCAD S-Exp export
+    --dilate
+        Dilate output gerber primitives by this amount in mm. Used for
+        masking out other layers.
     -g, --only-groups
         Comma-separated list of group IDs to export.
     -b, --vectorizer
@@ -45,7 +48,8 @@ Specify "-" for stdin/stdout.
     --sexp-mod-name
         Module name for KiCAD S-Exp output
     --sexp-layer
-        Layer for KiCAD S-Exp output
+        Layer for KiCAD S-Exp output. Defaults to auto-detect layers from
+        SVG layer/top-level group names
     -a, --preserve-aspect-ratio
         Bitmap mode only: Preserve aspect ratio of image. Allowed values
         are meet, slice. Can also parse full SVG preserveAspectRatio syntax.
