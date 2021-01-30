@@ -152,3 +152,15 @@ Gallery
 
 .. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/sample3.jpg
 
+Licensing
+---------
+
+This tool is licensed under the rather radical AGPLv3 license. Briefly, this means that you have to provide users of a
+webapp using this tool in the backend with this tool's source.
+
+I get that some people have issues with the AGPL. In case this license prevents you from using this software, please
+send me [an email](mailto:agpl.sucks@jaseg.de) and I can grant you an exception. I want this software to be useful to as
+many people as possible and I wouldn't want the license to be a hurdle to anyone. OTOH I see a danger of some cheap
+board house just integrating a fork into their webpage without providing their changes back upstream, and I want to
+avoid that so the default license is still AGPL.
+
