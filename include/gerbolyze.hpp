@@ -37,11 +37,17 @@ namespace gerbolyze {
         GRB_POL_DARK
     };
 
+    class LayerNameToken {
+    public:
+        std::string m_name;
+    };
+
     class PolygonSink {
         public:
             virtual ~PolygonSink() {}
             virtual void header(d2p origin, d2p size) {(void) origin; (void) size;}
             virtual PolygonSink &operator<<(const Polygon &poly) = 0;
+            virtual PolygonSink &operator<<(const LayerNameToken &) { return *this; };
             virtual PolygonSink &operator<<(GerberPolarityToken pol) = 0;
             virtual void footer() {}
     };
@@ -53,11 +59,13 @@ namespace gerbolyze {
             virtual ~Flattener();
             virtual void header(d2p origin, d2p size);
             virtual Flattener &operator<<(const Polygon &poly);
+            virtual Flattener &operator<<(const LayerNameToken &layer_name);
             virtual Flattener &operator<<(GerberPolarityToken pol);
             virtual void footer();
 
         private:
             void render_out_clear_polys();
+            void flush_polys_to_sink();
             PolygonSink &m_sink;
             GerberPolarityToken m_current_polarity = GRB_POL_DARK;
             Flattener_D *d;
@@ -78,17 +86,20 @@ namespace gerbolyze {
         std::ostream &m_out;
     };
     
+    extern const std::vector<std::string> kicad_default_layers;
+
     class ElementSelector {
     public:
-        virtual bool match(const pugi::xml_node &node, bool included) const = 0;
+        virtual bool match(const pugi::xml_node &node, bool included, bool is_root) const = 0;
     };
 
     class IDElementSelector : public ElementSelector {
     public:
-        virtual bool match(const pugi::xml_node &node, bool included) const;
+        virtual bool match(const pugi::xml_node &node, bool included, bool is_root) const;
 
         std::vector<std::string> include;
         std::vector<std::string> exclude;
+        const std::vector<std::string> *layers = nullptr;
     };
 
     class ImageVectorizer {
@@ -144,7 +155,7 @@ namespace gerbolyze {
             const ClipperLib::Paths *lookup_clip_path(const pugi::xml_node &node);
             Pattern *lookup_pattern(const std::string id);
 
-            void export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true);
+            void export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true, bool is_root=false);
             void export_svg_path(const RenderSettings &rset, const pugi::xml_node &node, ClipperLib::Paths &clip_path);
             void setup_debug_output(std::string filename="");
             void setup_viewport_clip();
@@ -225,27 +236,21 @@ namespace gerbolyze {
         KicadSexpOutput(std::ostream &out, std::string mod_name, std::string layer, bool only_polys=false, std::string m_ref_text="", std::string m_val_text="G*****", d2p ref_pos={0,10}, d2p val_pos={0,-10});
         virtual ~KicadSexpOutput() {}
         virtual KicadSexpOutput &operator<<(const Polygon &poly);
+        virtual KicadSexpOutput &operator<<(const LayerNameToken &layer_name);
         virtual KicadSexpOutput &operator<<(GerberPolarityToken pol);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
 
+        void set_export_layers(const std::vector<std::string> &layers) { m_export_layers = &layers; }
+
     private:
+        const std::vector<std::string> *m_export_layers = &kicad_default_layers;
         std::string m_mod_name;
         std::string m_layer;
+        bool m_auto_layer;
         std::string m_ref_text;
         std::string m_val_text;
         d2p m_ref_pos;
         d2p m_val_pos;
     };
-
-
-    /* TODO
-    class SExpOutput : public StreamPolygonSink {
-    public:
-        virtual SExpOutput &operator<<(const Polygon &poly);
-        virtual SExpOutput &operator<<(GerberPolarityToken pol);
-        virtual void header_impl(d2p origin, d2p size);
-        virtual void footer_impl();
-    }
-    */
 }

@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
                 "Module name for KiCAD S-Exp output",
                 1},
             {"sexp_layer", {"--sexp-layer"},
-                "Layer for KiCAD S-Exp output",
+                "Layer for KiCAD S-Exp output. Defaults to auto-detect layers from SVG layer/top-level group names",
                 1},
             {"preserve_aspect_ratio", {"-a", "--preserve-aspect-ratio"},
                 "Bitmap mode only: Preserve aspect ratio of image. Allowed values are meet, slice. Can also parse full SVG preserveAspectRatio syntax.",
@@ -160,6 +160,8 @@ int main(int argc, char **argv) {
     string fmt = args["ofmt"] ? args["ofmt"] : "gerber";
     transform(fmt.begin(), fmt.end(), fmt.begin(), [](unsigned char c){ return std::tolower(c); }); /* c++ yeah */
 
+    string sexp_layer = args["sexp_layer"] ? args["sexp_layer"].as<string>() : "auto";
+
     bool force_flatten = false;
     PolygonSink *sink = nullptr;
     PolygonSink *flattener = nullptr;
@@ -172,14 +174,14 @@ int main(int argc, char **argv) {
         sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision);
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
-        if (!args["sexp_mod_name"] || !args["sexp_layer"]) {
-            cerr << "--sexp-mod-name and --sexp-layer must be given for sexp export" << endl;
+        if (!args["sexp_mod_name"]) {
+            cerr << "--sexp-mod-name must be given for sexp export" << endl;
             argagg::fmt_ostream fmt(cerr);
             fmt << usage.str() << argparser;
             return EXIT_FAILURE;
         }
 
-        sink = new KicadSexpOutput(*out_f, args["sexp_mod_name"], args["sexp_layer"], only_polys);
+        sink = new KicadSexpOutput(*out_f, args["sexp_mod_name"], sexp_layer, only_polys);
         force_flatten = true;
 
     } else {
@@ -206,6 +208,9 @@ int main(int argc, char **argv) {
         id_match(args["only_groups"], sel.include);
     if (args["exclude_groups"])
         id_match(args["exclude_groups"], sel.exclude);
+    if (sexp_layer == "auto") {
+        sel.layers = &gerbolyze::kicad_default_layers;
+    }
 
     string vectorizer = args["vectorizer"] ? args["vectorizer"] : "poisson-disc";
     /* Check argument */
@@ -320,7 +325,7 @@ int main(int argc, char **argv) {
 
     } else {
         cerr << "calling usvg on " << barf << " and " << frob << endl; 
-        const char *command_line[] = {"usvg", barf.c_str(), frob.c_str(), NULL};
+        const char *command_line[] = {"usvg", "--keep-named-groups", barf.c_str(), frob.c_str(), NULL};
         struct subprocess_s subprocess;
         int rc = subprocess_create(command_line, subprocess_option_inherit_environment, &subprocess);
         if (rc) {

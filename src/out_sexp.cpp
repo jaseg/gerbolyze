@@ -32,7 +32,8 @@ using namespace std;
 KicadSexpOutput::KicadSexpOutput(ostream &out, string mod_name, string layer, bool only_polys, string ref_text, string val_text, d2p ref_pos, d2p val_pos)
     : StreamPolygonSink(out, only_polys),
     m_mod_name(mod_name),
-    m_layer(layer),
+    m_layer(layer == "auto" ? "unknown" : layer),
+    m_auto_layer(layer == "auto"),
     m_val_text(val_text),
     m_ref_pos(ref_pos),
     m_val_pos(val_pos)
@@ -63,7 +64,28 @@ KicadSexpOutput &KicadSexpOutput::operator<<(GerberPolarityToken pol) {
     return *this;
 }
 
+KicadSexpOutput &KicadSexpOutput::operator<<(const LayerNameToken &layer_name) {
+    if (!m_auto_layer)
+        return *this;
+
+    cerr << "Setting S-Exp export layer to \"" << layer_name.m_name << "\"" << endl;
+    if (!layer_name.m_name.empty()) {
+        m_layer = layer_name.m_name;
+    } else {
+        m_layer = "unknown";
+    }
+
+    return *this;
+}
+
 KicadSexpOutput &KicadSexpOutput::operator<<(const Polygon &poly) {
+    if (m_auto_layer) {
+        if (std::find(m_export_layers->begin(), m_export_layers->end(), m_layer) == m_export_layers->end()) {
+            cerr << "Rejecting S-Exp export layer \"" << m_layer << "\"" << endl;
+            return *this;
+        }
+    }
+
     if (poly.size() < 3) {
         cerr << "Warning: " << poly.size() << "-element polygon passed to KicadSexpOutput" << endl;
         return *this;

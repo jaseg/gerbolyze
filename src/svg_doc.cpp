@@ -117,12 +117,21 @@ double gerbolyze::SVGDocument::doc_units_to_mm(double px) const {
     return px / (vb_w / page_w_mm);
 }
 
-bool IDElementSelector::match(const pugi::xml_node &node, bool included) const {
+bool IDElementSelector::match(const pugi::xml_node &node, bool included, bool is_root) const {
+    string id = node.attribute("id").value();
+    if (is_root && layers) {
+        bool layer_match = std::find(layers->begin(), layers->end(), id) != layers->end();
+        if (!layer_match) {
+            cerr << "Rejecting layer \"" << id << "\"" << endl;
+            return false;
+        }
+    }
+
     if (include.empty() && exclude.empty())
         return true;
 
-    bool include_match = std::find(include.begin(), include.end(), node.attribute("id").value()) != include.end();
-    bool exclude_match = std::find(exclude.begin(), exclude.end(), node.attribute("id").value()) != exclude.end();
+    bool include_match = std::find(include.begin(), include.end(), id) != include.end();
+    bool exclude_match = std::find(exclude.begin(), exclude.end(), id) != exclude.end();
 
     if (exclude_match || (!included && !include_match)) {
         return false;
@@ -132,7 +141,7 @@ bool IDElementSelector::match(const pugi::xml_node &node, bool included) const {
 }
 
 /* Recursively export all SVG elements in the given group. */
-void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included) {
+void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included, bool is_root) {
     /* Enter the group's coordinate system */
     cairo_save(cr);
     apply_cairo_transform_from_svg(cr, group.attribute("transform").value());
@@ -162,12 +171,23 @@ void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const 
 
     /* Iterate over the group's children, exporting them one by one. */
     for (const auto &node : group.children()) {
-        if (sel && !sel->match(node, included))
+        if (sel && !sel->match(node, included, is_root))
             continue;
 
         string name(node.name());
         if (name == "g") {
+            if (is_root) { /* Treat top-level groups as "layers" like inkscape does. */
+                cerr << "Forwarding layer name to sink: \"" << node.attribute("id").value() << "\"" << endl;
+                LayerNameToken tok { node.attribute("id").value() };
+                *polygon_sink << tok;
+            }
+
             export_svg_group(rset, node, clip_path, sel, true);
+            
+            if (is_root) {
+                LayerNameToken tok {""};
+                *polygon_sink << tok;
+            }
 
         } else if (name == "path") {
             export_svg_path(rset, node, clip_path);
@@ -379,7 +399,7 @@ void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sin
     c.AddPaths(vb_paths, ptSubject, /* closed */ true);
     ClipperLib::IntRect bbox = c.GetBounds();
     cerr << "document viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
-    export_svg_group(rset, root_elem, vb_paths, sel, false);
+    export_svg_group(rset, root_elem, vb_paths, sel, false, true);
     sink.footer();
 }
 
@@ -484,3 +504,35 @@ void gerbolyze::SVGDocument::load_clips() {
     }
 }
 
+/* Note: These values come from KiCAD's common/lset.cpp. KiCAD uses *multiple different names* for the same layer in
+ * different places, and not all of them are stable. Sometimes, these names change without notice. If this list isn't
+ * up-to-date, it's not my fault. Still, please file an issue. */
+const std::vector<std::string> gerbolyze::kicad_default_layers ({
+        /* Copper */
+        "F.Cu",
+        "In1.Cu", "In2.Cu", "In3.Cu", "In4.Cu", "In5.Cu", "In6.Cu", "In7.Cu", "In8.Cu",
+        "In9.Cu", "In10.Cu", "In11.Cu", "In12.Cu", "In13.Cu", "In14.Cu", "In15.Cu", "In16.Cu",
+        "In17.Cu", "In18.Cu", "In19.Cu", "In20.Cu", "In21.Cu", "In22.Cu", "In23.Cu",
+        "In24.Cu", "In25.Cu", "In26.Cu", "In27.Cu", "In28.Cu", "In29.Cu", "In30.Cu",
+        "B.Cu",
+
+        /* Technical layers */
+        "B.Adhes", "F.Adhes",
+        "B.Paste", "F.Paste",
+        "B.SilkS", "F.SilkS",
+        "B.Mask", "F.Mask",
+
+        /* User layers */
+        "Dwgs.User",
+        "Cmts.User",
+        "Eco1.User", "Eco2.User",
+        "Edge.Cuts",
+        "Margin",
+
+        /* Footprint layers */
+        "F.CrtYd", "B.CrtYd",
+        "F.Fab", "B.Fab",
+
+        /* Layers for user scripting etc. */
+        "User.1", "User.2", "User.3", "User.4", "User.5", "User.6", "User.7", "User.8", "User.9",
+        });

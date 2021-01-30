@@ -144,15 +144,19 @@ Flattener &Flattener::operator<<(GerberPolarityToken pol) {
     return *this;
 }
 
-Flattener &Flattener::operator<<(const Polygon &poly) {
-    static int i=0, j=0;
+Flattener &Flattener::operator<<(const LayerNameToken &layer_name) {
+    flush_polys_to_sink();
+    m_sink << layer_name;
+    cerr << "Flattener forwarding layer name to sink: \"" << layer_name.m_name << "\"" << endl;
 
+    return *this;
+}
+
+Flattener &Flattener::operator<<(const Polygon &poly) {
     if (m_current_polarity == GRB_POL_DARK) {
         d->add_dark_polygon(poly);
-        cerr << "dark primitive " << i++ << endl;
 
     } else { /* clear */
-        cerr << "clear primitive " << j++ << endl;
         d->add_clear_polygon(poly);
         render_out_clear_polys();
     }
@@ -160,10 +164,8 @@ Flattener &Flattener::operator<<(const Polygon &poly) {
     return *this;
 }
 
-void Flattener::footer() {
-    if (m_current_polarity == GRB_POL_CLEAR) {
-        render_out_clear_polys();
-    }
+void Flattener::flush_polys_to_sink() {
+    *this << GRB_POL_DARK; /* force render */
     m_sink << GRB_POL_DARK;
 
     for (auto &poly : d->dark_polys) {
@@ -174,6 +176,12 @@ void Flattener::footer() {
         m_sink << poly_out;
     }
 
+    d->clear_polys.clear();
+    d->dark_polys.clear();
+}
+
+void Flattener::footer() {
+    flush_polys_to_sink();
     m_sink.footer();
 }
 
