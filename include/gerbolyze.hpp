@@ -71,6 +71,21 @@ namespace gerbolyze {
             Flattener_D *d;
     };
 
+    class Dilater : public PolygonSink {
+        public:
+            Dilater(PolygonSink &sink, double dilation) : m_sink(sink), m_dilation(dilation) {}
+            virtual void header(d2p origin, d2p size);
+            virtual Dilater &operator<<(const Polygon &poly);
+            virtual Dilater &operator<<(const LayerNameToken &layer_name);
+            virtual Dilater &operator<<(GerberPolarityToken pol);
+            virtual void footer();
+
+        private:
+            PolygonSink &m_sink;
+            double m_dilation;
+            GerberPolarityToken m_current_polarity = GRB_POL_DARK;
+    };
+
     class StreamPolygonSink : public PolygonSink {
     public:
         StreamPolygonSink(std::ostream &out, bool only_polys=false) : m_only_polys(only_polys), m_out(out) {}

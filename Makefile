@@ -18,6 +18,7 @@ SOURCES := src/svg_color.cpp \
 	src/out_gerber.cpp \
 	src/out_sexp.cpp \
 	src/out_flattener.cpp \
+	src/out_dilater.cpp \
 	src/lambda_sink.cpp \
 
 CLIPPER_SOURCES ?= upstream/clipper-6.4.2/cpp/clipper.cpp upstream/clipper-6.4.2/cpp/cpp_cairo/cairo_clipper.cpp

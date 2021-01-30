@@ -301,6 +301,7 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
 
     if (stroke_color && stroke_width > 0.0) {
         ClipperOffset offx;
+        offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
 
         /* For stroking we have to separately handle open and closed paths */
         for (const auto &poly : closed_paths) {

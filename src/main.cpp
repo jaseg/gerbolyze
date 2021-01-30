@@ -49,6 +49,9 @@ int main(int argc, char **argv) {
             {"no_flatten", {"--no-flatten"},
                 "Disable automatic flattening for KiCAD S-Exp export",
                 0},
+            {"dilate", {"--dilate"},
+                "Dilate output gerber primitives by this amount in mm. Used for masking out other layers.",
+                1},
             {"only_groups", {"-g", "--only-groups"},
                 "Comma-separated list of group IDs to export.",
                 1},
@@ -163,8 +166,10 @@ int main(int argc, char **argv) {
     string sexp_layer = args["sexp_layer"] ? args["sexp_layer"].as<string>() : "auto";
 
     bool force_flatten = false;
+    bool is_sexp = false;
     PolygonSink *sink = nullptr;
     PolygonSink *flattener = nullptr;
+    PolygonSink *dilater = nullptr;
     if (fmt == "svg") {
         string dark_color = args["svg_dark_color"] ? args["svg_dark_color"] : "#000000";
         string clear_color = args["svg_clear_color"] ? args["svg_clear_color"] : "#ffffff";
@@ -183,6 +188,7 @@ int main(int argc, char **argv) {
 
         sink = new KicadSexpOutput(*out_f, args["sexp_mod_name"], sexp_layer, only_polys);
         force_flatten = true;
+        is_sexp = true;
 
     } else {
         cerr << "Unknown output format \"" << fmt << "\"" << endl;
@@ -191,8 +197,16 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    PolygonSink *top_sink = sink;
+
+    if (args["dilate"]) {
+        dilater = new Dilater(*top_sink, args["dilate"].as<double>());
+        top_sink = dilater;
+    }
+
     if (args["flatten"] || (force_flatten && !args["no_flatten"])) {
-        flattener = new Flattener(*sink);
+        flattener = new Flattener(*top_sink);
+        top_sink = flattener;
     }
 
     /* Because the C++ stdlib is bullshit */
@@ -208,7 +222,7 @@ int main(int argc, char **argv) {
         id_match(args["only_groups"], sel.include);
     if (args["exclude_groups"])
         id_match(args["exclude_groups"], sel.exclude);
-    if (sexp_layer == "auto") {
+    if (is_sexp && sexp_layer == "auto") {
         sel.layers = &gerbolyze::kicad_default_layers;
     }
 
@@ -223,11 +237,6 @@ int main(int argc, char **argv) {
     }
     delete vec;
 
-    /*
-            double min_feature_size_px = mm_to_doc_units(rset.m_minimum_feature_size_mm);
-            vec->vectorize_image(cr, node, clip_path, viewport_matrix, *polygon_sink, min_feature_size_px);
-            delete vec;
-    */
     double min_feature_size = 0.1; /* mm */
     if (args["min_feature_size"]) {
         min_feature_size = args["min_feature_size"].as<double>();
@@ -365,11 +374,21 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    doc.render(rset, flattener ? *flattener : *sink, &sel);
+    doc.render(rset, *top_sink, &sel);
 
     if (!is_svg) {
         remove(frob.c_str());
         remove(barf.c_str());
+    }
+
+    if (flattener) {
+        delete flattener;
+    }
+    if (dilater) {
+        delete dilater;
+    }
+    if (sink) {
+        delete sink;
     }
     return EXIT_SUCCESS;
 }
