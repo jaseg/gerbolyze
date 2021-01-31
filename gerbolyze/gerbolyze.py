@@ -9,11 +9,8 @@ import base64
 import re
 import sys
 import warnings
-import time
 import shutil
-import math
 from zipfile import ZipFile, is_zipfile
-import shutil
 
 from lxml import etree
 import gerber
@@ -21,13 +18,14 @@ from gerber.render.cairo_backend import GerberCairoContext
 import gerberex
 import gerberex.rs274x
 import numpy as np
-import cv2
-import enum
-import tqdm
 import click
 from slugify import slugify
 
-@click.command()
+@click.group()
+def cli():
+    pass
+
+@cli.command()
 @click.argument('input_gerbers')
 @click.argument('output_gerbers')
 @click.option('-t', '--top', help='Top side SVG overlay') 
@@ -44,12 +42,11 @@ from slugify import slugify
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
-def paste_vectors(input_gerbers, output_gerbers, top, bottom,
+def paste(input_gerbers, output_gerbers, top, bottom,
         bbox,
         dilate, no_subtract, subtract,
         trace_space, vectorizer, vectorizer_map, exclude_groups):
-    #TODO: describe subtraction script
-    """ """
+    """ Render vector data and raster images from SVG file into gerbers. """
 
     if no_subtract:
         subtract_map = {}
@@ -147,7 +144,7 @@ def paste_vectors(input_gerbers, output_gerbers, top, bottom,
                     print(f'Input file {in_file.name} remained unprocessed. Copying.', file=sys.stderr)
                     shutil.copy(in_file, out_cand)
 
-@click.command()
+@cli.command()
 @click.argument('input')
 @click.option('-t' ,'--top', help='Top layer output file.')
 @click.option('-b' ,'--bottom', help='Bottom layer output file. --top or --bottom may be given at once. If neither is given, autogenerate filenames.')
@@ -156,8 +153,8 @@ def paste_vectors(input_gerbers, output_gerbers, top, bottom,
 @click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
         '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
         'coördinates.')
-def render_preview(input, top, bottom, bbox, vector, raster_dpi):
-    ''' Render gerber file into template to be used with gerbolyze --vectorize.
+def template(input, top, bottom, bbox, vector, raster_dpi):
+    ''' Generate SVG template for gerbolyze paste from gerber files.
 
     INPUT may be a gerber file, directory of gerber files or zip file with gerber files
     '''
@@ -589,5 +586,4 @@ def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=
     
 
 if __name__ == '__main__':
-    #render_preview()
-    paste_vectors()
+    cli()

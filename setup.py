@@ -8,18 +8,24 @@ def readme():
 
 setup(
     name = 'gerbolyze',
-    version = '0.1.10',
+    version = '2.0.0',
     py_modules = ['gerbolyze'],
-    scripts = ['gerbolyze'],
-    description = ('A high-resolution image-to-PCB converter. Gerbolyze reads and vectorizes black-and-white raster '
-        'images, then plots the vectorized image into an existing gerber file while avoiding existing features such as '
-        'text or holes.'),
+    package_dir = {'': 'gerbolyze'},
+    entry_points = '''
+        [console_scripts]
+        gerbolyze=gerbolyze:cli
+        ''',
+    description = ('A high-resolution image-to-PCB converter. Gerbolyze plots SVG, PNG and JPG onto existing gerber '
+        'files. It handles almost the full SVG spec and deals with text, path outlines, patterns, arbitrary paths with '
+        'self-intersections and holes, etc. fully automatically. It can vectorize raster images both by contour '
+        'tracing and by grayscale dithering. All processing is done at the vector level without intermediate '
+        'conversions to raster images accurately preserving the input.'),
     long_description=readme(),
     long_description_content_type='text/x-rst',
-    url = 'https://github.com/jaseg/gerbolyze',
+    url = 'https://git.jaseg.de/gerbolyze',
     author = 'jaseg',
-    author_email = 'github@jaseg.net',
-    install_requires = ['pcb-tools', 'tqdm', 'numpy', 'opencv-python', 'python-slugify', 'lxml'],
+    author_email = 'github@jaseg.de',
+    install_requires = ['pcb-tools', 'numpy', 'python-slugify', 'lxml', 'click', 'pcb-tools-extension'],
     license = 'AGPLv3',
     classifiers = [
         'Development Status :: 5 - Production/Stable',

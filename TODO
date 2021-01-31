@@ -1,2 +1,6 @@
 [ ] Do not just return "error 255" if usvg is not installed
 [ ] Straighten up svg-flatten input unit handling
+[ ] split up python code into modules
+[ ] Add backwards-compatible vectorize drop-in
+[ ] Figure out handling of drill layers
+[ ] Re-publish my own pcb-tools, pcb-tools-extension forks with actual maintenance
