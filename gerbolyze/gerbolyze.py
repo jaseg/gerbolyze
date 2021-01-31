@@ -1,12 +1,15 @@
-#!/usr/bin/env python3
-
 import tempfile
 import os.path as path
+from pathlib import Path
 import os
+import re
 import sys
+import warnings
 import time
 import shutil
 import math
+from zipfile import ZipFile, is_zipfile
+import shutil
 
 import gerber
 from gerber.render.cairo_backend import GerberCairoContext
@@ -14,277 +17,134 @@ import numpy as np
 import cv2
 import enum
 import tqdm
+import click
 
-def generate_mask(
-        outline,
-        target,
-        scale,
-        bounds,
-        debugimg,
-        status_print,
-        extend_overlay_r_mil,
-        subtract_gerber
-        ):
-    # Render all gerber layers whose features are to be excluded from the target image, such as board outline, the
-    # original silk layer and the solder paste layer to binary images.
+@click.command()
+@click.argument('input')
+@click.option('-t' ,'--top', help='Top layer output file.')
+@click.option('-b' ,'--bottom', help='Bottom layer output file. --top or --bottom may be given at once. If neither is given, autogenerate filenames.')
+@click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
+        '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
+        'coördinates.')
+def render_preview(input, top, bottom, bbox):
+    ''' Render gerber file into template to be used with gerbolyze --vectorize.
+
+    INPUT may be a gerber file, directory of gerber files or zip file with gerber files
+    '''
     with tempfile.TemporaryDirectory() as tmpdir:
-        img_file = path.join(tmpdir, 'target.png')
+        tmpdir = Path(tmpdir)
+        source = Path(input)
 
-        status_print('Combining keepout composite')
-        fg, bg = gerber.render.RenderSettings((1, 1, 1)), gerber.render.RenderSettings((0, 0, 0))
-        ctx = GerberCairoContext(scale=scale)
-        status_print('  * outline')
-        ctx.render_layer(outline, settings=fg, bgsettings=bg, bounds=bounds)
-        status_print('  * target layer')
-        ctx.render_layer(target, settings=fg, bgsettings=bg, bounds=bounds)
-        for fn, sub in subtract_gerber:
-            status_print('  * extra layer', os.path.basename(fn))
-            layer = gerber.loads(sub)
-            ctx.render_layer(layer, settings=fg, bgsettings=bg, bounds=bounds)
-        status_print('Rendering keepout composite')
-        ctx.dump(img_file)
+        filetype = 'svg'
 
-        # Vertically flip exported image
-        original_img = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)[::-1, :]
+        if not top and not bottom: # autogenerate two file names if neither --top nor --bottom are given
+            # /path/to/gerber/dir -> /path/to/gerber/dir.preview-{top|bottom}.svg
+            # /path/to/gerbers.zip -> /path/to/gerbers.zip.preview-{top|bottom}.svg
+            # /path/to/single/file.grb -> /path/to/single/file.grb.preview-{top|bottom}.svg
+            outfiles = {
+                    'top': source.parent / f'{source.name}.preview-top.{filetype}',
+                    'bottom': source.parent / f'{source.name}.preview-top.{filetype}' }
+        else:
+            outfiles = {
+                    'top': Path(top) if top else None,
+                    'bottom': Path(bottom) if bottom else None }
 
-    f = 1 if outline.units == 'inch' else 25.4
-    r = 1+2*max(1, int(extend_overlay_r_mil/1000 * f * scale))
-    status_print('Expanding keepout composite by', r)
+        # If source is not a directory with gerber files (-> zip/single gerber), make it one
+        if not source.is_dir():
+            tmp_indir = tmpdir / 'input'
+            tmp_indir.mkdir()
 
-    # Extend image by a few pixels and flood-fill from (0, 0) to mask out the area outside the outermost outline
-    # This ensures no polygons are generated outside the board even for non-rectangular boards.
-    border = 10
-    outh, outw = original_img.shape
-    extended_img = np.zeros((outh + 2*border, outw + 2*border), dtype=np.uint8)
-    extended_img[border:outh+border, border:outw+border] = original_img
-    debugimg(extended_img, 'outline')
-    cv2.floodFill(extended_img, None, (0, 0), (255,))
-    original_img = extended_img[border:outh+border, border:outw+border]
-    debugimg(extended_img, 'flooded')
+            if source.suffix.lower() == '.zip' or is_zipfile(source):
+                with ZipFile(source) as f:
+                    f.extractall(path=tmp_indir)
 
-    # Dilate the white areas of the image using gaussian blur and threshold. Use these instead of primitive dilation
-    # here for their non-directionality.
-    target_img = cv2.blur(original_img, (r, r))
-    _, target_img = cv2.threshold(target_img, 255//(1+r), 255, cv2.THRESH_BINARY)
-    return target_img
+            else: # single input file
+                shutil.copy(source, tmp_indir)
 
-def render_gerbers_to_image(*gerbers, scale, bounds=None):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        img_file = path.join(tmpdir, 'target.png')
-        fg, bg = gerber.render.RenderSettings((1, 1, 1)), gerber.render.RenderSettings((0, 0, 0))
-        ctx = GerberCairoContext(scale=scale)
+            source = tmp_indir
+        # source now is a directory with gerber files.
 
-        for grb in gerbers:
-            ctx.render_layer(grb, settings=fg, bgsettings=bg, bounds=bounds)
+        bounds = None
+        if bbox:
+            elems = [ int(elem) for elem in re.split('[,/ ]', bbox) ]
+            if len(elems) not in (2, 4):
+                raise click.BadParameter(
+                        '--bbox must be either two floating-point values like: w,h or four like: x,y,w,h')
 
-        ctx.dump(img_file)
-        # Vertically flip exported image to align coordinate systems
-        return cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)[::-1, :]
+            elems = [ float(e) for e in elems ]
 
-def pcb_area_mask(outline, scale, bounds):
-    # Merge layers to target mask
-    img = render_gerbers_to_image(outline, scale=scale, bounds=bounds)
-    # Extend
-    imgh, imgw = img.shape
-    img_ext = np.zeros(shape=(imgh+2, imgw+2), dtype=np.uint8)
-    img_ext[1:-1, 1:-1] = img
-    # Binarize
-    img_ext[img_ext < 128] = 0
-    img_ext[img_ext >= 128] = 255
-    # Flood-fill
-    cv2.floodFill(img_ext, None, (0, 0), (255,)) # Flood-fill with white from top left corner (0,0)
-    img_ext_snap = img_ext.copy()
-    cv2.floodFill(img_ext, None, (0, 0), (0,)) # Flood-fill with black
-    cv2.floodFill(img_ext, None, (0, 0), (255,)) # Flood-fill with white
-    return np.logical_xor(img_ext_snap, img_ext)[1:-1, 1:-1].astype(float)
+            if len(elems) == 2:
+                bounds = [0, 0, *elems]
+            else:
+                bounds = elems
 
-def generate_template(
-        silk, mask, copper, outline, drill,
-        image,
-        process_resolution:float=6, # mil
-        resolution_oversampling:float=10, # times
-        status_print=lambda *args:None
-        ):
+        matches = match_gerbers_in_dir(source)
+        for side in ('top', 'bottom'):
+            flattened =  [ e for for_this_layer in matches[side].values() for e in for_this_layer ]
 
-    silk, mask, copper, outline, *drill = map(gerber.load_layer_data, [silk, mask, copper, outline, *drill])
-    silk.layer_class = 'topsilk'
-    mask.layer_class = 'topmask'
-    copper.layer_class = 'top'
-    outline.layer_class = 'outline'
+            if not outfiles[side]:
+                continue
 
+            if not flattened:
+                warnings.warn(f'No input gerber files found for {side} side')
+                continue
 
-    f = 1.0 if outline.cam_source.units == 'metric' else 25.4
-    scale = (1000/process_resolution) / 25.4 * resolution_oversampling * f # dpmm
-    bounds = outline.cam_source.bounding_box
+            def load(layer, path):
+                print('loading', layer, path)
+                grb = gerber.load_layer(str(path))
+                grb.layer_class = LAYER_CLASSES.get(layer, 'unknown')
+                return grb
 
-    # Create a new drawing context
-    ctx = GerberCairoContext(scale=scale)
+            layers = { layer: [ load(layer, path) for path in files ]
+                    for layer, files in matches[side].items()
+                    if files }
 
-    ctx.render_layer(outline, bounds=bounds)
-    ctx.render_layer(copper, bounds=bounds)
-    ctx.render_layer(mask, bounds=bounds)
-    ctx.render_layer(silk, bounds=bounds)
-    for dr in drill:
-        ctx.render_layer(dr, bounds=bounds)
-    ctx.dump(image)
+            for layer, elems in layers.items():
+                if len(elems) > 1 and layer != 'drill':
+                    raise click.UsageError(f'Multiple files found for layer {layer}: {", ".join(matches[side][layer]) }')
 
-def paste_image(
-        target_gerber:str,
-        outline_gerber:str,
-        source_img:np.ndarray,
-        subtract_gerber:list=[],
-        extend_overlay_r_mil:float=6,
-        extend_picture_r_mil:float=2,
-        status_print=lambda *args:None,
-        debugdir:str=None):
+            unitses = set(layer.cam_source.units for items in layers.values() for layer in items)
+            if len(unitses) != 1:
+                # FIXME: we should ideally be able to deal with this. We'll have to figure out a way to update a
+                # GerberCairoContext's scale in between layers.
+                raise SystemError('Input gerber files mix metric and imperial units. Please fix your export.')
+            units, = unitses
 
-    debugctr = 0
-    def debugimg(img, name):
-        nonlocal debugctr
-        if debugdir:
-            cv2.imwrite(path.join(debugdir, '{:02d}{}.png'.format(debugctr, name)), img)
-        debugctr += 1
+            # cairo-svg uses a hardcoded dpi value of 72. pcb-tools does something weird, so we have to scale things
+            # here.
+            scale  = 1/25.4 if units == 'metric' else 1.0 # pcb-tools gerber scale
+            scale *= 72.0 # cairo-svg dpi
+            # NOTE: When the user has not set explicit bounds, we automatically extract the design's bounding box from
+            # the input gerber files. If a folder is used as input, we use the outline gerber and barf if we can't find
+            # one. If only a single file is given, we simply use that file's bounding box
+            #
+            # We have to do things this way since gerber files do not have explicit bounds listed.
+            #
+            # Note that the bounding box extracted from the outline layer usually will be one outline layer stroke widht
+            # larger in all directions than the finished board. 
+            if not bounds:
+                if 'outline' in layers:
+                    bounds = calculate_apertureless_bounding_box(layers['outline'][0].cam_source)
 
-    # Parse outline layer to get bounds of gerber file
-    status_print('Parsing outline gerber')
-    outline = gerber.loads(outline_gerber)
-    bounds = (minx, maxx), (miny, maxy) = outline.bounding_box
-    grbw, grbh = maxx - minx, maxy - miny
-    status_print('  * outline has offset {}, size {}'.format((minx, miny), (grbw, grbh)))
+                elif len(flattened) == 1:
+                    bounds = flattened[0].cam_source.bounding_box
 
-    # Parse target layer
-    status_print('Parsing target gerber')
-    target = gerber.loads(target_gerber)
-    (tminx, tmaxx), (tminy, tmaxy) = target.bounding_box
-    status_print('  * target layer has offset {}, size {}'.format((tminx, tminy), (tmaxx-tminx, tmaxy-tminy)))
+                else:
+                    raise click.UsageError('Cannot find an outline file and no --bbox given.')
 
-    # Read source image
-    imgh, imgw = source_img.shape
-    scale = math.ceil(max(imgw/grbw, imgh/grbh)) # scale is in dpmm
-    status_print('  * source image has size {}, going for scale {}dpmm'.format((imgw, imgh), scale))
-
-    # Merge layers to target mask
-    target_img = generate_mask(outline, target, scale, bounds, debugimg, status_print, extend_overlay_r_mil, subtract_gerber)
-
-    # Threshold source image. Ideally, the source image is already binary but in case it's not, or in case it's not
-    # exactly binary (having a few very dark or very light grays e.g. due to JPEG compression) we're thresholding here.
-    status_print('Thresholding source image')
-    qr = 1+2*max(1, int(extend_picture_r_mil/1000 * scale))
-    source_img = source_img[::-1]
-    _, source_img = cv2.threshold(source_img, 127, 255, cv2.THRESH_BINARY)
-    debugimg(source_img, 'thresh')
-
-    # Pad image to size of target layer images generated above. After this, `scale` applies to the padded image as well
-    # as the gerber renders. For padding, zoom or shrink the image to completely fit the gerber's rectangular bounding
-    # box. Center the image vertically or horizontally if it has a different aspect ratio.
-    status_print('Padding source image')
-    tgth, tgtw = target_img.shape
-    padded_img = np.zeros(shape=target_img.shape, dtype=source_img.dtype)
-    offx = int((minx-tminx if tminx < minx else 0)*scale)
-    offy = int((miny-tminy if tminy < miny else 0)*scale)
-    offx += int(grbw*scale - imgw) // 2
-    offy += int(grbh*scale - imgh) // 2
-    endx, endy = min(offx+imgw, tgtw), min(offy+imgh, tgth)
-    print('off', (offx, offy), 'end', (endx, endy), 'img', (imgw, imgh), 'tgt', (tgtw, tgth))
-    padded_img[offy:endy, offx:endx] = source_img[:endy-offy, :endx-offx]
-    debugimg(padded_img, 'padded')
-    debugimg(target_img, 'target')
-
-    # Mask out excluded gerber features (source silk, holes, solder mask etc.) from the target image
-    status_print('Masking source image')
-    out_img = (np.multiply((padded_img/255.0), (target_img/255.0) * -1 + 1) * 255).astype(np.uint8)
-
-    debugimg(out_img, 'multiplied')
-
-    # Calculate contours from masked target image and plot them to the target gerber context
-    status_print('Calculating contour lines')
-    plot_contours(out_img,
-            target,
-            offx=(minx, miny),
-            scale=scale,
-            status_print=lambda *args: status_print('   ', *args))
-
-    # Write target gerber context to disk
-    status_print('Generating output gerber')
-    from gerber.render import rs274x_backend
-    ctx = rs274x_backend.Rs274xContext(target.settings)
-    target.render(ctx)
-    out = ctx.dump().getvalue()
-    status_print('Done.')
-    return out
-
-
-def plot_contours(
-        img:np.ndarray,
-        layer:gerber.rs274x.GerberFile,
-        offx:tuple,
-        scale:float,
-        debug=lambda *args:None,
-        status_print=lambda *args:None):
-    from gerber.primitives import Line, Region, Circle
-    imgh, imgw = img.shape
-
-    # Extract contour hierarchy using OpenCV
-    status_print('Extracting contours')
-    # See https://stackoverflow.com/questions/48291581/how-to-use-cv2-findcontours-in-different-opencv-versions/48292371
-    contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)[-2:]
-
-    aperture = list(layer.apertures)[0] if layer.apertures else Circle(None, 0.10)
-
-    status_print('offx', offx, 'scale', scale)
-
-    xbias, ybias = offx
-    def map(coord):
-        x, y = coord
-        return (x/scale + xbias, y/scale + ybias)
-    def contour_lines(c):
-        return [ Line(map(start), map(end), aperture, units=layer.settings.units)
-            for start, end in zip(c, np.vstack((c[1:], c[:1]))) ]
-
-    done = []
-    process_stack = [-1]
-    next_process_stack = []
-    parents = [ (i, first_child != -1, parent) for i, (_1, _2, first_child, parent) in enumerate(hierarchy[0]) ]
-    is_dark = True
-    status_print('Converting contours to gerber primitives')
-    with tqdm.tqdm(total=len(contours)) as progress:
-        while len(done) != len(contours):
-            for i, has_children, parent in parents[:]:
-                if parent in process_stack:
-                    contour = contours[i]
-                    polarity = 'dark' if is_dark else 'clear'
-                    debug('rendering {} with parent {} as {} with {} vertices'.format(i, parent, polarity, len(contour)))
-                    debug('process_stack is', process_stack)
-                    debug()
-                    layer.primitives.append(Region(contour_lines(contour[:,0]), level_polarity=polarity, units=layer.settings.units))
-                    if has_children:
-                        next_process_stack.append(i)
-                    done.append(i)
-                    parents.remove((i, has_children, parent))
-                    progress.update(1)
-            debug('skipping to next level')
-            process_stack, next_process_stack = next_process_stack, []
-            is_dark = not is_dark
-    debug('done', done)
+            ctx = GerberCairoContext(scale=scale)
+            for layer_name in LAYER_RENDER_ORDER:
+                for to_render in layers.get(layer_name, ()):
+                    ctx.render_layer(to_render, bounds=bounds)
+                    print('pixel size:', ctx.scale_point(ctx.size_in_inch), 'in inch:', ctx.size_in_inch)
+            ctx.dump(str(outfiles[side]))
 
 # Utility foo
 # ===========
 
-def find_gerber_in_dir(dir_path, extensions, exclude=''):
-    contents = os.listdir(dir_path)
-    exts = extensions.split('|')
-    excs = exclude.split('|')
-    for entry in contents:
-        if any(entry.lower().endswith(ext.lower()) for ext in exts) and not any(entry.lower().endswith(ex) for ex in excs if exclude):
-            lname = path.join(dir_path, entry)
-            if not path.isfile(lname):
-                continue
-            with open(lname, 'r') as f:
-                return lname, f.read()
-
-    raise ValueError(f'Cannot find file with suffix {extensions} in dir {dir_path}')
-
 # Gerber file name extensions for Altium/Protel | KiCAD | Eagle
+# Note that in case of KiCAD these extensions occassionally change without notice. If you discover that this list is not
+# up to date, please know that it's not my fault and submit an issue or send me an email.
 LAYER_SPEC = {
         'top': {
             'paste':    '.gtp|-F_Paste.gbr|-F.Paste.gbr|.pmc',
@@ -292,81 +152,65 @@ LAYER_SPEC = {
             'mask':     '.gts|-F_Mask.gbr|-F.Mask.gbr|.stc',
             'copper':   '.gtl|-F_Cu.gbr|-F.Cu.gbr|.cmp',
             'outline':  '.gko|.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb',
+            'drill':    '.drl|.txt|-npth.drl',
         },
         'bottom': {
             'paste':    '.gbp|-B_Paste.gbr|-B.Paste.gbr|.pms',
             'silk':     '.gbo|-B_SilkS.gbr|-B.SilkS.gbr|.pls',
             'mask':     '.gbs|-B_Mask.gbr|-B.Mask.gbr|.sts',
             'copper':   '.gbl|-B_Cu.gbr|-B.Cu.gbr|.sol',
-            'outline':  '.gko|.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb'
+            'outline':  '.gko|.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb',
+            'drill':    '.drl|.txt|-npth.drl',
         },
     }
 
-# Command line interface
-# ======================
+# Maps keys from LAYER_SPEC to pcb-tools layer classes (see pcb-tools'es gerber/layers.py)
+LAYER_CLASSES = {
+            'silk':     'topsilk',
+            'mask':     'topmask',
+            'paste':    'toppaste',
+            'copper':   'top',
+            'outline':  'outline',
+            'drill':    'drill',
+        }
 
-def process_gerbers(source, target, image, side, layer, debugdir):
-    if not os.path.isdir(source):
-        raise ValueError(f'Given source "{source}" is not a directory.')
+LAYER_RENDER_ORDER = [ 'copper', 'mask', 'silk', 'paste', 'outline', 'drill' ]
 
-    # Load input files
-    source_img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
-    if source_img is None:
-        print(f'"{image}" is not a valid image file', file=sys.stderr)
-        sys.exit(1)
+def match_gerbers_in_dir(path):
+    out = {}
+    for side, layers in LAYER_SPEC.items():
+        out[side] = {}
+        for layer, match in layers.items():
+            out[side][layer] = list(find_gerber_in_dir(path, match))
+    return out
 
-    tlayer, slayer = {
-            'silk': ('silk', 'mask'),
-            'mask': ('mask', 'silk'),
-            'copper': ('copper', None)
-            }[layer]
+def find_gerber_in_dir(path, extensions):
+    exts = extensions.split('|')
+    for entry in path.iterdir():
+        if not entry.is_file():
+            continue
 
-    layers = LAYER_SPEC[side]
-    tname, tgrb = find_gerber_in_dir(source, layers[tlayer])
-    print('Target layer file {}'.format(os.path.basename(tname)))
-    oname, ogrb  = find_gerber_in_dir(source, layers['outline'])
-    print('Outline layer file {}'.format(os.path.basename(oname)))
-    subtract = find_gerber_in_dir(source, layers[slayer]) if slayer else None
+        if any(entry.name.lower().endswith(suffix.lower()) for suffix in exts):
+            yield entry
 
-    # Prepare output. Do this now to error out as early as possible if there's a problem.
-    if os.path.exists(target):
-        if os.path.isdir(target) and sorted(os.listdir(target)) == sorted(os.listdir(source)):
-            shutil.rmtree(target)
-        else:
-            print('Error: Target already exists and does not look like source. Please manually remove the target dir before proceeding.', file=sys.stderr)
-            sys.exit(1)
+def calculate_apertureless_bounding_box(cam):
+    ''' pcb-tools'es default bounding box function returns the bounding box of the primitives including apertures (i.e.
+    line widths). For determining a board's size from the outline layer, we want the bounding box disregarding
+    apertures.
+    '''
 
-    # Generate output
-    out = paste_image(tgrb, ogrb, source_img, [subtract], debugdir=debugdir, status_print=lambda *args: print(*args, flush=True))
+    min_x = min_y = 1000000
+    max_x = max_y = -1000000
 
-    shutil.copytree(source, target)
-    with open(os.path.join(target, os.path.basename(tname)), 'w') as f:
-        f.write(out)
+    for prim in cam.primitives:
+        bounds = prim.bounding_box_no_aperture
+        min_x = min(bounds[0][0], min_x)
+        max_x = max(bounds[0][1], max_x)
 
-def render_preview(source, image, side, process_resolution, resolution_oversampling):
-    def load_layer(layer):
-        name, grb = find_gerber_in_dir(source, LAYER_SPEC[side][layer])
-        print(f'{layer} layer file {os.path.basename(name)}')
-        return grb
-    
-    outline = load_layer('outline')
-    silk = load_layer('silk')
-    mask = load_layer('mask')
-    copper = load_layer('copper')
+        min_y = min(bounds[1][0], min_y)
+        max_y = max(bounds[1][1], max_y)
 
-    try:
-        nm, npth = find_gerber_in_dir(source, '-npth.drl')
-        print(f'npth drill file {nm}')
-    except ValueError:
-        npth = None
-    nm, drill = find_gerber_in_dir(source, '.drl|.txt', exclude='-npth.drl')
-    print(f'drill file {nm}')
-    drill = ([npth] if npth else []) + [drill]
-    
-    generate_template(
-        silk, mask, copper, outline, drill,
-        image,
-        process_resolution=process_resolution,
-        resolution_oversampling=resolution_oversampling,
-        )
+    return ((min_x, max_x), (min_y, max_y))
 
+if __name__ == '__main__':
+    render_preview()
