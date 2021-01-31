@@ -1,7 +1,9 @@
 import tempfile
 import os.path as path
 from pathlib import Path
+import textwrap
 import os
+import base64
 import re
 import sys
 import warnings
@@ -10,6 +12,7 @@ import shutil
 import math
 from zipfile import ZipFile, is_zipfile
 import shutil
+from lxml import etree
 
 import gerber
 from gerber.render.cairo_backend import GerberCairoContext
@@ -18,15 +21,18 @@ import cv2
 import enum
 import tqdm
 import click
+from slugify import slugify
 
 @click.command()
 @click.argument('input')
 @click.option('-t' ,'--top', help='Top layer output file.')
 @click.option('-b' ,'--bottom', help='Bottom layer output file. --top or --bottom may be given at once. If neither is given, autogenerate filenames.')
+@click.option('--vector/--raster', help='Embed preview renders into output file as SVG vector graphics instead of rendering them to PNG bitmaps. The resulting preview may slow down your SVG editor.')
+@click.option('--raster-dpi', type=float, default=300.0, help='DPI for rastering preview')
 @click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
         '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
         'coördinates.')
-def render_preview(input, top, bottom, bbox):
+def render_preview(input, top, bottom, bbox, vector, raster_dpi):
     ''' Render gerber file into template to be used with gerbolyze --vectorize.
 
     INPUT may be a gerber file, directory of gerber files or zip file with gerber files
@@ -35,15 +41,13 @@ def render_preview(input, top, bottom, bbox):
         tmpdir = Path(tmpdir)
         source = Path(input)
 
-        filetype = 'svg'
-
         if not top and not bottom: # autogenerate two file names if neither --top nor --bottom are given
             # /path/to/gerber/dir -> /path/to/gerber/dir.preview-{top|bottom}.svg
             # /path/to/gerbers.zip -> /path/to/gerbers.zip.preview-{top|bottom}.svg
             # /path/to/single/file.grb -> /path/to/single/file.grb.preview-{top|bottom}.svg
             outfiles = {
-                    'top': source.parent / f'{source.name}.preview-top.{filetype}',
-                    'bottom': source.parent / f'{source.name}.preview-top.{filetype}' }
+                    'top': source.parent / f'{source.name}.preview-top.svg',
+                    'bottom': source.parent / f'{source.name}.preview-top.svg' }
         else:
             outfiles = {
                     'top': Path(top) if top else None,
@@ -77,6 +81,12 @@ def render_preview(input, top, bottom, bbox):
                 bounds = [0, 0, *elems]
             else:
                 bounds = elems
+            
+            # now transform bounds to the format pcb-tools uses. Instead of (x, y, w, h) or even (x1, y1, x2, y2), that
+            # is ((x1, x2), (y1, y2)
+
+            x, y, w, h = bounds
+            bounds = ((x, x+w), (y, y+h))
 
         matches = match_gerbers_in_dir(source)
         for side in ('top', 'bottom'):
@@ -90,7 +100,7 @@ def render_preview(input, top, bottom, bbox):
                 continue
 
             def load(layer, path):
-                print('loading', layer, path)
+                print('loading', layer, 'layer from:', path)
                 grb = gerber.load_layer(str(path))
                 grb.layer_class = LAYER_CLASSES.get(layer, 'unknown')
                 return grb
@@ -113,7 +123,14 @@ def render_preview(input, top, bottom, bbox):
             # cairo-svg uses a hardcoded dpi value of 72. pcb-tools does something weird, so we have to scale things
             # here.
             scale  = 1/25.4 if units == 'metric' else 1.0 # pcb-tools gerber scale
-            scale *= 72.0 # cairo-svg dpi
+
+            # this is fixed, we cannot tell cairo-svg to use some other value. we just have to work around it.
+            CAIRO_SVG_HARDCODED_DPI = 72.0
+
+            scale *= CAIRO_SVG_HARDCODED_DPI # cairo-svg dpi
+            if not vector: # adapt scale for png export
+                scale *= raster_dpi / CAIRO_SVG_HARDCODED_DPI
+
             # NOTE: When the user has not set explicit bounds, we automatically extract the design's bounding box from
             # the input gerber files. If a folder is used as input, we use the outline gerber and barf if we can't find
             # one. If only a single file is given, we simply use that file's bounding box
@@ -136,8 +153,24 @@ def render_preview(input, top, bottom, bbox):
             for layer_name in LAYER_RENDER_ORDER:
                 for to_render in layers.get(layer_name, ()):
                     ctx.render_layer(to_render, bounds=bounds)
-                    print('pixel size:', ctx.scale_point(ctx.size_in_inch), 'in inch:', ctx.size_in_inch)
-            ctx.dump(str(outfiles[side]))
+
+            filetype = 'svg' if vector else 'png'
+            tmp_render = tmpdir / f'intermediate-{side}.{filetype}'
+            ctx.dump(str(tmp_render))
+
+            if vector:
+                with open(tmp_render, 'rb') as f:
+                    svg_data = f.read()
+
+                with open(outfiles[side], 'wb') as f:
+                    f.write(create_template_from_svg(bounds, svg_data))
+
+            else: # raster
+                with open(tmp_render, 'rb') as f:
+                    png_data = f.read()
+
+                with open(outfiles[side], 'w') as f:
+                    f.write(template_svg_for_png(bounds, png_data))
 
 # Utility foo
 # ===========
@@ -211,6 +244,79 @@ def calculate_apertureless_bounding_box(cam):
         max_y = max(bounds[1][1], max_y)
 
     return ((min_x, max_x), (min_y, max_y))
+
+# SVG export
+#===========
+
+DEFAULT_EXTRA_LAYERS = [ layer for layer in LAYER_RENDER_ORDER if layer != "drill" ]
+
+def template_layer(name):
+    return f'<g id="g-{slugify(name)}" inkscape:label="{name}" inkscape:groupmode="layer"></g>'
+
+def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS):
+    (x1, x2), (y1, y2) = bounds
+    w_mm, h_mm = (x2 - x1), (y2 - y1)
+
+    extra_layers = "\n  ".join(template_layer(name) for name in extra_layers)
+
+    # we set up the viewport such that document dimensions = document units = mm
+    template = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+        <svg version="1.1"
+           xmlns="http://www.w3.org/2000/svg"
+           xmlns:xlink="http://www.w3.org/1999/xlink"
+           xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+           xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+           width="{w_mm}mm" height="{h_mm}mm" viewBox="0 0 {w_mm} {h_mm}" >
+          <defs/>
+          <g inkscape:label="Preview" inkscape:groupmode="layer" id="g-preview" sodipodi:insensitive="true" style="opacity:0.5">
+            <image x="0" y="0" width="{w_mm}" height="{h_mm}"
+               xlink:href="data:image/jpeg;base64,{base64.b64encode(png_data).decode()}" />
+          </g>
+          {extra_layers}
+        </svg>
+        '''
+    return textwrap.dedent(template)
+
+MM_PER_INCH = 25.4
+
+def svg_pt_to_mm(pt_len, dpi=72.0):
+    if pt_len.endswith('pt'):
+        pt_len = pt_len[:-2]
+
+    return f'{float(pt_len) / dpi * MM_PER_INCH}mm'
+
+def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS):
+    svg = etree.fromstring(svg_data)
+
+    # add inkscape namespaces
+    NS = '{http://www.w3.org/2000/svg}'
+    INKSCAPE_NS = 'http://www.inkscape.org/namespaces/inkscape'
+    SODIPODI_NS = 'http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd'
+    # glObAL stAtE YaY
+    etree.register_namespace('inkscape', INKSCAPE_NS)
+    etree.register_namespace('sodipodi', SODIPODI_NS)
+    INKSCAPE_NS = '{'+INKSCAPE_NS+'}'
+    SODIPODI_NS = '{'+SODIPODI_NS+'}'
+
+    # convert document units to mm
+    svg.set('width', svg_pt_to_mm(svg.get('width')))
+    svg.set('height', svg_pt_to_mm(svg.get('height')))
+
+    # make original group an inkscape layer
+    orig_g = svg.find(NS+'g')
+    orig_g.set('id', 'g-preview')
+    orig_g.set(INKSCAPE_NS+'label', 'Preview')
+    orig_g.set(SODIPODI_NS+'insensitive', 'true') # lock group
+    orig_g.set('style', 'opacity:0.5')
+
+    # add layers
+    for layer in extra_layers:
+        new_g = etree.SubElement(svg, NS+'g')
+        new_g.set('id', f'g-{slugify(layer)}')
+        new_g.set(INKSCAPE_NS+'label', layer)
+        new_g.set(INKSCAPE_NS+'groupmode', 'layer')
+
+    return etree.tostring(svg)
 
 if __name__ == '__main__':
     render_preview()

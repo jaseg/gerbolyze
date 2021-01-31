@@ -19,7 +19,7 @@ setup(
     url = 'https://github.com/jaseg/gerbolyze',
     author = 'jaseg',
     author_email = 'github@jaseg.net',
-    install_requires = ['pcb-tools', 'tqdm', 'numpy', 'opencv-python'],
+    install_requires = ['pcb-tools', 'tqdm', 'numpy', 'opencv-python', 'python-slugify', 'lxml'],
     license = 'AGPLv3',
     classifiers = [
         'Development Status :: 5 - Production/Stable',
