@@ -95,7 +95,9 @@ def paste_vectors(input_gerbers, output_gerbers, top, bottom,
                 outfile = Path('debug') / f'dilated-{layer}-{amount}.gbr' # FIXME
                 # outfile = tmpdir / 'dilated-{layer}-{amount}.gbr'
                 dilate_gerber(layers, layer, amount, bbox, tmpdir, outfile, units)
-                return gerberex.read(str(outfile))
+                gbr = gerberex.read(str(outfile))
+                # gbr.offset(bounds[0][0], bounds[1][0])
+                return gbr
             
             for layer, input_files in layers.items():
                 if layer == 'drill':
@@ -510,19 +512,28 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
 #==================
 
 def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units):
-    # render gerber to SVG
-    scale  = 1/25.4 if units == 'metric' else 1.0 # pcb-tools gerber scale
-    scale *= CAIRO_SVG_HARDCODED_DPI
+    if layer_name not in layers:
+        raise ValueError(f'Cannot dilate layer {layer_name}: layer not found in input dir')
 
     bounds = get_bounds(bbox, layers)
-    ctx = GerberCairoContext(scale=scale)
-    for _path, to_render in layers.get(layer_name, ()):
-        ctx.render_layer(to_render, bounds=bounds,
-                settings=gerber.render.RenderSettings(color=(0,0,0)), # FIXME should be 1, 1, 1
-                bgsettings=gerber.render.RenderSettings(color=(0,0,0), alpha=0))
+    (x_min_mm, x_max_mm), (y_min_mm, y_max_mm) = bounds
+
+    origin_x = x_min_mm / MM_PER_INCH
+    origin_y = y_min_mm / MM_PER_INCH
+
+    width = (x_max_mm - x_min_mm) / MM_PER_INCH
+    height = (y_max_mm - y_min_mm) / MM_PER_INCH
 
     tmpfile = tmpdir / 'dilate-tmp.svg'
-    ctx.dump(str(tmpfile))
+    path, _gbr = layers[layer_name][0]
+    # NOTE: gerbv has an undocumented maximum length of 20 chars for the arguments to --origin and --window_inch
+    cmd = ['gerbv', '-x', 'svg',
+        '--border=0',
+        f'--origin={origin_x:.6f}x{origin_y:.6f}', f'--window_inch={width:.6f}x{height:.6f}',
+        '--foreground=#ffffff',
+        '-o', str(tmpfile), str(path)]
+    print('cmd:', " ".join(cmd))
+    subprocess.run(cmd, check=True)
 
     # FIXME DEBUG
     import uuid
@@ -531,9 +542,10 @@ def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units):
     print('tmp debug dilation svg:', fn)
 
     # dilate & render back to gerber
-    svg_to_gerber(tmpfile, outfile, dilate=dilation)
+    # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
+    svg_to_gerber(tmpfile, outfile, dilate=-dilation, dpi=72, scale=25.4/72.0)
 
-def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=None, vectorizer_map=None, exclude_groups=None, dilate=None):
+def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=None, vectorizer_map=None, exclude_groups=None, dilate=None, dpi=None, scale=None):
     if 'SVG_FLATTEN' in os.environ:
         candidates = [os.environ['SVG_FLATTEN']]
 
@@ -560,6 +572,10 @@ def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=
         args += ['--exclude-groups', exclude_groups]
     if dilate:
         args += ['--dilate', str(dilate)]
+    if dpi:
+        args += ['--usvg-dpi', str(dpi)]
+    if scale:
+        args += ['--scale', str(scale)]
 
     args += [str(infile), str(outfile)]
     print('full args:', " ".join(args))

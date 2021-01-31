@@ -82,6 +82,12 @@ int main(int argc, char **argv) {
             {"skip_usvg", {"--no-usvg"},
                 "Do not preprocess input using usvg (do not use unless you know *exactly* what you're doing)",
                 0},
+            {"usvg_dpi", {"--usvg-dpi"},
+                "Passed through to usvg's --dpi, in case the input file has different ideas of DPI than usvg has.",
+                1},
+            {"scale", {"--scale"},
+                "Scale input svg lengths by this factor.",
+                1},
             {"exclude_groups", {"-e", "--exclude-groups"},
                 "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",
                 1},
@@ -176,7 +182,9 @@ int main(int argc, char **argv) {
         sink = new SimpleSVGOutput(*out_f, only_polys, precision, dark_color, clear_color);
 
     } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber") {
-        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision);
+        double scale = args["scale"].as<double>(1.0);
+        cerr << "loading @scale=" << scale << endl;
+        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, scale);
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
         if (!args["sexp_mod_name"]) {
@@ -334,7 +342,13 @@ int main(int argc, char **argv) {
 
     } else {
         cerr << "calling usvg on " << barf << " and " << frob << endl; 
-        const char *command_line[] = {"usvg", "--keep-named-groups", barf.c_str(), frob.c_str(), NULL};
+        int dpi = 96;
+        if (args["usvg_dpi"]) {
+            dpi = args["usvg_dpi"].as<int>();
+        }
+        string dpi_str = to_string(dpi);
+        
+        const char *command_line[] = {"usvg", "--keep-named-groups", "--dpi", dpi_str.c_str(), barf.c_str(), frob.c_str(), NULL};
         struct subprocess_s subprocess;
         int rc = subprocess_create(command_line, subprocess_option_inherit_environment, &subprocess);
         if (rc) {

@@ -1,0 +1,2 @@
+[ ] Do not just return "error 255" if usvg is not installed
+[ ] Straighten up svg-flatten input unit handling

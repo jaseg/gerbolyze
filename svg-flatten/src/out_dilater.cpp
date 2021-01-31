@@ -52,10 +52,6 @@ Dilater &Dilater::operator<<(GerberPolarityToken pol) {
 }
 
 Dilater &Dilater::operator<<(const Polygon &poly) {
-    static int i = 0;
-    cerr << "dilating poly " << i++ << endl;
-
-    cerr << "got poly of " << poly.size() << " nodes" << endl;
     ClipperLib::Path poly_c;
     for (auto &p : poly) {
         poly_c.push_back({(ClipperLib::cInt)round(p[0] * clipper_scale), (ClipperLib::cInt)round(p[1] * clipper_scale)});
