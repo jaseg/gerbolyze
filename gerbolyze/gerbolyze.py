@@ -2,6 +2,8 @@ import tempfile
 import os.path as path
 from pathlib import Path
 import textwrap
+import subprocess
+import functools
 import os
 import base64
 import re
@@ -12,16 +14,130 @@ import shutil
 import math
 from zipfile import ZipFile, is_zipfile
 import shutil
-from lxml import etree
 
+from lxml import etree
 import gerber
 from gerber.render.cairo_backend import GerberCairoContext
+import gerberex
+import gerberex.rs274x
 import numpy as np
 import cv2
 import enum
 import tqdm
 import click
 from slugify import slugify
+
+@click.command()
+@click.argument('input_gerbers')
+@click.argument('output_gerbers')
+@click.option('-t', '--top', help='Top side SVG overlay') 
+@click.option('-b', '--bottom', help='Bottom side SVG overlay') 
+@click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
+        '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
+        'coördinates. MUST MATCH --bbox GIVEN TO PREVIEW')
+@click.option('--dilate', default=0.1, help='Default dilation for subtraction operations in mm')
+@click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
+@click.option('--subtract', help='Use user subtraction script from argument (see description above)')
+@click.option('--mask-clips-silk/--silk-clips-mask', help='Set clipping order of mask and silk')
+@click.option('--copper-clips-copper/--no-copper-clips-copper', help='Set whether output copper features clip input copper features')
+@click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
+@click.option('--vectorizer', help='passed through to svg-flatten')
+@click.option('--vectorizer-map', help='passed through to svg-flatten')
+@click.option('--exclude-groups', help='passed through to svg-flatten')
+def paste_vectors(input_gerbers, output_gerbers, top, bottom,
+        bbox,
+        dilate, no_subtract, subtract, mask_clips_silk, copper_clips_copper,
+        trace_space, vectorizer, vectorizer_map, exclude_groups):
+    #TODO: describe subtraction script
+    """ """
+
+    subtract_map = parse_subtract_script(subtract, dilate)
+
+    if not top and not bottom:
+        raise click.UsageError('Either --top or --bottom must be given')
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        output_gerbers = Path(output_gerbers)
+        source = unpack_if_necessary(Path(input_gerbers), tmpdir)
+        matches = match_gerbers_in_dir(source)
+
+        # FIXME add single-file, zip support
+        output_gerbers.mkdir(exist_ok=True)
+
+        for side, in_svg in [('top', top), ('bottom', bottom)]:
+            print()
+            print('#########################################')
+            print('processing side', side, 'infile', in_svg)
+            print('#########################################')
+            print()
+            if not in_svg:
+                print('no in_svg')
+                continue
+
+            if not matches[side]:
+                warnings.warn(f'No input gerber files found for {side} side')
+                continue
+
+            try:
+                units, layers = load_side(matches[side])
+            except SystemError as e:
+                raise click.UsageError(e.args)
+            
+            print('loaded layers:', list(layers.keys()))
+
+            bounds = get_bounds(bbox, layers)
+            print('bounds:', bounds)
+
+            @functools.lru_cache()
+            def do_dilate(layer, amount):
+                print('dilating', layer, 'by', amount)
+                outfile = Path('debug') / f'dilated-{layer}-{amount}.gbr' # FIXME
+                # outfile = tmpdir / 'dilated-{layer}-{amount}.gbr'
+                dilate_gerber(layers, layer, amount, bbox, tmpdir, outfile, units)
+                return gerberex.read(str(outfile))
+            
+            for layer, input_files in layers.items():
+                if layer == 'drill':
+                    continue
+
+                (in_grb_path, in_grb), = input_files
+
+                print()
+                print('-----------------------------------------')
+                print('processing side', side, 'layer', layer)
+                print('-----------------------------------------')
+                print()
+                print('rendering layer', layer)
+                overlay_file = tmpdir / f'overlay-{side}-{layer}.gbr'
+                svg_to_gerber(in_svg, overlay_file, layer, trace_space, vectorizer, vectorizer_map, exclude_groups)
+
+                overlay_grb = gerberex.read(str(overlay_file))
+                if not overlay_grb.primitives:
+                    print(f'Overlay layer {layer} does not contain anything. Skipping.', file=sys.stderr)
+                    continue
+
+                print('compositing')
+                comp = gerberex.GerberComposition()
+                foo = gerberex.rs274x.GerberFile.from_gerber_file(in_grb.cam_source)
+                foo.offset(-bounds[0][0], -bounds[1][0])
+                comp.merge(foo)
+                comp.merge(overlay_grb)
+                dilations = subtract_map.get(layer, [])
+                for d_layer, amount in dilations:
+                    print('processing dilation', d_layer, amount)
+                    dilated = do_dilate(d_layer, amount)
+                    comp.merge(dilated)
+
+                this_out = output_gerbers / in_grb_path.name
+                print('dumping to', this_out)
+                comp.dump(this_out)
+    
+        for in_file in source.iterdir():
+            out_cand = output_gerbers / in_file.name
+            if not out_cand.is_file():
+                print(f'Input file {in_file.name} remained unprocessed. Copying.', file=sys.stderr)
+                shutil.copy(in_file, out_cand)
 
 @click.command()
 @click.argument('input')
@@ -53,105 +169,34 @@ def render_preview(input, top, bottom, bbox, vector, raster_dpi):
                     'top': Path(top) if top else None,
                     'bottom': Path(bottom) if bottom else None }
 
-        # If source is not a directory with gerber files (-> zip/single gerber), make it one
-        if not source.is_dir():
-            tmp_indir = tmpdir / 'input'
-            tmp_indir.mkdir()
-
-            if source.suffix.lower() == '.zip' or is_zipfile(source):
-                with ZipFile(source) as f:
-                    f.extractall(path=tmp_indir)
-
-            else: # single input file
-                shutil.copy(source, tmp_indir)
-
-            source = tmp_indir
-        # source now is a directory with gerber files.
-
-        bounds = None
-        if bbox:
-            elems = [ int(elem) for elem in re.split('[,/ ]', bbox) ]
-            if len(elems) not in (2, 4):
-                raise click.BadParameter(
-                        '--bbox must be either two floating-point values like: w,h or four like: x,y,w,h')
-
-            elems = [ float(e) for e in elems ]
-
-            if len(elems) == 2:
-                bounds = [0, 0, *elems]
-            else:
-                bounds = elems
-            
-            # now transform bounds to the format pcb-tools uses. Instead of (x, y, w, h) or even (x1, y1, x2, y2), that
-            # is ((x1, x2), (y1, y2)
-
-            x, y, w, h = bounds
-            bounds = ((x, x+w), (y, y+h))
-
+        source = unpack_if_necessary(source, tmpdir)
         matches = match_gerbers_in_dir(source)
-        for side in ('top', 'bottom'):
-            flattened =  [ e for for_this_layer in matches[side].values() for e in for_this_layer ]
 
+        for side in ('top', 'bottom'):
             if not outfiles[side]:
                 continue
 
-            if not flattened:
+            if not matches[side]:
                 warnings.warn(f'No input gerber files found for {side} side')
                 continue
 
-            def load(layer, path):
-                print('loading', layer, 'layer from:', path)
-                grb = gerber.load_layer(str(path))
-                grb.layer_class = LAYER_CLASSES.get(layer, 'unknown')
-                return grb
-
-            layers = { layer: [ load(layer, path) for path in files ]
-                    for layer, files in matches[side].items()
-                    if files }
-
-            for layer, elems in layers.items():
-                if len(elems) > 1 and layer != 'drill':
-                    raise click.UsageError(f'Multiple files found for layer {layer}: {", ".join(matches[side][layer]) }')
-
-            unitses = set(layer.cam_source.units for items in layers.values() for layer in items)
-            if len(unitses) != 1:
-                # FIXME: we should ideally be able to deal with this. We'll have to figure out a way to update a
-                # GerberCairoContext's scale in between layers.
-                raise SystemError('Input gerber files mix metric and imperial units. Please fix your export.')
-            units, = unitses
+            try:
+                units, layers = load_side(matches[side])
+            except SystemError as e:
+                raise click.UsageError(e.args)
 
             # cairo-svg uses a hardcoded dpi value of 72. pcb-tools does something weird, so we have to scale things
             # here.
             scale  = 1/25.4 if units == 'metric' else 1.0 # pcb-tools gerber scale
 
-            # this is fixed, we cannot tell cairo-svg to use some other value. we just have to work around it.
-            CAIRO_SVG_HARDCODED_DPI = 72.0
-
-            scale *= CAIRO_SVG_HARDCODED_DPI # cairo-svg dpi
+            scale *= CAIRO_SVG_HARDCODED_DPI
             if not vector: # adapt scale for png export
                 scale *= raster_dpi / CAIRO_SVG_HARDCODED_DPI
 
-            # NOTE: When the user has not set explicit bounds, we automatically extract the design's bounding box from
-            # the input gerber files. If a folder is used as input, we use the outline gerber and barf if we can't find
-            # one. If only a single file is given, we simply use that file's bounding box
-            #
-            # We have to do things this way since gerber files do not have explicit bounds listed.
-            #
-            # Note that the bounding box extracted from the outline layer usually will be one outline layer stroke widht
-            # larger in all directions than the finished board. 
-            if not bounds:
-                if 'outline' in layers:
-                    bounds = calculate_apertureless_bounding_box(layers['outline'][0].cam_source)
-
-                elif len(flattened) == 1:
-                    bounds = flattened[0].cam_source.bounding_box
-
-                else:
-                    raise click.UsageError('Cannot find an outline file and no --bbox given.')
-
+            bounds = get_bounds(bbox, layers)
             ctx = GerberCairoContext(scale=scale)
             for layer_name in LAYER_RENDER_ORDER:
-                for to_render in layers.get(layer_name, ()):
+                for _path, to_render in layers.get(layer_name, ()):
                     ctx.render_layer(to_render, bounds=bounds)
 
             filetype = 'svg' if vector else 'png'
@@ -172,6 +217,100 @@ def render_preview(input, top, bottom, bbox, vector, raster_dpi):
                 with open(outfiles[side], 'w') as f:
                     f.write(template_svg_for_png(bounds, png_data))
 
+# Subtraction script handling
+#============================
+
+DEFAULT_SUB_SCRIPT = '''
+out.silk -= in.mask
+'''
+
+def parse_subtract_script(script, default_dilation=0.1):
+    if script is None:
+        script = DEFAULT_SUB_SCRIPT
+
+    subtract_script = {}
+    lines = script.replace(';', '\n').splitlines()
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+
+        line = line.lower()
+        line = re.sub('\s', '', line)
+
+        # out.copper -= in.copper+0.1
+        varname = r'([a-z]+\.[a-z]+)'
+        floatnum = r'([+-][.0-9]+)'
+        match = re.fullmatch(fr'{varname}-={varname}{floatnum}?', line)
+        if not match:
+            raise ValueError(f'Cannot parse line: {line}')
+        
+        out_var, in_var, dilation = match.groups()
+        if not out_var.startswith('out.') or not in_var.startswith('in.'):
+            raise ValueError('All left-hand side values must be outputs, right-hand side values must be inputs.')
+
+        _out, _, out_layer = out_var.partition('.')
+        _in, _, in_layer = in_var.partition('.')
+
+        dilation = float(dilation) if dilation else default_dilation
+
+        subtract_script[out_layer] = subtract_script.get(out_layer, []) + [(in_layer, dilation)]
+    return subtract_script
+
+# Parameter parsing foo
+#======================
+
+def parse_bbox(bbox):
+    if not bbox:
+        return None
+    elems = [ int(elem) for elem in re.split('[,/ ]', bbox) ]
+    if len(elems) not in (2, 4):
+        raise click.BadParameter(
+                '--bbox must be either two floating-point values like: w,h or four like: x,y,w,h')
+
+    elems = [ float(e) for e in elems ]
+
+    if len(elems) == 2:
+        bounds = [0, 0, *elems]
+    else:
+        bounds = elems
+    
+    # now transform bounds to the format pcb-tools uses. Instead of (x, y, w, h) or even (x1, y1, x2, y2), that
+    # is ((x1, x2), (y1, y2)
+
+    x, y, w, h = bounds
+    return ((x, x+w), (y, y+h))
+
+def bounds_from_outline(layers):
+    ''' NOTE: When the user has not set explicit bounds, we automatically extract the design's bounding box from the
+    input gerber files. If a folder is used as input, we use the outline gerber and barf if we can't find one. If only a
+    single file is given, we simply use that file's bounding box
+    
+    We have to do things this way since gerber files do not have explicit bounds listed.
+    
+    Note that the bounding box extracted from the outline layer usually will be one outline layer stroke widht larger in
+    all directions than the finished board. 
+    '''
+    if 'outline' in layers:
+        outline_files = layers['outline']
+        _path, grb = outline_files[0]
+        return calculate_apertureless_bounding_box(grb.cam_source)
+
+    elif len(layers) == 1:
+        first_layer, *rest = layers.values()
+        first_file, *rest = first_layer
+        _path, grb = first_file
+        return grb.cam_source.bounding_box
+
+    else:
+        raise click.UsageError('Cannot find an outline file and no --bbox given.')
+
+def get_bounds(bbox, layers):
+    bounds = parse_bbox(bbox)
+    if bounds:
+        return bounds
+    return bounds_from_outline(layers)
+
 # Utility foo
 # ===========
 
@@ -181,7 +320,7 @@ def render_preview(input, top, bottom, bbox, vector, raster_dpi):
 LAYER_SPEC = {
         'top': {
             'paste':    '.gtp|-F_Paste.gbr|-F.Paste.gbr|.pmc',
-            'silk':     '.gto|-F_SilkS.gbr|-F.SilkS.gbr|.plc',
+            'silk':     '.gto|-F_Silkscreen.gbr|-F_SilkS.gbr|-F.SilkS.gbr|.plc',
             'mask':     '.gts|-F_Mask.gbr|-F.Mask.gbr|.stc',
             'copper':   '.gtl|-F_Cu.gbr|-F.Cu.gbr|.cmp',
             'outline':  '.gko|.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb',
@@ -189,7 +328,7 @@ LAYER_SPEC = {
         },
         'bottom': {
             'paste':    '.gbp|-B_Paste.gbr|-B.Paste.gbr|.pms',
-            'silk':     '.gbo|-B_SilkS.gbr|-B.SilkS.gbr|.pls',
+            'silk':     '.gbo|-B_Silkscreen.gbr|-B_SilkS.gbr|-B.SilkS.gbr|.pls',
             'mask':     '.gbs|-B_Mask.gbr|-B.Mask.gbr|.sts',
             'copper':   '.gbl|-B_Cu.gbr|-B.Cu.gbr|.sol',
             'outline':  '.gko|.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb',
@@ -214,7 +353,9 @@ def match_gerbers_in_dir(path):
     for side, layers in LAYER_SPEC.items():
         out[side] = {}
         for layer, match in layers.items():
-            out[side][layer] = list(find_gerber_in_dir(path, match))
+            l = list(find_gerber_in_dir(path, match))
+            if l:
+                out[side][layer] = l
     return out
 
 def find_gerber_in_dir(path, extensions):
@@ -244,6 +385,51 @@ def calculate_apertureless_bounding_box(cam):
         max_y = max(bounds[1][1], max_y)
 
     return ((min_x, max_x), (min_y, max_y))
+
+def unpack_if_necessary(source, tmpdir, dirname='input'):
+    """ Handle command-line input paths. If path points to a directory, return unchanged. If path points to a zip file,
+    unpack to a directory inside tmpdir and return that. If path points to a file that is not a zip, copy that file into
+    a subdir of tmpdir and return that subdir. """
+    # If source is not a directory with gerber files (-> zip/single gerber), make it one
+    if not source.is_dir():
+        tmp_indir = tmpdir / dirname
+        tmp_indir.mkdir()
+
+        if source.suffix.lower() == '.zip' or is_zipfile(source):
+            with ZipFile(source) as f:
+                f.extractall(path=tmp_indir)
+
+        else: # single input file
+            shutil.copy(source, tmp_indir)
+
+        return tmp_indir
+
+    else:
+        return source
+
+def load_side(side_matches):
+    """ Load all gerber files for one side returned by match_gerbers_in_dir. """
+    def load(layer, path):
+        print('loading', layer, 'layer from:', path)
+        grb = gerber.load_layer(str(path))
+        grb.layer_class = LAYER_CLASSES.get(layer, 'unknown')
+        return grb
+
+    layers = { layer: [ (path, load(layer, path)) for path in files ]
+            for layer, files in side_matches.items() }
+
+    for layer, elems in layers.items():
+        if len(elems) > 1 and layer != 'drill':
+            raise SystemError(f'Multiple files found for layer {layer}: {", ".join(side_matches[layer]) }')
+
+    unitses = set(layer.cam_source.units for items in layers.values() for _path, layer in items)
+    if len(unitses) != 1:
+        # FIXME: we should ideally be able to deal with this. We'll have to figure out a way to update a
+        # GerberCairoContext's scale in between layers.
+        raise SystemError('Input gerber files mix metric and imperial units. Please fix your export.')
+    units, = unitses
+
+    return units, layers
 
 # SVG export
 #===========
@@ -277,9 +463,11 @@ def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS):
         '''
     return textwrap.dedent(template)
 
+# this is fixed, we cannot tell cairo-svg to use some other value. we just have to work around it.
+CAIRO_SVG_HARDCODED_DPI = 72.0
 MM_PER_INCH = 25.4
 
-def svg_pt_to_mm(pt_len, dpi=72.0):
+def svg_pt_to_mm(pt_len, dpi=CAIRO_SVG_HARDCODED_DPI):
     if pt_len.endswith('pt'):
         pt_len = pt_len[:-2]
 
@@ -289,7 +477,7 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
     svg = etree.fromstring(svg_data)
 
     # add inkscape namespaces
-    NS = '{http://www.w3.org/2000/svg}'
+    SVG_NS = '{http://www.w3.org/2000/svg}'
     INKSCAPE_NS = 'http://www.inkscape.org/namespaces/inkscape'
     SODIPODI_NS = 'http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd'
     # glObAL stAtE YaY
@@ -303,7 +491,7 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
     svg.set('height', svg_pt_to_mm(svg.get('height')))
 
     # make original group an inkscape layer
-    orig_g = svg.find(NS+'g')
+    orig_g = svg.find(SVG_NS+'g')
     orig_g.set('id', 'g-preview')
     orig_g.set(INKSCAPE_NS+'label', 'Preview')
     orig_g.set(SODIPODI_NS+'insensitive', 'true') # lock group
@@ -311,12 +499,83 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
 
     # add layers
     for layer in extra_layers:
-        new_g = etree.SubElement(svg, NS+'g')
+        new_g = etree.SubElement(svg, SVG_NS+'g')
         new_g.set('id', f'g-{slugify(layer)}')
         new_g.set(INKSCAPE_NS+'label', layer)
         new_g.set(INKSCAPE_NS+'groupmode', 'layer')
 
     return etree.tostring(svg)
 
+# SVG/gerber import
+#==================
+
+def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units):
+    # render gerber to SVG
+    scale  = 1/25.4 if units == 'metric' else 1.0 # pcb-tools gerber scale
+    scale *= CAIRO_SVG_HARDCODED_DPI
+
+    bounds = get_bounds(bbox, layers)
+    ctx = GerberCairoContext(scale=scale)
+    for _path, to_render in layers.get(layer_name, ()):
+        ctx.render_layer(to_render, bounds=bounds,
+                settings=gerber.render.RenderSettings(color=(0,0,0)), # FIXME should be 1, 1, 1
+                bgsettings=gerber.render.RenderSettings(color=(0,0,0), alpha=0))
+
+    tmpfile = tmpdir / 'dilate-tmp.svg'
+    ctx.dump(str(tmpfile))
+
+    # FIXME DEBUG
+    import uuid
+    fn = Path('debug') / f'in-{uuid.uuid4()}.svg'
+    shutil.copy(tmpfile, fn)
+    print('tmp debug dilation svg:', fn)
+
+    # dilate & render back to gerber
+    svg_to_gerber(tmpfile, outfile, dilate=dilation)
+
+def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=None, vectorizer_map=None, exclude_groups=None, dilate=None):
+    if 'SVG_FLATTEN' in os.environ:
+        candidates = [os.environ['SVG_FLATTEN']]
+
+    else:
+        # By default, try three options:
+        candidates = [
+                # somewhere in $PATH
+                'svg-flatten',
+                # next to our current python interpreter (e.g. in virtualenv
+                str(Path(sys.executable).parent / 'svg-flatten'),
+                # next to this python source file in the development repo
+                str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]
+
+    args = [ '--format', 'gerber',
+            '--precision', '6', # intermediate file, use higher than necessary precision
+            '--trace-space', str(trace_space) ]
+    if layer:
+        args += ['--only-groups', f'g-{slugify(layer)}']
+    if vectorizer:
+        args += ['--vectorizer', vectorizer]
+    if vectorizer_map:
+        args += ['--vectorizer-map', vectorizer_map]
+    if exclude_groups:
+        args += ['--exclude-groups', exclude_groups]
+    if dilate:
+        args += ['--dilate', str(dilate)]
+
+    args += [str(infile), str(outfile)]
+    print('full args:', " ".join(args))
+
+    for candidate in candidates:
+        try:
+            print('trying', candidate)
+            res = subprocess.run([candidate, *args], check=True)
+            break
+        except FileNotFoundError:
+            print('fail')
+            continue
+    else:
+        raise SystemError('svg-flatten executable not found')
+    
+
 if __name__ == '__main__':
-    render_preview()
+    #render_preview()
+    paste_vectors()
