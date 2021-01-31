@@ -38,20 +38,23 @@ from slugify import slugify
 @click.option('--dilate', default=0.1, help='Default dilation for subtraction operations in mm')
 @click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
 @click.option('--subtract', help='Use user subtraction script from argument (see description above)')
-@click.option('--mask-clips-silk/--silk-clips-mask', help='Set clipping order of mask and silk')
-@click.option('--copper-clips-copper/--no-copper-clips-copper', help='Set whether output copper features clip input copper features')
+#@click.option('--mask-clips-silk/--silk-clips-mask', default=True, help='Set clipping order of mask and silk')
+#@click.option('--copper-clips-copper/--no-copper-clips-copper', default=True, help='Set whether output copper features clip input copper features')
 @click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
 def paste_vectors(input_gerbers, output_gerbers, top, bottom,
         bbox,
-        dilate, no_subtract, subtract, mask_clips_silk, copper_clips_copper,
+        dilate, no_subtract, subtract,
         trace_space, vectorizer, vectorizer_map, exclude_groups):
     #TODO: describe subtraction script
     """ """
 
-    subtract_map = parse_subtract_script(subtract, dilate)
+    if no_subtract:
+        subtract_map = {}
+    else:
+        subtract_map = parse_subtract_script(subtract, dilate)
 
     if not top and not bottom:
         raise click.UsageError('Either --top or --bottom must be given')
@@ -59,21 +62,22 @@ def paste_vectors(input_gerbers, output_gerbers, top, bottom,
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
         output_gerbers = Path(output_gerbers)
-        source = unpack_if_necessary(Path(input_gerbers), tmpdir)
+        input_gerbers = Path(input_gerbers)
+        source = unpack_if_necessary(input_gerbers, tmpdir)
         matches = match_gerbers_in_dir(source)
 
-        # FIXME add single-file, zip support
-        output_gerbers.mkdir(exist_ok=True)
+        if input_gerbers.is_dir():
+            output_gerbers.mkdir(exist_ok=True)
 
         for side, in_svg in [('top', top), ('bottom', bottom)]:
+            if not in_svg:
+                continue
+
             print()
             print('#########################################')
             print('processing side', side, 'infile', in_svg)
             print('#########################################')
             print()
-            if not in_svg:
-                print('no in_svg')
-                continue
 
             if not matches[side]:
                 warnings.warn(f'No input gerber files found for {side} side')
@@ -92,11 +96,9 @@ def paste_vectors(input_gerbers, output_gerbers, top, bottom,
             @functools.lru_cache()
             def do_dilate(layer, amount):
                 print('dilating', layer, 'by', amount)
-                outfile = Path('debug') / f'dilated-{layer}-{amount}.gbr' # FIXME
-                # outfile = tmpdir / 'dilated-{layer}-{amount}.gbr'
+                outfile = tmpdir / 'dilated-{layer}-{amount}.gbr'
                 dilate_gerber(layers, layer, amount, bbox, tmpdir, outfile, units)
                 gbr = gerberex.read(str(outfile))
-                # gbr.offset(bounds[0][0], bounds[1][0])
                 return gbr
             
             for layer, input_files in layers.items():
@@ -131,15 +133,19 @@ def paste_vectors(input_gerbers, output_gerbers, top, bottom,
                     dilated = do_dilate(d_layer, amount)
                     comp.merge(dilated)
 
-                this_out = output_gerbers / in_grb_path.name
+                if input_gerbers.is_dir():
+                    this_out = output_gerbers / in_grb_path.name
+                else:
+                    this_out = output_gerbers
                 print('dumping to', this_out)
                 comp.dump(this_out)
     
-        for in_file in source.iterdir():
-            out_cand = output_gerbers / in_file.name
-            if not out_cand.is_file():
-                print(f'Input file {in_file.name} remained unprocessed. Copying.', file=sys.stderr)
-                shutil.copy(in_file, out_cand)
+        if input_gerbers.is_dir():
+            for in_file in source.iterdir():
+                out_cand = output_gerbers / in_file.name
+                if not out_cand.is_file():
+                    print(f'Input file {in_file.name} remained unprocessed. Copying.', file=sys.stderr)
+                    shutil.copy(in_file, out_cand)
 
 @click.command()
 @click.argument('input')
@@ -532,14 +538,7 @@ def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units):
         f'--origin={origin_x:.6f}x{origin_y:.6f}', f'--window_inch={width:.6f}x{height:.6f}',
         '--foreground=#ffffff',
         '-o', str(tmpfile), str(path)]
-    print('cmd:', " ".join(cmd))
-    subprocess.run(cmd, check=True)
-
-    # FIXME DEBUG
-    import uuid
-    fn = Path('debug') / f'in-{uuid.uuid4()}.svg'
-    shutil.copy(tmpfile, fn)
-    print('tmp debug dilation svg:', fn)
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # dilate & render back to gerber
     # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
@@ -578,15 +577,12 @@ def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=
         args += ['--scale', str(scale)]
 
     args += [str(infile), str(outfile)]
-    print('full args:', " ".join(args))
 
     for candidate in candidates:
         try:
-            print('trying', candidate)
             res = subprocess.run([candidate, *args], check=True)
             break
         except FileNotFoundError:
-            print('fail')
             continue
     else:
         raise SystemError('svg-flatten executable not found')
