@@ -96,6 +96,7 @@ def paste(input_gerbers, output_gerbers, top, bottom,
                 outfile = tmpdir / 'dilated-{layer}-{amount}.gbr'
                 dilate_gerber(layers, layer, amount, bbox, tmpdir, outfile, units)
                 gbr = gerberex.read(str(outfile))
+                gbr.offset(bounds[0][0], bounds[1][0])
                 return gbr
             
             for layer, input_files in layers.items():
@@ -121,8 +122,8 @@ def paste(input_gerbers, output_gerbers, top, bottom,
                 print('compositing')
                 comp = gerberex.GerberComposition()
                 foo = gerberex.rs274x.GerberFile.from_gerber_file(in_grb.cam_source)
-                foo.offset(-bounds[0][0], -bounds[1][0])
                 comp.merge(foo)
+                overlay_grb.offset(bounds[0][0], bounds[1][0])
                 comp.merge(overlay_grb)
                 dilations = subtract_map.get(layer, [])
                 for d_layer, amount in dilations:

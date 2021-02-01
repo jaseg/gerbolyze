@@ -188,9 +188,7 @@ int main(int argc, char **argv) {
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
         if (!args["sexp_mod_name"]) {
-            cerr << "--sexp-mod-name must be given for sexp export" << endl;
-            argagg::fmt_ostream fmt(cerr);
-            fmt << usage.str() << argparser;
+            cerr << "Error: --sexp-mod-name must be given for sexp export" << endl;
             return EXIT_FAILURE;
         }
 
@@ -199,9 +197,7 @@ int main(int argc, char **argv) {
         is_sexp = true;
 
     } else {
-        cerr << "Unknown output format \"" << fmt << "\"" << endl;
-        argagg::fmt_ostream fmt(cerr);
-        fmt << usage.str() << argparser;
+        cerr << "Error: Unknown output format \"" << fmt << "\"" << endl;
         return EXIT_FAILURE;
     }
 
@@ -265,8 +261,6 @@ int main(int argc, char **argv) {
         cerr << "writing bitmap into svg" << endl; 
         if (!args["size"]) {
             cerr << "Error: --size must be given when using bitmap input." << endl;
-            argagg::fmt_ostream fmt(cerr);
-            fmt << usage.str() << argparser;
             return EXIT_FAILURE;
         }
 
@@ -274,8 +268,6 @@ int main(int argc, char **argv) {
         auto pos = sz.find_first_of("x*,");
         if (pos == string::npos) {
             cerr << "Error: --size must be of form 12.34x56.78" << endl;
-            argagg::fmt_ostream fmt(cerr);
-            fmt << usage.str() << argparser;
             return EXIT_FAILURE;
         }
 
@@ -287,8 +279,6 @@ int main(int argc, char **argv) {
 
         if (width < 1 || height < 1) {
             cerr << "Error: --size must be of form 12.34x56.78 and values must be positive floating-point numbers in mm" << endl;
-            argagg::fmt_ostream fmt(cerr);
-            fmt << usage.str() << argparser;
             return EXIT_FAILURE;
         }
 
