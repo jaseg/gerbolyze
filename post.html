@@ -1,0 +1,256 @@
+<!doctype html> <html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>Create beautiful boards with Gerbolyze</title>
+<style type="text/css">
+@font-face {
+    font-family: "playfair display webfont";
+    font-weight: 600;
+    src: url("fonts/playfair-display-v22-latin-ext_latin-600.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "playfair display webfont";
+    font-weight: 400;
+    src: url("fonts/playfair-display-v22-latin-ext_latin-regular.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "playfair display webfont";
+    font-weight: 700;
+    src: url("fonts/playfair-display-v22-latin-ext_latin-700.woff2") format("woff2");
+}
+
+:root {
+    --textw: calc(min(600px, 100vw));
+    --mar: calc(50vw - 0.5*var(--textw));
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    hyphens: auto;
+    overflow-wrap: break-word;
+    font-size: 14pt;
+    font-family: "Source Sans Pro";
+}
+
+.content {
+    padding-left: 10px;
+    padding-right: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/*
+* { border: 1px solid red; }
+*/
+
+figure {
+    overflow: hidden;
+    padding-top: 20px;
+    padding-right: 0;
+    padding-bottom: 20px;
+    padding-left: var(--mar);
+    margin: 0;
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: 100%;
+}
+
+img {
+    display: inline-block;
+    width: var(--textw);
+    margin-right: 2em;
+}
+
+figcaption {
+    display: inline-block;
+    margin: 0;
+    width: 20em;
+    vertical-align: top;
+    text-align: justify;
+}
+
+figcaption > strong {
+    display: block;
+    font-family: "playfair display webfont";
+    font-weight: 700;
+    color: #c00;
+    font-size: 16pt;
+    margin-bottom: .5em;
+}
+
+.content > p {
+    margin-left: var(--mar);
+    width: var(--textw);
+    box-sizing: border-box;
+    text-align: justify;
+    line-height: 1.5;
+    max-width: 100%;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: "playfair display webfont";
+    font-weight: 600;
+    color: #c00;
+    text-align: right;
+    margin: 0;
+    padding-left: 1em;
+    padding-top: 0;
+    box-sizing: border-box;
+    width: calc(var(--mar) + var(--textw));
+    max-width: 100%;
+}
+
+h1 {
+    font-size: calc(24pt + 2vh + 2vw);
+    padding-bottom: 0.7em;
+}
+
+body::before {
+    content: "";
+    display: block;
+    margin-top: 100px;
+    border-top: 0.7mm dashed #c00;
+    width: 100vw;
+    max-width: 100%;
+}
+
+h2 {
+    font-size: calc(24pt + 1vh + 1vw);
+    margin-top: 1em;
+    margin-bottom: .5em;
+}
+
+</style>
+    </head>
+    <body lang="en">
+        <div class="content">
+            <h1>Create beautiful boards with Gerbolyze</h1>
+            <p>
+            Today, there is an increasingly large crowd of people who do artistic circuit board designs. People who fuse
+            the roles of engineer and artist. Unitl today, circuit board design tools mostly ignore this use case and
+            present a multitude of obstacles for such use. Gerbolyze finally solves this problem and presents an
+            integrated solution for artistic PCB design that is compatible with real designer's workflows on one side
+            and with real electronic design automation software on the other side.
+            </p>
+            <figure>
+                <a href="pics/pcbway_sample_02_small.jpg"><img src="pics/pcbway_sample_02_small.jpg" alt="A printed
+                         circuit board showing a surrealist manga-style drawing of a woman sitting atop several traffic
+                         lights. The woman's hair looks golden from the circuit board's gold copper finish. The
+                         background is blue and white with scales of gray emulated through a halftone technique like it
+                         is used in newspapers."/></a>
+                <figcaption>
+                    <strong>An artistic PCB design</strong>
+                    <p>
+                    This design was created from a digital artwork in a raster image file after circuit board
+                    manufacturer PCBWay offered me some free boards. The artwork was pre-processed using a raster
+                    graphics tool: It was split into layers for the different colors. Then, its color components were
+                    adjusted for brightness and contrast and finally passed through a raster-based halftone filter. The
+                    resulting file was then converted into circuit board manufacturing files using Gerbolyze.
+                    </p>
+                </figcaption>
+            </figure>
+            <p>
+            Thirty years ago, the world of printed circuit board design was revolutionized by the introduction of
+            computer aided design tools. These tools enabled extremely complex designs through automation features
+            like autorouting and through automatic design rule checking to weed out human error. While the first
+            such tools were still very limited, their capabilites quickly grew and a few years after their
+            introduction modern electronics design without computers was already unthinkable.
+            </p>
+            <p>
+            Today, circuit board design programs can look back on a rich history and have accumulated a healty
+            amount of expert knowledge in their design. Despite their difficult economic niche, even <em>free
+                software</em> design tools have grown to become usable for advanced designs. However, all modern
+            circuit board design tools are severely lacking in one area: That of <em>artistic</em> design.  Many
+            design assumptions are hard-wired deep into their design: Traces should be at 45° angles.  Silkscreen is
+            one opaque color. etc. These design assumptions lead to these tools being <em>in the way</em> more often
+            than not for the increasing crowd of designers who try to create art with them.
+            </p>
+            <p>
+            Gerbolyze solves this problem. Gerbolyze interfaces with circuit board design tools such as Altium or Kicad
+            on one side through standard Gerber files. It interfaces with vector graphics editors such as inkscape on
+            the other side through Scaleable Vector Graphics (SVG) files. By fusing both, it yields a powerful
+            environment for artistic circuit board design.
+            </p>
+            <h2>Gerbolyze Algorithm Overview</h2>
+            <p>
+            Gerbolyze has two major components. The first is the gerbolyze executable itself, which orchestrates the
+            process of fusing SVG and Gerber files. The second is svg-flatten, a tool encapsulating all of the
+            heavy-duty computer graphics code. The gerbolyze executable is a python script for readability, while the
+            geometry backend is a C++ binary for performance.
+            </p>
+            <p>
+            In the beginning of the fusing process, the orchestrator figures out what semantic layers such as silkscreen
+            or copper the tool's input files correspond to. The assigned layers are then processed one by one. For each
+            layer, the tool first checks the input SVG file for any content. If there is none on this layer, the layer
+            file is directly copied to the output. If ther is some, this SVG content is passed through the geometry
+            backend to convert it to Gerber code. The resulting Gerber code is then read and added on top of the input
+            file's gerber code. The result is written to the output.
+            </p>
+            <h2>The Computer Geometry of Scaleable Vector Graphics</h2>
+            <p>
+            The heavy lifting during this process is done by the geometry backend. While its job seems simple at first,
+            it is surprisingly stretching the state of the art in both academic research and technical implementations
+            of computer graphics. In its core the problem is that while SVG and Gerber are both essentially vector
+            graphics formats, both have very different conceptions of their drawing models: They differ significantly in
+            what happens when one of the input file's vectors is drawn.
+            </p>
+            <p>
+            SVG is little more than a highly standardized description of the basic operations provided by the modern 2D
+            graphics interfaces such as Qt, Cairo or Skia that are built-in to all operating systems. Drawing
+            <em>paths</em> that are described by the vector coördinates of points along them is the most basic of these
+            operations. SVG also includes support for a surprising number of decidedly <em>raster</em> operations such
+            as masking but, operating on grayscales, these are less relevant for the type of design one would create
+            when targeting circuit board production processes.
+            </p>
+            <p>
+            Similar to SVG, the Gerber file format also targets a type of graphics programming interface. Only instead
+            of that of operating systems 2D graphics APIs of the 90ies and 2000s, the Gerber format was created as a way
+            to encapsulate commands for photoplotters, computer-controlled machines that physically move a light source
+            across a photo-sensitive material. Gerber's concept of "aptertures" goes back to mechanical photoplotters
+            having magazines of stencils of different shapes and sizes that could be swapped into the path of light
+            during the plotting process.
+            </p>
+            <p>
+            Like SVG has its paths, the Gerber format has polygons. Polygons were added to the format to ease the
+            description of irregularly-shaped areas: Previously, these would have to be drawn by overlaying thousands of
+            thin lines, described one by one in the Gerber file. Using a Polygon, one only needs to describe the shape's
+            outline as a series of points and the photoplotter will fill in the rest.
+            </p>
+            <h2>Transforming Vectors into Vectors</h2>
+            <p>
+            The crux in converting from SVG to Gerber lies here, in the conversion of paths. While in both a path or
+            polygon is described by its outline, which is described by points, there are significant differences in the
+            limitations both place on these outlines. In SVG an outline can consist of several types of segments:
+            besides basic straight lines, multiple types of parametrized curves including cubic bezier curves are
+            possible. An SVG path's outline can self-intersect (cross over itself). The path can also have holes,
+            additional parts that are inside the outline.
+            </p>
+            <p>
+            Gerber, on the other hand, has a much more limited view of what a polygon is. In gerber, a polygon is
+            something bounded by straight line segments, that cannot touch except under very particular circumstances,
+            and holes are simply not supported. Converting from SVG's flexible model of a path to Gerber's very
+            limited model of a polygon while preserving the fidelity of the input data is the true challenge here. As an
+            aside, a fun complication one will encounter when embarking on this endeavour is that most programs that
+            display Gerber files use modern graphics libraries in the backend. In these programs, a valid SVG path
+            ineptly converted into an illegal gerber polygon may still end up looking alright since these programs
+            usually just pass through the gerber's input data to the underlying graphics layer without validation—and
+            that graphics layer is the one from SVG.
+            </p>
+            <h2>Styles and Strokes</h2>
+            <p>
+            </p>
+            <!-- stroking -->
+            <h2>Gerbolyze Image Vectorization</h2>
+            <figure>
+                <a href="pics/vec-comparison-poisson.png"><img src="pics/vec-comparison-poisson.png"/></a>
+                <figcaption>
+                    <strong>Poisson-Disc Sampling</strong>
+<!-- ... -->
+                </figcaption>
+            </figure>
+        </div>
+    </body>
+</html>
