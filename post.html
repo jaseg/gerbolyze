@@ -1,7 +1,7 @@
 <!doctype html> <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <title>Create beautiful boards with Gerbolyze</title>
+        <title>Create Beautiful Circuit Boards With Gerbolyze</title>
 <style type="text/css">
 @font-face {
     font-family: "playfair display webfont";
@@ -118,7 +118,7 @@ body::before {
 }
 
 h2 {
-    font-size: calc(24pt + 1vh + 1vw);
+    font-size: calc(18pt + .2vh + .2vw);
     margin-top: 1em;
     margin-bottom: .5em;
 }
@@ -127,7 +127,7 @@ h2 {
     </head>
     <body lang="en">
         <div class="content">
-            <h1>Create beautiful boards with Gerbolyze</h1>
+            <h1>Create Beautiful Circuit Boards With Gerbolyze</h1>
             <p>
             Today, there is an increasingly large crowd of people who do artistic circuit board designs. People who fuse
             the roles of engineer and artist. Unitl today, circuit board design tools mostly ignore this use case and
@@ -190,6 +190,15 @@ h2 {
             file's gerber code. The result is written to the output.
             </p>
             <h2>The Computer Geometry of Scaleable Vector Graphics</h2>
+            <figure>
+                <a href="pics/test_svg_readme_composited.png"><img src="pics/test_svg_readme_composited.png"/></a>
+                <figcaption>
+                    <strong>A complex SVG file...</strong>
+                    ...illustrates the range of features that Gerbolyze supports. The left side of this picture shows
+                    the input to gerbolze, the right side the resulting output. As you can see, clips, bitmap images,
+                    pattern fills and strokes all behave in a "visually intuitive" way.
+                </figcaption>
+            </figure>
             <p>
             The heavy lifting during this process is done by the geometry backend. While its job seems simple at first,
             it is surprisingly stretching the state of the art in both academic research and technical implementations
@@ -213,6 +222,16 @@ h2 {
             having magazines of stencils of different shapes and sizes that could be swapped into the path of light
             during the plotting process.
             </p>
+            <figure>
+                <a href="pics/ex-intersections.png"><img src="pics/ex-intersections.png"/></a>
+                <figcaption>
+                    <strong>An SVG path with one self-intersection and one hole</strong>
+                    On the left you see our example path illustrated with the locations of its <em>nodes</em>, that is
+                    the points where one segment starts and another ends. Also illustrated are the <em>handles</em> that
+                    define its curvature. Note that not every node has handles. This is because some of the path's
+                    segments are straight lines instead of bezier curves.
+                </figcaption>
+            </figure>
             <p>
             Like SVG has its paths, the Gerber format has polygons. Polygons were added to the format to ease the
             description of irregularly-shaped areas: Previously, these would have to be drawn by overlaying thousands of
@@ -228,6 +247,15 @@ h2 {
             possible. An SVG path's outline can self-intersect (cross over itself). The path can also have holes,
             additional parts that are inside the outline.
             </p>
+            <figure>
+                <a href="pics/ex-flattening.png"><img src="pics/ex-flattening.png"/></a>
+                <figcaption>
+                    <strong>Bezier flattening...</strong>
+                    ...transforms a elegant bezier curve into a dumb list of points. The resulting image can still be
+                    called a <em>vector</em> image since after all points are vectors, too, but they can only allude to
+                    their previous mathematical glory. At least straight lines are easy to deal with, though!
+                </figcaption>
+            </figure>
             <p>
             Gerber, on the other hand, has a much more limited view of what a polygon is. In gerber, a polygon is
             something bounded by straight line segments, that cannot touch except under very particular circumstances,
@@ -241,16 +269,195 @@ h2 {
             </p>
             <h2>Styles and Strokes</h2>
             <p>
+            Creating gerber-compatible polygons from SVG paths is not the only place where some heavy computer geometry
+            is necessary. SVG also allows a path to be drawn with its outline stroked with a set width. Though stroking
+            a path with a given width is very intuitive, it again happens to be surprisingly complex to do in
+            computer-geometrically.
             </p>
-            <!-- stroking -->
-            <h2>Gerbolyze Image Vectorization</h2>
+            <p>
+            At first one might think SVG stroke widths naturally map to gerber apertures, and all that is left is
+            flattening the path's bezier curves into straight line segments for it to be drawn. This approach would be
+            a passable approximation in many cases, but there is a large part of SVG's expressivity that will be lost
+            under this mapping. SVG allows designers to define join styles and end cap styles on a path. The join style
+            describes how two path segments that are at an angle will be joined. End caps describe how open ends of the
+            path will be rendered. Gerber does not have native support for either.
+            </p>
             <figure>
-                <a href="pics/vec-comparison-poisson.png"><img src="pics/vec-comparison-poisson.png"/></a>
+                <a href="pics/ex-strokes.png"><img src="pics/ex-strokes.png"/></a>
                 <figcaption>
-                    <strong>Poisson-Disc Sampling</strong>
-<!-- ... -->
+                    <strong>Strokes can be quite complex</strong>
+                    <p>
+                    In this picture, on the left you see a circle that is stroked with a pattern. To draw this to screen
+                    or gerber, you have to first convert the ring's path to its outline. Then, you have to render the
+                    pattern tiles that overlap that outline, while clipping them against the outline.  The right-hand
+                    picture illustrates different end and join styles.
                 </figcaption>
             </figure>
+            <p>
+            Regular 2D renderers perform stroking as a part of their rasterization routine. This means that a regular
+            renderer will likely never actually calculate the vector representation of the outline of the stroke at all,
+            instead bypassing that step and directly converting the path's vector representation into its pixel
+            representation given some stroke width. In our implementation we instead convert the outline of the path's
+            stroke into its vector polygon representation, which we then output as gerber code.
+            </p>
+            <p>
+            This transformation from path plus stroke width to vector outline can be done in several ways. The one we
+            chose was to leverage the excellent Clipper library that we are already using for clipping shapes. Clipper's
+            offsetting function is essentially a turn-key solution for this use case. A nice side-effect of this
+            approach is that we can directly use the resulting stroke polygons as clips when a user specifies a path
+            with a patterned stroke!
+            </p>
+            <h2>Gerbolyze Image Vectorization</h2>
+            <p>
+            To make Gerbolyze as user-friendly as possible I decided to include support for raster images as well. The
+            previous version of Gerbolyze in fact exclusively handled raster images, so keeping this support seemed
+            natural to me. 
+            </p>
+            <p>
+            There are several ways to convert raster images into a vector representation. Roughly, they fall into two
+            categories: Tracing and halftone processing. Tracing tries to read contours of colored areas of a raster
+            image, and approximates these contours with vector shapes. Tracing is most useful for raster images that
+            contain text or graphics. On good-quality input, tracing can produce surprisingly accurate results. In
+            contrast to tracing, halftone processing tries to emulate the picture's tones (be they grayscale or color)
+            with thousands or even millions of tiny colored filled shapes. Halftone processing to this day is used in
+            all kinds of printing processes.
+            </p>
+            <p>
+            For bringing grayscale imagery into circuit board production, halftone processing is a very good fit. The
+            silkscreen processes that are commonly used for circuit boards have very high resolution and can reproduce
+            any input shape with micrometer precision, but they are limited in the smallest amount of ink they can put
+            on a board or the smallest gap between two blobs of ink that they can reliably produce. These limitations
+            are not due to the printers' or photoplotters' resolution or precision but simply due to the mechanics of
+            small droplets of liquid being squeegied onto or shot at a circuit board.
+            </p>
+            <!-- FIXME some microscope images of silkscreen's 3d structure would be great here! -->
+            <p>
+            The following pictures illustrate the different vectorization processes gerbolyze supports. In each row you
+            see the output of each vectorization process zoomed out on the left, and a zoomed-in detail view on the
+            right. For grayscale images, the poisson-disc-sampled halftone vectorizer works best. For tracing graphics,
+            the <a href="https://opencv.org/">OpenCV</a> contour tracer does a good job. This contour tracer is the
+            exact same one that was used in the previous version of Gerbolyze.
+            <figure>
+                <a href="pics/vec_square_composited.png"><img src="pics/vec_poisson_composited.png"/></a>
+                <figcaption>
+                    <strong>Poisson disc sampling</strong>
+                    Poisson disc sampling randomly distributes points on the plane. We then calculate these point's
+                    voronoi tesselation, whose cells we then fill proportional to the image's brightness at that spot.
+                    The resulting image looks very natural as it is devoid of distracting regular aliasing patterns.
+                </figcaption>
+            </figure>
+            <figure>
+                <a href="pics/vec_square_composited.png"><img src="pics/vec_hexgrid_composited.png"/></a>
+                <figcaption>
+                    <strong>Hexagon grid sampling</strong>
+                    The hexgrid sampler actually uses the same voronoi-based halftone code of the poisson-disc
+                    sampling-based code, just with points generated on a hexgrid instead of randomly. The result is an
+                    image that has a decidedly "space" look to it. At coarser resolutions, this sampling method has the
+                    chance to shine with its attractive geometry.
+                </figcaption>
+            </figure>
+            <figure>
+                <a href="pics/vec_square_composited.png"><img src="pics/vec_square_composited.png"/></a>
+                <figcaption>
+                    <strong>Square grid sampling</strong>
+                    Though I think the square grid method looks the worst of the three halftone methods compared here,
+                    it would have been ridiculous not to implement it given how little work it was using the
+                    voronoi-cell halftone code.
+                </figcaption>
+            </figure>
+            <figure>
+                <a href="pics/vec-comparison-contour.png"><img src="pics/vec-comparison-contour.png"/></a>
+                <figcaption>
+                    <strong>Binary contour tracing</strong>
+                    This method calls into the same piece of the <a href="https://opencv.org/">OpenCV</a> image
+                    processing library that the old gerbolyze used. As demonstrated here, this method lends itself well
+                    to graphic inputs. It does also enable you to experiment with basically any rasterized halftone
+                    processor such as the "Newsprint" filter built into GIMP.
+                </figcaption>
+            </figure>
+            <h2>Manufacturing Considerations</h2>
+            <!-- minimum trace/space guarantees in the vectorizer -->
+            <p>
+            When creating artistic designs for PCB manufacturing, you have to keep in mind the limitations of the PCB
+            manufacturing process at all times. PCB manufacturing processes only know filled and unfilled areas, and
+            fundamentally cannot do grayscale without hacks like halftone processing. More importantly, these
+            manufacturing processes have significant limitations in the smallest detail size that they can resolve.
+            For inexpensive processes, these trace/space design rules are commonly in the range of 50-150µm. While this
+            sounds great at first, it is <em>vastly</em> larger than what even a cheap home printer can accomplish. For
+            comparison, a regular inkjet printer for home use can print photos at 1200 dpi without breaking a sweat.
+            1200 dpi means that this printer can put dots of ink on paper that are only 20 µm in size! And it can do
+            these dots in millions of colors, too.
+            </p>
+            <p>
+            When tailoring a design for PCB manufacturing there's two things one can do. Number one is to be creative
+            with graphical parts of the design and avoid extremely narrow lines, wedges or other thin features that will
+            not come out during circuit board manufacturing. Number two is to keep detail in raster images several times
+            larger than the manufacturing processes native capability. For example, to target a trace/space design rule
+            of 100 µm, the smallest detail in embedded raster graphics should not be much below 1mm.
+            </p>
+            <p>
+            Gerbolyze's halftone vectorizers have built-in support for trace/space design rules. While they can still
+            produce small artifacts that violate these rules, their output should be close enough to satifsy board
+            houses and close enough for the result to look good. The way gerbolyze does this is to clip the halftone
+            cell's values to zero whenevery they get too small, and to forcefully split or merge two neighboring cells
+            when they get too close. While this process introduces slight steps at the top and bottom of grayscale
+            response, for most inputs these are not noticeable.
+            </p>
+            <p>
+            On the other hand, for SVG vector elements as well as for traced raster images, Gerbolyze cannot help with
+            these design rules. There is no heuristic that would allow Gerbolyze to non-destructively "fix" a design
+            here, so all that's on the roadmap here is to eventually include a gerber-level design rule checker.
+            </p>
+            <p>
+            As far as board houses go, I have made good experiences with the popular Chinese board houses. In my
+            experience, JLC will just produce whatever you send them with little fucks being given about design rule
+            adherence or validity of the input gerbers. This is great if you just want artistic circuit boards without
+            much of a hassle, and you don't care if they come out exactly as you imagined. The worst I've had happen was
+            when an older version of gerbolyze generated polygons with holes assuming standard fill-rule processing. The
+            in the board house's online gerber viewer things looked fine, and neither did they complain during file
+            review. However, the resulting boards looked completely wrong because all the dark halftones were missing.
+            </p>
+            <p>
+            PCBWay on the other hand has a much more rigurous file review process. They <em>will</em> complain when you
+            throw illegal garbage gerbers at them, and they will helpfully guide you through your design rule
+            violations. In this way you get much more of a professional service from them and for designs that have to
+            be functional their higher level of scrutiny definitely is a good thing. For the design you saw in the
+            first picture in this article, I ended up begging them to just plot my files if it doesn't physically break
+            their machines and to their credit, while they seemed unhappy about it they did it and the result looks
+            absolutely stunning.
+            </p>
+            <p>
+            PCBWay is a bit more expensive on their lowest-end offering than JLC, but I found that for anything else
+            (large boards, multi-layer, gold plating etc.) their prices match. PCBWay offers a much broader range of
+            manufacturing options such as flexible circuit boards, multi-layer boards, thick or thin substrates and
+            high-temperature substrates so they closer to an industry supplier like Eurocircuits than they are to a
+            hobbyist prototyping service like dirtypcbs.
+            </p>
+            <figure>
+                <a href="pics/fr4_comparison2.jpg"><img src="pics/fr4_comparison2.jpg"/></a>
+                <figcaption>
+                    <strong>FR-4 substrate color differs significantly...</strong>
+                    ...between these two boards. These boards come from two batches PCBWay produced of the exact same
+                    design. As you can see, it would not have been wise to rely too much on the substrate's color in
+                    this design. Obviously, this is not a defect as the precise color of the FR-4 substrate used is
+                    perfectly irrelevant for the market these manufacturers actually target.
+                </figcaption>
+            </figure>
+            <p>
+            When in doubt about how your design is going to come out on the board, do not hesitate to contact your board
+            house. Most of the customer-facing online PCB services have a number of different factories that do a number
+            of different fabrication processes for them depending on order parameters. Places like PCBWay have
+            exceptional quality control, but that is mostly focused on the technical aspects of the PCB. If you rely on
+            visual aspects like silkscreen uniformity or solder mask color, you may find significant variations between
+            manufacturers or even between orders with the same manufacturer.
+            </p>
+            <h2>Conclusion</h2>
+            <p>
+            I hope Gerbolyze will make you life a bit easier when it comes to artistic PCB design. I hope I have managed
+            to illustrate a bit the design choices I made in Gerbolyze in this article. If you have any comments or
+            suggestions, please feel free to write me <a href="mailto:gerbolyze.nospam@jaseg.de">an email</a> or open an
+            issue <a href="https://github.com/jaseg/gerbolyze">on Github</a>.
+            </p>
         </div>
     </body>
 </html>
