@@ -340,18 +340,25 @@ int main(int argc, char **argv) {
         }
         string dpi_str = to_string(dpi);
         
+        const char *homedir;
+        if ((homedir = getenv("HOME")) == NULL) {
+            homedir = getpwuid(getuid())->pw_dir;
+        }
+        string homedir_s(homedir);
+        string loc_in_home = homedir_s + "/.cargo/bin/usvg";
+
         const char *command_line[] = {nullptr, "--keep-named-groups", "--dpi", dpi_str.c_str(), barf.c_str(), frob.c_str(), NULL};
         bool found_usvg = false;
         int usvg_rc=-1;
-        for (int i=0; i<2; i++) {
-            const char *homedir;
-            if ((homedir = getenv("HOME")) == NULL) {
-                homedir = getpwuid(getuid())->pw_dir;
-            }
-            string homedir_s(homedir);
-            string loc_in_home = homedir_s + "/.cargo/bin/usvg";
-
+        for (int i=0; i<3; i++) {
+            const char *usvg_envvar;
             if (i == 0) {
+                if ((usvg_envvar = getenv("USVG")) == NULL) {
+                    continue;
+                } else {
+                    command_line[0] = "usvg";
+                }
+            } else if (i == 1) {
                 command_line[0] = "usvg";
             } else {
                 command_line[0] = loc_in_home.c_str();
