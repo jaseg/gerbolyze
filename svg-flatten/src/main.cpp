@@ -1,6 +1,8 @@
 
 #include <cstdlib>
 #include <cstdio>
+#include <sys/types.h>
+#include <pwd.h>
 #include <filesystem>
 #include <iostream>
 #include <fstream>
@@ -338,28 +340,57 @@ int main(int argc, char **argv) {
         }
         string dpi_str = to_string(dpi);
         
-        const char *command_line[] = {"usvg", "--keep-named-groups", "--dpi", dpi_str.c_str(), barf.c_str(), frob.c_str(), NULL};
-        struct subprocess_s subprocess;
-        int rc = subprocess_create(command_line, subprocess_option_inherit_environment, &subprocess);
-        if (rc) {
-            cerr << "Error calling usvg!" << endl;
+        const char *command_line[] = {nullptr, "--keep-named-groups", "--dpi", dpi_str.c_str(), barf.c_str(), frob.c_str(), NULL};
+        bool found_usvg = false;
+        int usvg_rc=-1;
+        for (int i=0; i<2; i++) {
+            const char *homedir;
+            if ((homedir = getenv("HOME")) == NULL) {
+                homedir = getpwuid(getuid())->pw_dir;
+            }
+            string homedir_s(homedir);
+            string loc_in_home = homedir_s + "/.cargo/bin/usvg";
+
+            if (i == 0) {
+                command_line[0] = "usvg";
+            } else {
+                command_line[0] = loc_in_home.c_str();
+            }
+
+            struct subprocess_s subprocess;
+            int rc = subprocess_create(command_line, subprocess_option_inherit_environment, &subprocess);
+            if (rc) {
+                cerr << "Error calling usvg!" << endl;
+                return EXIT_FAILURE;
+            }
+
+            usvg_rc = -1;
+            rc = subprocess_join(&subprocess, &usvg_rc);
+            if (rc) {
+                cerr << "Error calling usvg!" << endl;
+                return EXIT_FAILURE;
+            }
+
+            rc = subprocess_destroy(&subprocess);
+            if (rc) {
+                cerr << "Error calling usvg!" << endl;
+                return EXIT_FAILURE;
+            }
+
+            if (usvg_rc == 255) {
+                continue;
+            }
+            found_usvg = true;
+            break;
+        }
+
+        if (!found_usvg) {
+            cerr << "Error: Cannot find usvg. Is it installed and in $PATH?" << endl;
             return EXIT_FAILURE;
         }
 
-        int usvg_rc = 0;
-        rc = subprocess_join(&subprocess, &usvg_rc);
-        if (rc) {
-            cerr << "Error calling usvg!" << endl;
-            return EXIT_FAILURE;
-        }
         if (usvg_rc) {
             cerr << "usvg returned an error code: " << usvg_rc << endl;
-            return EXIT_FAILURE;
-        }
-
-        rc = subprocess_destroy(&subprocess);
-        if (rc) {
-            cerr << "Error calling usvg!" << endl;
             return EXIT_FAILURE;
         }
     }
