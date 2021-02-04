@@ -116,6 +116,246 @@ This is the algorithm svg-flatten uses to process an SVG.
 * for KiCAD S-Expression export: vector-composite results using CavalierContours: subtract each clear output primitive
   from all previous dark output primitives
 
+Command-line usage
+------------------
+
+Generate SVG template from Gerber files:
+
+.. code-block:: shell
+
+    gerbolyze template [options] [-t|--top top_side_output.svg] [-b|--bottom ...] input_dir_or.zip
+
+Render design from an SVG made with the template above into a set of gerber files:
+
+.. code-block:: shell
+
+    gerbolyze paste [options] [-t|--top top_side_design.svg] [-b|--bottom ...] input_dir_or.zip output_dir
+
+Use svg-flatten to convert an SVG file into Gerber or flattened SVG:
+
+.. code-block:: shell
+
+    svg-flatten [options] --format [gerber|svg] [input_file.svg] [output_file]
+
+Use svg-flatten to convert an SVG file into the given layer of a KiCAD S-Expression (``.kicad_mod``) file:
+
+.. code-block:: shell
+
+    svg-flatten [options] --format kicad --sexp-layer F.SilkS --sexp-mod-name My_Module [input_file.svg] [output_file]
+
+Use svg-flatten to convert an SVG file into a ``.kicad_mod`` with SVG layers fed into separate KiCAD layers based on
+their IDs like the popular ``svg2mod`` is doing:
+
+.. note::
+    Right now, the input SVG's layers must have *ids* that match up KiCAD's s-exp layer names. Note that when you name
+    a layer in Inkscape that only sets a ``name`` attribute, but does not change the ID. In order to change the ID in
+    Inkscape, you have to use Inkscape's "object properties" context menu function.
+
+    Also note that svg-flatten expects the layer names KiCAD uses in their S-Expression format. These are *different* to
+    the layer names KiCAD exposes in the UI (even though most of them match up!).
+
+    For your convenience, there is an SVG template with all the right layer names and IDs located next to this README.
+
+.. code-block:: shell
+
+    svg-flatten [options] --format kicad --sexp-mod-name My_Module [input_file.svg] [output_file]
+
+``gerbolyze template``
+~~~~~~~~~~~~~~~~~~~~~~
+
+Usage: ``gerbolyze template [OPTIONS] INPUT``
+
+Generate SVG template for gerbolyze paste from gerber files.
+
+INPUT may be a gerber file, directory of gerber files or zip file with gerber files
+
+Options:
+********
+``-t, --top top_layer.svg``
+    Top layer output file.
+
+``-b, --bottom bottom_layer.svg``
+    Bottom layer output file. --top or --bottom may be given at once. If neither is given, autogenerate filenames.
+
+``--vector | --raster``
+    Embed preview renders into output file as SVG vector graphics instead of rendering them to PNG bitmaps. The
+    resulting preview may slow down your SVG editor.
+
+``--raster-dpi FLOAT``
+    DPI for rastering preview
+
+``--bbox TEXT``
+    Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR "x,y,w,h" to force [w] mm by [h]
+    mm output canvas with its bottom left corner at the given input gerber coördinates.
+
+
+``gerbolyze paste``
+~~~~~~~~~~~~~~~~~~~
+(see `below <vectorization_>`__)
+
+Usage: ``gerbolyze paste [OPTIONS] INPUT_GERBERS OUTPUT_GERBERS``
+
+Render vector data and raster images from SVG file into gerbers.
+
+Options:
+********
+
+``-t, --top TEXT``
+    Top side SVG overlay input file. At least one of this and ``--bottom`` should be given.
+
+``-b, --bottom TEXT``
+    Bottom side SVG overlay input file. At least one of this and ``--top`` should be given.
+
+``--bbox TEXT``
+    Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR "x,y,w,h" to force [w] mm by [h]
+    mm output canvas with its bottom left corner at the given input gerber coördinates. This **must match the ``--bbox`` value given to
+    template**!
+
+``--subtract TEXT``
+    Use user subtraction script from argument (see `below <subtraction_script_>`_)
+
+``--no-subtract``
+    Disable subtraction (see `below <subtraction_script_>`_)
+
+``--dilate FLOAT``
+    Default dilation for subtraction operations in mm (see `below <subtraction_script_>`_)
+
+``--trace-space FLOAT``
+    Passed through to svg-flatten, see `below <svg_flatten_>`__.
+
+``--vectorizer TEXT``
+    Passed through to svg-flatten, see `its description below <svg_flatten_>`__. Also have a look at `the examples below <vectorization_>`_.
+
+``--vectorizer-map TEXT``
+    Passed through to svg-flatten, see `below <svg_flatten_>`__.
+
+``--exclude-groups TEXT``
+    Passed through to svg-flatten, see `below <svg_flatten_>`__.
+
+.. _subtraction_script:
+Subtraction scripts
+*******************
+
+Subtraction scripts tell ``gerbolyze paste`` which layers to remove from other layers. When a source layer is given in
+the subtraction script, gerbolyze will dilate everything on this source layer and remove it from the target layer. By
+default, Gerbolyze subtracts the mask layer from the silk layer to make sure there are no silk primitives that overlap
+bare copper.
+
+The syntax of these scripts is:
+
+.. code-block::
+
+    {target layer} -= {source layer} {dilation} [; ...]
+
+The target layer must be ``out.{layer name}`` and the source layer ``in.{layer name}``. The layer names are gerbolyze's
+internal layer names, i.e.: ``paste, silk, mask, copper, outline, drill``
+
+The dilation value is optional, but can be a float with a leading ``+`` or ``-``. If given, before subtraction the
+source layer's features will be extended by that many mm. If not given, the dilation defaults to the value given by
+``--dilate`` if given or 0.1 mm otherwise. To disable dilation, simply pass ``+0`` here.
+
+Multiple commands can be separated by semicolons ``;`` or line breaks.
+
+The default subtraction script is:
+
+.. code-block::
+
+    out.silk -= in.mask
+
+.. _svg_flatten:
+``svg-flatten``
+~~~~~~~~~~~~~~~
+
+Usage: ``svg-flatten [OPTIONS]... [INPUT_FILE] [OUTPUT_FILE]``
+
+Specify ``-`` for stdin/stdout.
+
+Options:
+********
+
+``-h, --help``
+    Print help and exit
+
+``-v, --version``
+    Print version and exit
+
+``-o, --format``
+    Output format. Supported: gerber, svg, s-exp (KiCAD S-Expression)
+
+``-p, --precision``
+    Number of decimal places use for exported coordinates (gerber: 1-9, SVG: 0-*). Note that not all gerber viewers are
+    happy with too many digits. 5 or 6 is a reasonable choice.
+
+``--clear-color``
+    SVG color to use for "clear" areas (default: white)
+
+``--dark-color``
+    SVG color to use for "dark" areas (default: black)
+
+``-d, --trace-space``
+    Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.
+
+``--no-header``
+    Do not export output format header/footer, only export the primitives themselves
+
+``--flatten``
+    Flatten output so it only consists of non-overlapping white polygons. This perform composition at the vector level.
+    Potentially slow. This defaults to on when using KiCAD S-Exp export because KiCAD does not know polarity or colors.
+
+``--no-flatten``
+    Disable automatic flattening for KiCAD S-Exp export
+
+``--dilate``
+    Dilate output gerber primitives by this amount in mm. Used for masking out other layers.
+
+``-g, --only-groups``
+    Comma-separated list of group IDs to export.
+
+``-b, --vectorizer``
+    Vectorizer to use for bitmap images. One of poisson-disc (default), hex-grid, square-grid, binary-contours,
+    dev-null. Have a look at `the examples below <vectorization_>`_.
+
+``--vectorizer-map``
+    Map from image element id to vectorizer. Overrides --vectorizer.  Format: id1=vectorizer,id2=vectorizer,...
+
+    You can use this to set a certain vectorizer for specific images, e.g. if you want to use both halftone
+    vectorization and contour tracing in the same SVG. Note that you can set an ``<image>`` element's SVG ID from within
+    Inkscape though the context menu's Object Properties tool.
+
+``--force-svg``
+    Force SVG input irrespective of file name
+
+``--force-png``
+    Force bitmap graphics input irrespective of file name
+
+``-s, --size``
+    Bitmap mode only: Physical size of output image in mm. Format: 12.34x56.78
+
+``--sexp-mod-name``
+    Module name for KiCAD S-Exp output. This is a mandatory argument if using S-Exp output.
+
+``--sexp-layer``
+    Layer for KiCAD S-Exp output. Defaults to auto-detect layers from SVG layer/top-level group IDs. If given, SVG
+    groups and layers are completely ignored and everything is simply vectorized into this layer, though you cna still
+    use ``-g`` for group selection.
+
+``-a, --preserve-aspect-ratio``
+    Bitmap mode only: Preserve aspect ratio of image. Allowed values are meet, slice. Can also parse full SVG
+    preserveAspectRatio syntax.
+
+``--no-usvg``
+    Do not preprocess input using usvg (do not use unless you know *exactly* what you're doing)
+
+``--usvg-dpi``
+    Passed through to usvg's --dpi, in case the input file has different ideas of DPI than usvg has.
+
+``--scale``
+    Scale input svg lengths by this factor.
+
+``-e, --exclude-groups``
+    Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.
+
+.. _vectorization:
 Gerbolyze image vectorization
 -----------------------------
 
@@ -303,7 +543,7 @@ This tool is licensed under the rather radical AGPLv3 license. Briefly, this mea
 webapp using this tool in the backend with this tool's source.
 
 I get that some people have issues with the AGPL. In case this license prevents you from using this software, please
-send me [an email](mailto:agpl.sucks@jaseg.de) and I can grant you an exception. I want this software to be useful to as
+send me `an email <mailto:agpl.sucks@jaseg.de>`__ and I can grant you an exception. I want this software to be useful to as
 many people as possible and I wouldn't want the license to be a hurdle to anyone. OTOH I see a danger of some cheap
 board house just integrating a fork into their webpage without providing their changes back upstream, and I want to
 avoid that so the default license is still AGPL.

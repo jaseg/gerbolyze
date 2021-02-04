@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="160mm"
+   height="100mm"
+   viewBox="0 0 160 100"
+   version="1.1"
+   id="svg8"
+   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07, custom)"
+   sodipodi:docname="kicad_mod_template.svg">
+  <metadata
+     id="metadata20">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs18" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1019"
+     id="namedview16"
+     showgrid="false"
+     inkscape:zoom="1.1197381"
+     inkscape:cx="293.88402"
+     inkscape:cy="186.11375"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="F.SilkS" />
+  <g
+     inkscape:groupmode="layer"
+     id="Eco2.User"
+     inkscape:label="Eco2.User" />
+  <g
+     inkscape:groupmode="layer"
+     id="Eco1.User"
+     inkscape:label="Eco1.User" />
+  <g
+     inkscape:groupmode="layer"
+     id="Margin"
+     inkscape:label="Margin" />
+  <g
+     inkscape:groupmode="layer"
+     id="F.CrtYd"
+     inkscape:label="F.CrtYd" />
+  <g
+     inkscape:groupmode="layer"
+     id="F.Fab"
+     inkscape:label="F.Fab" />
+  <g
+     inkscape:groupmode="layer"
+     id="Dwgs.User"
+     inkscape:label="Dwgs.User" />
+  <g
+     inkscape:groupmode="layer"
+     id="Cmts.User"
+     inkscape:label="Cmts.User" />
+  <g
+     inkscape:groupmode="layer"
+     id="Edge.Cuts"
+     inkscape:label="Edge.Cuts" />
+  <g
+     inkscape:groupmode="layer"
+     id="g5"
+     inkscape:label="F.Cu" />
+  <g
+     inkscape:groupmode="layer"
+     id="F.Mask"
+     inkscape:label="F.Mask" />
+  <g
+     inkscape:groupmode="layer"
+     id="F.SilkS"
+     inkscape:label="F.SilkS" />
+</svg>
