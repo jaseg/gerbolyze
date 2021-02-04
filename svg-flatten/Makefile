@@ -1,9 +1,11 @@
 
 CXX := clang++
 LD := ld
+INSTALL := install
 PKG_CONFIG ?= pkg-config
 
 BUILDDIR ?= build
+PREFIX ?= /usr/local
 UPSTREAM_DIR ?= ../upstream
 
 SOURCES := src/svg_color.cpp \
@@ -35,15 +37,21 @@ SUBPROCESS_INCLUDES	?= -I$(UPSTREAM_DIR)/subprocess.h
 SOURCES += $(CLIPPER_SOURCES)
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES)
 
+PKG_CONFIG_DEPS := pangocairo pugixml opencv4
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
-CXXFLAGS += $(shell $(PKG_CONFIG) --cflags pangocairo pugixml opencv4) 
+CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKG_CONFIG_DEPS)) 
 
 LDFLAGS := -lm -lc -lstdc++
-LDFLAGS += $(shell $(PKG_CONFIG) --libs pangocairo pugixml opencv4)
+LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PKG_CONFIG_DEPS))
 
 TARGET := svg-flatten
 
 all: $(BUILDDIR)/$(TARGET)
+
+.PHONY: check-deps
+check-deps:
+	@echo
+	@$(PKG_CONFIG) --cflags --libs $(PKG_CONFIG_DEPS) >/dev/null
 
 $(BUILDDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@) 
@@ -52,6 +60,10 @@ $(BUILDDIR)/%.o: %.cpp
 $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	@mkdir -p $(dir $@) 
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+
+.PHONY: install
+install:
+	$(INSTALL) $(BUILDDIR)/$(TARGET) $(PREFIX)/bin
 	
 .PHONY: clean
 clean:
