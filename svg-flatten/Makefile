@@ -37,12 +37,16 @@ SUBPROCESS_INCLUDES	?= -I$(UPSTREAM_DIR)/subprocess.h
 SOURCES += $(CLIPPER_SOURCES)
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES)
 
-PKG_CONFIG_DEPS := pangocairo pugixml opencv4
+PKG_CONFIG_DEPS := pangocairo pugixml
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
 CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKG_CONFIG_DEPS)) 
+# hack for stone age opencv in debian stable
+CXXFLAGS += $(shell $(PKG_CONFIG) --cflags opencv4 2> /dev/null || $(PKG_CONFIG) --cflags opencv 2>/dev/null) 
 
 LDFLAGS := -lm -lc -lstdc++
 LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PKG_CONFIG_DEPS))
+# debian hack. see above.
+LDFLAGS += $(shell $(PKG_CONFIG) --libs opencv4 2> /dev/null || $(PKG_CONFIG) --libs opencv 2>/dev/null) 
 
 TARGET := svg-flatten
 
@@ -51,7 +55,9 @@ all: $(BUILDDIR)/$(TARGET)
 .PHONY: check-deps
 check-deps:
 	@echo
-	@$(PKG_CONFIG) --cflags --libs $(PKG_CONFIG_DEPS) >/dev/null
+	@$(PKG_CONFIG) --cflags --libs pangocairo pugixml >/dev/null
+	# debian hack. see above.
+	@$(PKG_CONFIG) --cflags --libs opencv4 >/dev/null ||$(PKG_CONFIG) --cflags --libs opencv >/dev/null 
 
 $(BUILDDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@) 
@@ -59,7 +65,7 @@ $(BUILDDIR)/%.o: %.cpp
 
 $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	@mkdir -p $(dir $@) 
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lstdc++fs
 
 .PHONY: install
 install:

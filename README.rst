@@ -58,9 +58,18 @@ Debian
 Step 1: Install dependencies
 ****************************
 
+.. note::
+    Right now, debian stable ships with a rust that is so stable it can't even build half of usvg's dependencies. That's
+    why we yolo-install our own rust here. Sorry about that. I guess it'll work with the packaged rust on sid.
+
 .. code-block:: shell
     
-    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 rustc cargo git python3-wheel
+    git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
+    cd gerbolyze
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    source $HOME/.cargo/env
+    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl
+    python3 setup.py install
 
 Fedora
 ~~~~~~
@@ -70,6 +79,8 @@ Step 1: Install dependencies
 
 .. code-block:: shell
     
+    git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
+    cd gerbolyze
     sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
     
 Arch

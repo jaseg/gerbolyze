@@ -95,14 +95,14 @@ bool gerbolyze::SVGDocument::load(istream &in, string debug_out_filename) {
 
 const Paths *gerbolyze::SVGDocument::lookup_clip_path(const pugi::xml_node &node) {
     string id(usvg_id_url(node.attribute("clip-path").value()));
-    if (id.empty() || !clip_path_map.contains(id)) {
+    if (id.empty() || clip_path_map.count(id) == 0) {
         return nullptr;
     }
     return &clip_path_map[id];
 }
 
 Pattern *gerbolyze::SVGDocument::lookup_pattern(const string id) {
-    if (id.empty() || !pattern_map.contains(id)) {
+    if (id.empty() || pattern_map.count(id) == 0) {
         return nullptr;
     }
     return &pattern_map[id];
@@ -484,7 +484,7 @@ void gerbolyze::SVGDocument::load_clips() {
 
         /* Support clip paths that themselves have clip paths */
         if (!meta_clip_path_id.empty()) {
-            if (clip_path_map.contains(meta_clip_path_id)) {
+            if (clip_path_map.count(meta_clip_path_id) > 0) {
                 /* all clip paths must be closed */
                 c.AddPaths(clip_path_map[meta_clip_path_id], ptClip, /* closed */ true);
 

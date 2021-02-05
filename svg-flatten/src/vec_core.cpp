@@ -556,7 +556,7 @@ gerbolyze::VectorizerSelectorizer::VectorizerSelectorizer(const string default_v
 ImageVectorizer *gerbolyze::VectorizerSelectorizer::select(const pugi::xml_node &img) {
     const string id = img.attribute("id").value();
     cerr << "selecting vectorizer for image \"" << id << "\"" << endl;
-    if (m_map.contains(id)) {
+    if (m_map.count(id) > 0) {
         cerr << "  -> found" << endl;
         return makeVectorizer(m_map[id]);
     }
