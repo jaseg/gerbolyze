@@ -49,6 +49,32 @@ Gerbolyze works in three steps.
 
         $ gerbolyze paste --top template_top_edited.svg [--bottom ...] my_gerber_dir output_gerber_dir
 
+Installation
+------------
+
+Debian
+~~~~~~
+
+Step 1: Install dependencies
+****************************
+
+.. code-block:: shell
+    
+    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 rustc cargo git python3-wheel
+
+Fedora
+~~~~~~
+
+Step 1: Install dependencies
+****************************
+
+.. code-block:: shell
+    
+    sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
+    
+Arch
+~~~~
+
 Features
 --------
 
@@ -509,8 +535,6 @@ example.
 
 Gallery
 -------
-
-.. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/sample2.jpg
 
 .. image:: https://raw.githubusercontent.com/jaseg/gerbolyze/master/sample3.jpg
 
