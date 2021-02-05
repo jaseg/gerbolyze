@@ -49,42 +49,63 @@ Gerbolyze works in three steps.
 
         $ gerbolyze paste --top template_top_edited.svg [--bottom ...] my_gerber_dir output_gerber_dir
 
-Installation
-------------
+Quick Start Installation
+------------------------
+
+This will install gerbolyze and svg-flatten into a Python virtualenv and install usvg into your ``~/.cargo`` if not yet
+installed somewhere else.
 
 Debian
 ~~~~~~
 
-Step 1: Install dependencies
-****************************
-
-.. note::
+Note
     Right now, debian stable ships with a rust that is so stable it can't even build half of usvg's dependencies. That's
     why we yolo-install our own rust here. Sorry about that. I guess it'll work with the packaged rust on sid.
 
 .. code-block:: shell
     
-    git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
-    cd gerbolyze
+    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv
+
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     source $HOME/.cargo/env
-    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl
+
+    git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
+    cd gerbolyze
+
+    python3 -m venv
+    source venv/bin/activate
+    # may take a while during usvg install
     python3 setup.py install
 
 Fedora
 ~~~~~~
 
-Step 1: Install dependencies
-****************************
-
 .. code-block:: shell
     
+    sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
+
     git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
     cd gerbolyze
-    sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
+
+    python3 -m venv
+    source venv/bin/activate
+    # may take a while during usvg install
+    python3 setup.py install
     
 Arch
 ~~~~
+
+.. code-block:: shell
+
+    sudo pacman -S pugixml opencv pango cairo git python make clang rustup cargo
+
+    git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
+    cd gerbolyze
+
+    python3 -m venv
+    source venv/bin/activate
+    # may take a while during usvg install
+    python3 setup.py install
 
 Features
 --------
