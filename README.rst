@@ -58,7 +58,7 @@ installed somewhere else.
 Debian
 ~~~~~~
 
-Note
+Note:
     Right now, debian stable ships with a rust that is so stable it can't even build half of usvg's dependencies. That's
     why we yolo-install our own rust here. Sorry about that. I guess it'll work with the packaged rust on sid.
 
@@ -204,7 +204,7 @@ Use svg-flatten to convert an SVG file into the given layer of a KiCAD S-Express
 Use svg-flatten to convert an SVG file into a ``.kicad_mod`` with SVG layers fed into separate KiCAD layers based on
 their IDs like the popular ``svg2mod`` is doing:
 
-.. note::
+Note:
     Right now, the input SVG's layers must have *ids* that match up KiCAD's s-exp layer names. Note that when you name
     a layer in Inkscape that only sets a ``name`` attribute, but does not change the ID. In order to change the ID in
     Inkscape, you have to use Inkscape's "object properties" context menu function.
