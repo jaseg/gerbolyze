@@ -52,8 +52,7 @@ Gerbolyze works in three steps.
 Quick Start Installation
 ------------------------
 
-This will install gerbolyze and svg-flatten into a Python virtualenv and install usvg into your ``~/.cargo`` if not yet
-installed somewhere else.
+This will install gerbolyze and svg-flatten into a Python virtualenv and install usvg into your ``~/.cargo``.
 
 Debian
 ~~~~~~
@@ -68,13 +67,16 @@ Note:
 
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     source $HOME/.cargo/env
+    rustup install stable
+    rustup default stable
+    cargo install usvg
+
 
     git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
     cd gerbolyze
 
     python3 -m venv
     source venv/bin/activate
-    # may take a while during usvg install
     python3 setup.py install
 
 Fedora
@@ -83,13 +85,13 @@ Fedora
 .. code-block:: shell
     
     sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
+    cargo install usvg
 
     git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
     cd gerbolyze
 
     python3 -m venv
     source venv/bin/activate
-    # may take a while during usvg install
     python3 setup.py install
     
 Arch
@@ -99,12 +101,15 @@ Arch
 
     sudo pacman -S pugixml opencv pango cairo git python make clang rustup cargo
 
+    rustup install stable
+    rustup default stable
+    cargo install usvg
+
     git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
     cd gerbolyze
 
     python3 -m venv
     source venv/bin/activate
-    # may take a while during usvg install
     python3 setup.py install
 
 Features

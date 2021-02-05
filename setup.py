@@ -53,50 +53,10 @@ def has_usvg():
     else:
         return False
 
-def install_usvg():
-    try:
-        subprocess.run(['cargo'], check=True, capture_output=True)
-
-    except subprocess.CalledProcessError as e:
-        if b'no default toolchain set' in e.stderr:
-            print('No rust installation found. Calling rustup.')
-
-            try:
-                subprocess.run(['rustup', 'install', 'stable'], check=True)
-                subprocess.run(['rustup', 'default', 'stable'], check=True)
-
-            except subprocess.FileNotFoundError as e:
-                print('Cannot find rustup executable. svg-flatten needs usvg, which we install via rustup. Please install rustup or install usvg manually.', file=sys.stderr)
-                sys.exit(1)
-
-            except subprocess.CalledProcessError as e:
-                print('Error installing usvg:', e.returncode, file=sys.stderr)
-                sys.exit(1)
-
-        else:
-            print('Error installing usvg:', e.returncode, file=sys.stderr)
-            print(e.stdout.decode())
-            print(e.stderr.decode())
-            sys.exit(1)
-
-    except subprocess.FileNotFoundError as e:
-        print('Cannot find cargo executable. svg-flatten needs usvg, which we install via cargo. Please install cargo or install usvg manually.', file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        subprocess.run(['cargo', 'install', 'usvg'], check=True)
-
-    except subprocess.CalledProcessError as e:
-        print('Error installing usvg:', e.returncode, file=sys.stderr)
-        sys.exit(1)
-
 class CustomInstall(install):
     """Custom handler for the 'install' command."""
     def run(self):
         compile_and_install_svgflatten()
-        if not has_usvg():
-            print('usvg not found. Installing.')
-            install_usvg()
         super().run()
 
 setup(
