@@ -62,7 +62,6 @@ def vectorize(ctx, side, layer, exact, source, target, image, trace_space):
 @click.option('--dilate', default=0.1, help='Default dilation for subtraction operations in mm')
 @click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
 @click.option('--subtract', help='Use user subtraction script from argument (see description above)')
-@click.option('--input-on-top/--overlay-on-top', default=True, help='Set paint order of input and overlay')
 @click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
@@ -73,7 +72,6 @@ def paste(input_gerbers, output_gerbers,
         bbox,
         dilate, no_subtract, subtract,
         preserve_aspect_ratio,
-        input_on_top,
         trace_space, vectorizer, vectorizer_map, exclude_groups):
     """ Render vector data and raster images from SVG file into gerbers. """
 
@@ -169,9 +167,6 @@ def paste(input_gerbers, output_gerbers,
 
                 print('compositing')
                 comp = gerberex.GerberComposition()
-                if not input_on_top:
-                    # input below everything
-                    comp.merge(gerberex.rs274x.GerberFile.from_gerber_file(in_grb.cam_source))
                 # overlay on bottom
                 overlay_grb.offset(bounds[0][0], bounds[1][0])
                 comp.merge(overlay_grb)
@@ -181,9 +176,8 @@ def paste(input_gerbers, output_gerbers,
                     print('processing dilation', d_layer, amount)
                     dilated = do_dilate(d_layer, amount)
                     comp.merge(dilated)
-                if input_on_top:
-                    # input on top of everything
-                    comp.merge(gerberex.rs274x.GerberFile.from_gerber_file(in_grb.cam_source))
+                # input on top of everything
+                comp.merge(gerberex.rs274x.GerberFile.from_gerber_file(in_grb.cam_source))
 
                 if input_gerbers.is_dir():
                     this_out = output_gerbers / in_grb_path.name

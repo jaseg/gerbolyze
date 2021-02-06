@@ -331,6 +331,12 @@ The default subtraction script is:
 
     out.silk -= in.mask
 
+``gerbolyze vectorize``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``gerbolyze vectorize`` is a wrapper provided for compatibility with Gerbolyze version 1. It does nothing more than
+internally call ``gerbolyze paste`` with some default arguments set.
+
 .. _svg_flatten:
 ``svg-flatten``
 ~~~~~~~~~~~~~~~
