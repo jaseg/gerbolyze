@@ -58,7 +58,7 @@ Dilater &Dilater::operator<<(const Polygon &poly) {
     }
 
     ClipperLib::ClipperOffset offx;
-    offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
+    offx.ArcTolerance = 0.05 * clipper_scale; /* 10µm; TODO: Make this configurable */
     offx.AddPath(poly_c, ClipperLib::jtRound, ClipperLib::etClosedPolygon);
     double dilation = m_dilation;
     if (m_current_polarity == GRB_POL_CLEAR) {

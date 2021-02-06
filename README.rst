@@ -269,6 +269,12 @@ Options:
 ``-b, --bottom TEXT``
     Bottom side SVG overlay input file. At least one of this and ``--top`` should be given.
 
+``--layer-top``
+    Top side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk.
+
+``--layer-bottom``
+    Bottom side SVG or PNG target layer. See ``--layer-top``.
+
 ``--bbox TEXT``
     Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR "x,y,w,h" to force [w] mm by [h]
     mm output canvas with its bottom left corner at the given input gerber coördinates. This **must match the ``--bbox`` value given to

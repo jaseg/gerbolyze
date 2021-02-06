@@ -32,13 +32,14 @@ static void clipper_add_cairo_path(cairo_t *cr, ClipperLib::Clipper &c, bool clo
     c.AddPaths(in_poly, ClipperLib::ptSubject, closed);
 }
 
-static void path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const pugi::char_t *path_data) {
+static bool path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const pugi::char_t *path_data) {
     istringstream d(path_data);
 
     string cmd;
     double x, y, c1x, c1y, c2x, c2y;
 
     bool first = true;
+    bool has_closed = false;
     bool path_is_empty = true;
     while (!d.eof()) {
         d >> cmd;
@@ -48,6 +49,7 @@ static void path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const
         if (cmd == "Z") { /* Close path */
             cairo_close_path(cr);
             clipper_add_cairo_path(cr, c, /* closed= */ true);
+            has_closed = true;
             cairo_new_path(cr);
             path_is_empty = true;
 
@@ -61,8 +63,9 @@ static void path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const
              */
             cairo_user_to_device(cr, &x, &y);
             assert (!d.fail());
-            if (!first)
+            if (!first) {
                 clipper_add_cairo_path(cr, c, /* closed= */ false);
+            }
             cairo_new_path (cr);
             path_is_empty = true;
             cairo_move_to(cr, x, y);
@@ -93,6 +96,8 @@ static void path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const
         cairo_close_path(cr);
         clipper_add_cairo_path(cr, c, /* closed= */ false);
     }
+
+    return has_closed;
 }
 
 void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLib::PolyTree &ptree) {
@@ -107,9 +112,33 @@ void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLi
 
     ClipperLib::Clipper c;
     c.StrictlySimple(true);
-    path_to_clipper_via_cairo(cr, c, path_data);
-    /* We canont clip the polygon here since that would produce incorrect results for our stroke. */
-    c.Execute(ClipperLib::ctUnion, ptree, fill_rule, ClipperLib::pftNonZero);
+    bool has_closed = path_to_clipper_via_cairo(cr, c, path_data);
+
+    if (!has_closed) {
+        /* FIXME: Workaround!
+         *
+         * When we render silkscreen layers from gerbv's output, we get a lot of two-point paths (lines). Many of these are
+         * horizontal. Now, clipper seems to have a bug (probably related to its scan-line algorithm) that makes it
+         * misbehave here:
+         *
+         * It seems that when the input paths are all perfectly colinear and horizontal, so that the resulting bounding box
+         * has zero height, clipper doesn't output anything. At least for open input paths.
+         *
+         * Since there is no way to get paths out of a Clipper once they're Add'ed, we work around this by just doing an
+         * intersection with a maximum-size rectangle instead, that seems to work.
+         *
+         * TODO: Fix clipper instead.
+         */
+        auto le_min = -ClipperLib::loRange;
+        auto le_max = ClipperLib::hiRange;
+        ClipperLib::Path p = {{le_min, le_min}, {le_max, le_min}, {le_max, le_max}, {le_min, le_max}};
+        c.AddPath(p, ClipperLib::ptClip, /* closed= */ true);
+        c.Execute(ClipperLib::ctIntersection, ptree, fill_rule, ClipperLib::pftNonZero);
+
+    } else {
+        /* We cannot clip the polygon here since that would produce incorrect results for our stroke. */
+        c.Execute(ClipperLib::ctUnion, ptree, fill_rule, ClipperLib::pftNonZero);
+    }
 }
 
 void gerbolyze::parse_dasharray(const pugi::xml_node &node, vector<double> &out) {
