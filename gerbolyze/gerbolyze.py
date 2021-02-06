@@ -426,7 +426,7 @@ def load_side(side_matches):
 
     for layer, elems in layers.items():
         if len(elems) > 1 and layer != 'drill':
-            raise SystemError(f'Multiple files found for layer {layer}: {", ".join(side_matches[layer]) }')
+            raise SystemError(f'Multiple files found for layer {layer}: {", ".join(str(x) for x in side_matches[layer]) }')
 
     unitses = set(layer.cam_source.units for items in layers.values() for _path, layer in items)
     if len(unitses) != 1:
@@ -551,6 +551,8 @@ def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=
         candidates = [
                 # somewhere in $PATH
                 'svg-flatten',
+                # in user-local pip installation
+                Path.home() / '.local' / 'bin' / 'svg-flatten',
                 # next to our current python interpreter (e.g. in virtualenv
                 str(Path(sys.executable).parent / 'svg-flatten'),
                 # next to this python source file in the development repo

@@ -352,16 +352,22 @@ int main(int argc, char **argv) {
         int usvg_rc=-1;
         for (int i=0; i<3; i++) {
             const char *usvg_envvar;
-            if (i == 0) {
+            switch (i) {
+            case 0:
                 if ((usvg_envvar = getenv("USVG")) == NULL) {
                     continue;
                 } else {
                     command_line[0] = "usvg";
                 }
-            } else if (i == 1) {
+                break;
+
+            case 1:
                 command_line[0] = "usvg";
-            } else {
+                break;
+
+            case 2:
                 command_line[0] = loc_in_home.c_str();
+                break;
             }
 
             struct subprocess_s subprocess;
