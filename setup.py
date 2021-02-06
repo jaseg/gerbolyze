@@ -12,51 +12,23 @@ def readme():
     with open('README.rst') as f:
         return f.read()
 
-
-def get_virtualenv_path():
-    """Used to work out path to install compiled binaries to."""
-    if hasattr(sys, 'real_prefix'):
-        return sys.prefix
-
-    if hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
-        return sys.prefix
-
-    if 'conda' in sys.prefix:
-        return sys.prefix
-
-    return '/usr/local'
-
-def compile_and_install_svgflatten():
+def compile_and_install_svgflatten(target_dir):
     src_path = 'svg-flatten'
 
     try:
         subprocess.run(['make', 'check-deps'], cwd=src_path, check=True)
         subprocess.run(['make', '-j', str(cpu_count()), 'all'], cwd=src_path, check=True)
-        subprocess.run(['make', 'install', f'PREFIX={get_virtualenv_path()}'], cwd=src_path, check=True)
+        bin_dir = target_dir / ".."
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.run(['make', 'install', f'PREFIX={bin_dir.resolve()}'], cwd=src_path, check=True)
     except subprocess.CalledProcessError:
         print('Error building svg-flatten C++ binary. Please see log above for details.', file=sys.stderr)
         sys.exit(1)
 
-def has_usvg():
-    checks = ['usvg', str(Path.home() / '.cargo' / 'bin' / 'usvg')]
-    if 'USVG' in os.environ:
-        checks = [os.environ['USVG'], *checks]
-
-    for check in checks:
-        try:
-            subprocess.run(['usvg'], capture_output=True)
-            return True
-
-        except FileNotFoundError:
-            pass
-
-    else:
-        return False
-
 class CustomInstall(install):
     """Custom handler for the 'install' command."""
     def run(self):
-        compile_and_install_svgflatten()
+        compile_and_install_svgflatten(Path(self.install_scripts))
         super().run()
 
 setup(
