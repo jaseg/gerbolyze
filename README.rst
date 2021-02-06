@@ -308,10 +308,13 @@ Subtraction scripts
 
 .. image:: pics/subtract_example.png
 
-Subtraction scripts tell ``gerbolyze paste`` which layers to remove from other layers. When a source layer is given in
-the subtraction script, gerbolyze will dilate everything on this source layer and remove it from the target layer. By
-default, Gerbolyze subtracts the mask layer from the silk layer to make sure there are no silk primitives that overlap
-bare copper.
+Subtraction scripts tell ``gerbolyze paste`` to remove an area around certain input layers to from an overlay layer.
+When a input layer is given in the subtraction script, gerbolyze will dilate (extend outwards) everything on this input
+layer and remove it from the target overlay layer. By default, Gerbolyze subtracts the mask layer from the silk layer to
+make sure there are no silk primitives that overlap bare copper, and subtracts each input layer from its corresponding
+overlay to make sure the two do not overlap. In the picture above you can see both at work: The overlay contains
+halftone primitives all over the place. The subtraction script has cut out an area around all pads (mask layer) and all
+existing silkscreen. You can turn off this behavior by passing ``--no-subtract`` or pass your own "script".
 
 The syntax of these scripts is:
 
