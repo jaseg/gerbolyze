@@ -10,6 +10,7 @@ Raster images can either be vectorized through contour tracing (like gerbolyze v
 high-resolution grayscale emulation while (mostly) guaranteeing trace/space design rules.
 
 .. image:: pics/pcbway_sample_02_small.jpg
+  :width: 800px
 
 Tooling for PCB art is quite limited in both open source and closed source ecosystems. Something as simple as putting a
 pretty picture on a PCB can be an extremely tedious task. Depending on the PCB tool used, various arcane incantations
@@ -24,6 +25,7 @@ finally be confident that your PCB fab's toolchain will fall over before yours d
 anime silkscreen.
 
 .. image:: pics/process-overview.png
+  :width: 800px
 
 .. contents::
 
@@ -118,6 +120,7 @@ Features
 Input on the left, output on the right.
 
 .. image:: pics/test_svg_readme_composited.png
+  :width: 800px
 
 * Almost full SVG 1.1 static spec coverage (!)
 
@@ -308,6 +311,7 @@ Subtraction scripts
 *******************
 
 .. image:: pics/subtract_example.png
+  :width: 800px
 
 Subtraction scripts tell ``gerbolyze paste`` to remove an area around certain input layers to from an overlay layer.
 When a input layer is given in the subtraction script, gerbolyze will dilate (extend outwards) everything on this input
@@ -369,7 +373,7 @@ Options:
     Output format. Supported: gerber, svg, s-exp (KiCAD S-Expression)
 
 ``-p, --precision``
-    Number of decimal places use for exported coordinates (gerber: 1-9, SVG: 0-*). Note that not all gerber viewers are
+    Number of decimal places use for exported coordinates (gerber: 1-9, SVG: >=0). Note that not all gerber viewers are
     happy with too many digits. 5 or 6 is a reasonable choice.
 
 ``--clear-color``
@@ -463,21 +467,25 @@ can also be set on a per-image basis in both using ``--vectorizer-map [image svg
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: pics/vec_poisson_composited.png
+  :width: 800px
 
 ``--vectorizer hex-grid``
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: pics/vec_hexgrid_composited.png
+  :width: 800px
 
 ``--vectorizer square-grid``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: pics/vec_square_composited.png
+  :width: 800px
 
 ``--vectorizer binary-contours``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: pics/vec_contours_composited.png
+  :width: 800px
 
 The binary contours vectorizer requires a black-and-white binary input image. As you can see, like every bitmap tracer
 it will produce some artifacts. For artistic input this is usually not too bad as long as the input data is
@@ -491,16 +499,7 @@ Gerbolyze has its own built-in halftone processor, but you can also use the high
 GIMP_ instead if you like. This section will guide you through this. The PNG you get out of this can then be fed into
 gerbolyze using ``--vectorizer binary-contours``.
 
-1 Import a render of the board generated using ``gerbolyze render``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``gerbolyze render`` will automatically scale the render such that ten pixels in the render correspond to 6mil on the
-board, which is about the smallest detail most manufacturers can resolve on the silkscreen layer. You can control this
-setting using the ``--fab-resolution`` and ``--oversampling`` options. Refer to ``gerbolyze --help`` for details.
-
-.. image:: screenshots/01import01.png
-
-2 Import your desired artwork
+1 Import your desired artwork
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Though anime or manga pictures are highly recommended, you can use any image including photographs. Be careful to select
@@ -508,29 +507,15 @@ a picture with comparatively low detail that remains recognizable at very low re
 is hard to vizualize, but the grain resulting from the low resolution of a PCB's silkscreen is quite coarse.
 
 .. image:: screenshots/02import02.png
+  :width: 800px
 
-3 Paste the artwork onto the render as a new layer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. image:: screenshots/03paste.png
-
-4 Scale, rotate and position the artwork to the desired size
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. image:: screenshots/04scale_cut.png
-
-For alignment it may help to set the artwork layer's mode in the layers dialog to ``overlay``, which makes the PCB
-render layer below shine through more. If you can't set the layer's mode, make sure you have actually made a new layer
-from the floating selection you get when pasting one image into another in the GIMP.
-
-.. image:: screenshots/05position.png
-
-5 Convert the image to grayscale
+2 Convert the image to grayscale
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: screenshots/06grayscale.png
+  :width: 800px
 
-6 Fine-tune the image's contrast
+3 Fine-tune the image's contrast
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To look well on the PCB, contrast is critical. If your source image is in color, you may have lost some contrast during
@@ -542,8 +527,9 @@ of the grayscale value curve as shown (exaggerated) in the picture below. These 
 white and very dark grays to black while preserving the values in the middle.
 
 .. image:: screenshots/08curve_cut.png
+  :width: 800px
 
-7 Retouch details
+4 Retouch details
 ~~~~~~~~~~~~~~~~~
 
 Therer might be small details that don't look right yet, such as the image's background color or small highlights that
@@ -555,13 +541,15 @@ Particularly on low-resolution source images it may make sense to apply a blur w
 newsprint filter's cell size (10px) to smooth out the dot pattern generated by the newsprint filter.
 
 .. image:: screenshots/09retouch.png
+  :width: 800px
 
 In the following example, I retouched the highlights in the hair of the character in the picture to make them completely
 white instead of light-gray, so they still stand out nicely in the finished picture.
 
 .. image:: screenshots/10retouched.png
+  :width: 800px
 
-8 Run the newsprint filter
+5 Run the newsprint filter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now, run the GIMP's newsprint filter, under filters, distorts, newsprint.
@@ -573,31 +561,30 @@ The second important setting is oversampling, which should be set to four or sli
 of the edge reconstruction of ``gerbolyze vectorize``.
 
 .. image:: screenshots/11newsprint.png
+  :width: 800px
 
 The following are examples on the detail resulting from the newsprint filter.
 
 .. image:: screenshots/12newsprint.png
+  :width: 800px
 
-.. image:: screenshots/13newsprint.png
-
-.. image:: screenshots/14newsprint.png
-
-9 Export the image for use with ``gerbolyze vectorize``
+6 Export the image for use with ``gerbolyze vectorize``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Simply export the image as a PNG file. Below are some pictures of the output ``gerbolyze vectorize`` produced for this
 example.
 
 .. image:: screenshots/14result_cut.png
+  :width: 800px
 
 .. image:: screenshots/15result_cut.png
-
-.. image:: screenshots/16result_cut.png
+  :width: 800px
 
 Gallery
 -------
 
 .. image:: pics/sample3.jpg
+  :width: 400px
 
 Limitations
 -----------
