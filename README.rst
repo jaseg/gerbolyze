@@ -303,6 +303,7 @@ Options:
 
 
 .. _subtraction_script:
+
 Subtraction scripts
 *******************
 
@@ -347,6 +348,7 @@ The default subtraction script is:
 internally call ``gerbolyze paste`` with some default arguments set.
 
 .. _svg_flatten:
+
 ``svg-flatten``
 ~~~~~~~~~~~~~~~
 
@@ -440,6 +442,7 @@ Options:
     Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.
 
 .. _vectorization:
+
 Gerbolyze image vectorization
 -----------------------------
 
