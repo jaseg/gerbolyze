@@ -301,6 +301,7 @@ Options:
 ``--exclude-groups TEXT``
     Passed through to svg-flatten, see `below <svg_flatten_>`__.
 
+
 .. _subtraction_script:
 Subtraction scripts
 *******************
