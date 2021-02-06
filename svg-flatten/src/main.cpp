@@ -424,10 +424,8 @@ int main(int argc, char **argv) {
 
     doc.render(rset, *top_sink, &sel);
 
-    if (!is_svg) {
-        remove(frob.c_str());
-        remove(barf.c_str());
-    }
+    remove(frob.c_str());
+    remove(barf.c_str());
 
     if (flattener) {
         delete flattener;
