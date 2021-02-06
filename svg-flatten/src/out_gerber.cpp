@@ -78,15 +78,15 @@ SimpleGerberOutput& SimpleGerberOutput::operator<<(const Polygon &poly) {
     double x = round((poly[0][0] * m_scale + m_offset[0]) * m_gerber_scale);
     double y = round((m_height - poly[0][1] * m_scale + m_offset[1]) * m_gerber_scale);
     m_out << "G36*" << endl;
-    m_out << "X" << setw(m_digits_int + m_digits_frac) << setfill('0') << (long long int)x
-          << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << (long long int)y
+    m_out << "X" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal /* isn't C++ a marvel of engineering? */ << (long long int)x
+          << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal << (long long int)y
           << "D02*" << endl;
     m_out << "G01*" << endl;
     for (size_t i=1; i<poly.size(); i++) {
         double x = round((poly[i][0] * m_scale + m_offset[0]) * m_gerber_scale);
         double y = round((m_height - poly[i][1] * m_scale + m_offset[1]) * m_gerber_scale);
-        m_out << "X" << setw(m_digits_int + m_digits_frac) << setfill('0') << (long long int)x
-              << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << (long long int)y
+        m_out << "X" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal << (long long int)x
+              << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal << (long long int)y
               << "D01*" << endl;
     }
     m_out << "G37*" << endl;
