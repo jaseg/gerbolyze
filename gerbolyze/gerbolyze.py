@@ -25,11 +25,37 @@ from slugify import slugify
 def cli():
     pass
 
+
+@cli.command()
+@click.option('-l', '--layer', type=click.Choice(['silk', 'mask', 'copper']), default='silk')
+@click.option('-x', '--exact', flag_value=True)
+@click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
+@click.argument('side', type=click.Choice(['top', 'bottom']))
+@click.argument('source')
+@click.argument('target')
+@click.argument('image')
+@click.pass_context
+def vectorize(ctx, side, layer, exact, source, target, image, trace_space):
+    """ Compatibility command for Gerbolyze version 1.
+
+        This command is deprecated, please update your code to call "gerbolyze paste" instead.
+    """
+    ctx.invoke(paste, 
+        input_gerbers=source,
+        output_gerbers=target,
+        **{side: image, f'layer_{side}': layer},
+        no_subtract=exact,
+        trace_space=trace_space,
+        vectorizer='binary-contours',
+        preserve_aspect_ratio='meet')
+
 @cli.command()
 @click.argument('input_gerbers')
 @click.argument('output_gerbers')
-@click.option('-t', '--top', help='Top side SVG overlay') 
-@click.option('-b', '--bottom', help='Bottom side SVG overlay') 
+@click.option('-t', '--top', help='Top side SVG or PNG overlay') 
+@click.option('-b', '--bottom', help='Bottom side SVG or PNG overlay') 
+@click.option('--layer-top', help='Top side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk') 
+@click.option('--layer-bottom', help='Bottom side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk') 
 @click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
         '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
         'coördinates. MUST MATCH --bbox GIVEN TO PREVIEW')
@@ -41,10 +67,13 @@ def cli():
 @click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
+@click.option('--preserve-aspect-ratio', help='PNG/JPG files only: passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
-def paste(input_gerbers, output_gerbers, top, bottom,
+def paste(input_gerbers, output_gerbers,
+        top, bottom, layer_top, layer_bottom,
         bbox,
         dilate, no_subtract, subtract,
+        preserve_aspect_ratio,
         trace_space, vectorizer, vectorizer_map, exclude_groups):
     """ Render vector data and raster images from SVG file into gerbers. """
 
@@ -66,13 +95,19 @@ def paste(input_gerbers, output_gerbers, top, bottom,
         if input_gerbers.is_dir():
             output_gerbers.mkdir(exist_ok=True)
 
-        for side, in_svg in [('top', top), ('bottom', bottom)]:
-            if not in_svg:
+        for side, in_svg_or_png, target_layer in [
+                ('top', top, layer_top),
+                ('bottom', bottom, layer_bottom)]:
+
+            if not in_svg_or_png:
                 continue
+
+            if Path(in_svg_or_png).suffix.lower() in ['.png', '.jpg'] and target_layer is None:
+                target_layer = 'silk'
 
             print()
             print('#########################################')
-            print('processing side', side, 'infile', in_svg)
+            print('processing side', side, 'infile', in_svg_or_png)
             print('#########################################')
             print()
 
@@ -103,6 +138,10 @@ def paste(input_gerbers, output_gerbers, top, bottom,
                 if layer == 'drill':
                     continue
 
+                if target_layer is not None:
+                    if layer != target_layer:
+                        continue
+
                 (in_grb_path, in_grb), = input_files
 
                 print()
@@ -112,7 +151,10 @@ def paste(input_gerbers, output_gerbers, top, bottom,
                 print()
                 print('rendering layer', layer)
                 overlay_file = tmpdir / f'overlay-{side}-{layer}.gbr'
-                svg_to_gerber(in_svg, overlay_file, layer, trace_space, vectorizer, vectorizer_map, exclude_groups)
+                layer_arg = layer if target_layer is None else None # slightly confusing but trust me :)
+                svg_to_gerber(in_svg_or_png, overlay_file, layer_arg,
+                        trace_space, vectorizer, vectorizer_map, exclude_groups,
+                        bounds_for_png=bounds, preserve_aspect_ratio=preserve_aspect_ratio)
 
                 overlay_grb = gerberex.read(str(overlay_file))
                 if not overlay_grb.primitives:
@@ -542,7 +584,17 @@ def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units):
     # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
     svg_to_gerber(tmpfile, outfile, dilate=-dilation, dpi=72, scale=25.4/72.0)
 
-def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=None, vectorizer_map=None, exclude_groups=None, dilate=None, dpi=None, scale=None):
+def svg_to_gerber(infile, outfile,
+        layer=None, trace_space:'mm'=0.1,
+        vectorizer=None, vectorizer_map=None,
+        exclude_groups=None,
+        dilate=None,
+        dpi=None, scale=None, bounds_for_png=None,
+        preserve_aspect_ratio=None,
+        force_png=False, force_svg=False):
+
+    infile = Path(infile)
+
     if 'SVG_FLATTEN' in os.environ:
         candidates = [os.environ['SVG_FLATTEN']]
 
@@ -575,6 +627,17 @@ def svg_to_gerber(infile, outfile, layer=None, trace_space:'mm'=0.1, vectorizer=
         args += ['--usvg-dpi', str(dpi)]
     if scale:
         args += ['--scale', str(scale)]
+    if force_png or (infile.suffix.lower() in ['.jpg', '.png'] and not force_svg):
+        (min_x, max_x), (min_y, max_y) = bounds_for_png
+        args += ['--size', f'{max_x - min_x}x{max_y - min_y}']
+    if force_svg and force_png:
+        raise ValueError('both force_svg and force_png given')
+    if force_svg:
+        args += ['--force-svg']
+    if force_png:
+        args += ['--force-png']
+    if preserve_aspect_ratio:
+        args += ['--preserve-aspect-ratio', preserve_aspect_ratio]
 
     args += [str(infile), str(outfile)]
 
