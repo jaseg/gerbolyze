@@ -8,6 +8,7 @@ debian_10:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
   script:
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
 
@@ -15,6 +16,7 @@ ubuntu_2004:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
   script:
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
 
@@ -22,6 +24,7 @@ fedora_33:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
   script:
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
 
@@ -29,6 +32,7 @@ archlinux:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   script:
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "python setup.py install --user"
     - "gerbolyze --help"
 
