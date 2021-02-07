@@ -1,0 +1,62 @@
+stages:
+  - build
+
+
+debian_10:
+  stage: build
+  image: debian:10
+  script:
+    - "sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv"
+    - "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    - "source $HOME/.cargo/env"
+    - "rustup install stable"
+    - "rustup default stable"
+    - "cargo install usvg"
+    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
+    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "gerbolyze --version"
+
+ubuntu_2004:
+  stage: build
+  image: ubuntu:20.04
+  script:
+    - "sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv cargo"
+    - "cargo install usvg"
+    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
+    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "gerbolyze --version"
+
+fedora_33:
+  stage: build
+  image: fedora:33
+  script:
+    - "sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo"
+    - "cargo install usvg"
+    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
+    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "gerbolyze --version"
+
+archlinux:
+  stage: build
+  image: archlinux:latest
+  script:
+    - "sudo pacman -S pugixml opencv pango cairo git python make clang rustup cargo pkgconf"
+    - "rustup install stable"
+    - "rustup default stable"
+    - "cargo install usvg"
+    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
+    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "gerbolyze --version"
+
+source:
+  stage: build
+  image: archlinux:latest
+  script:
+    - "git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git"
+    - "cd gerbolyze"
+    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
+    - "python3 -m venv"
+    - "source venv/bin/activate"
+    - "python3 setup.py install"
+    - "gerbolyze --version"
+
