@@ -42,7 +42,7 @@ archlinux:
   stage: build
   image: archlinux:latest
   script:
-    - "pacman -Syyu --needed --noconfirm --noprogressbar base-devel pugixml opencv pango cairo git python python-pip make clang rustup cargo pkgconf"
+    - "pacman -Syyu --needed --noconfirm --noprogressbar base-devel pugixml opencv pango cairo git python python-pip make clang rustup cargo pkgconf python-numpy python-slugify python-lxml python-click"
     - "rustup install stable"
     - "rustup default stable"
     - "cargo install usvg"
