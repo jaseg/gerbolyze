@@ -114,7 +114,7 @@ Arch
 
 .. code-block:: shell
 
-    sudo pacman -S pugixml opencv pango cairo git python make clang rustup cargo
+    sudo pacman -S pugixml opencv pango cairo git python make clang rustup cargo pkgconf
 
     rustup install stable
     rustup default stable
