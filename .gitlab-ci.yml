@@ -32,10 +32,12 @@ fedora_33:
   stage: build
   image: fedora:33
   script:
-    - "sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo"
+    - "dnf --nodocs --assumeyes --refresh install python3 python3-pip git make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo python3-numpy python3-slugify python3-lxml python3-click"
     - "cargo install usvg"
+    - "export PATH=$HOME/.cargo/bin:$PATH"
     - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "python3 setup.py install --user"
+    - "export PATH=$HOME/.local/bin:$PATH"
     - "gerbolyze --help"
 
 archlinux:
@@ -49,17 +51,5 @@ archlinux:
     - "pip install --user git+https://git.jaseg.de/pcb-tools-extension.git"
     - "python setup.py install --user"
     - "export PATH=$HOME/.local/bin:$PATH"
-    - "gerbolyze --help"
-
-source:
-  stage: build
-  image: archlinux:latest
-  script:
-    - "git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git"
-    - "cd gerbolyze"
-    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "python3 -m venv"
-    - "source venv/bin/activate"
-    - "python3 setup.py install"
     - "gerbolyze --help"
 
