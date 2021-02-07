@@ -44,8 +44,8 @@ archlinux:
     - "rustup install stable"
     - "rustup default stable"
     - "cargo install usvg"
-    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "pip install --user git+https://git.jaseg.de/pcb-tools-extension.git"
+    - "pip install --user gerbolyze --no-binary gerbolyze"
     - "gerbolyze --version"
 
 source:
