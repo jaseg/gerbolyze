@@ -40,12 +40,13 @@ archlinux:
   stage: build
   image: archlinux:latest
   script:
-    - "pacman -Syyu --needed --noconfirm --noprogressbar base-devel pugixml opencv pango cairo git python make clang rustup cargo pkgconf"
+    - "pacman -Syyu --needed --noconfirm --noprogressbar base-devel pugixml opencv pango cairo git python python-pip make clang rustup cargo pkgconf"
     - "rustup install stable"
     - "rustup default stable"
     - "cargo install usvg"
     - "pip install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "pip install --user gerbolyze --no-binary gerbolyze"
+    - "python setup.py install --user"
+    - "export PATH=$HOME/.local/bin:$PATH"
     - "gerbolyze --version"
 
 source:
