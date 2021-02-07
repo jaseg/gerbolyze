@@ -16,7 +16,7 @@ debian_10:
     - "cargo install usvg"
     - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
     - "pip3 install --user gerbolyze --no-binary gerbolyze"
-    - "gerbolyze --version"
+    - "gerbolyze --help"
 
 ubuntu_2004:
   stage: build
@@ -26,7 +26,7 @@ ubuntu_2004:
     - "cargo install usvg"
     - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
     - "pip3 install --user gerbolyze --no-binary gerbolyze"
-    - "gerbolyze --version"
+    - "gerbolyze --help"
 
 fedora_33:
   stage: build
@@ -36,7 +36,7 @@ fedora_33:
     - "cargo install usvg"
     - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
     - "pip3 install --user gerbolyze --no-binary gerbolyze"
-    - "gerbolyze --version"
+    - "gerbolyze --help"
 
 archlinux:
   stage: build
@@ -49,7 +49,7 @@ archlinux:
     - "pip install --user git+https://git.jaseg.de/pcb-tools-extension.git"
     - "python setup.py install --user"
     - "export PATH=$HOME/.local/bin:$PATH"
-    - "gerbolyze --version"
+    - "gerbolyze --help"
 
 source:
   stage: build
@@ -61,5 +61,5 @@ source:
     - "python3 -m venv"
     - "source venv/bin/activate"
     - "python3 setup.py install"
-    - "gerbolyze --version"
+    - "gerbolyze --help"
 
