@@ -73,13 +73,18 @@ Note:
     rustup default stable
     cargo install usvg
 
+    pip3 install --user gerbolyze --no-binary gerbolyze
 
-    git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
-    cd gerbolyze
+Ubuntu
+~~~~~~
 
-    python3 -m venv
-    source venv/bin/activate
-    python3 setup.py install
+.. code-block:: shell
+    
+    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv cargo
+    cargo install usvg
+
+    pip3 install --user gerbolyze --no-binary gerbolyze
+
 
 Fedora
 ~~~~~~
@@ -89,12 +94,7 @@ Fedora
     sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
     cargo install usvg
 
-    git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
-    cd gerbolyze
-
-    python3 -m venv
-    source venv/bin/activate
-    python3 setup.py install
+    pip3 install --user gerbolyze --no-binary gerbolyze
     
 Arch
 ~~~~
@@ -106,6 +106,15 @@ Arch
     rustup install stable
     rustup default stable
     cargo install usvg
+
+    pip3 install --user gerbolyze --no-binary gerbolyze
+
+Build from source (any distro)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+First, install prerequisites like shown above. Then,
+
+.. code-block:: shell
 
     git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
     cd gerbolyze

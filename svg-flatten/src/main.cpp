@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
         precision = atoi(args["precision"]);
     }
 
-    string fmt = args["ofmt"] ? args["ofmt"] : "gerber";
+    string fmt = args["ofmt"] ? args["ofmt"].as<string>() : "gerber";
     transform(fmt.begin(), fmt.end(), fmt.begin(), [](unsigned char c){ return std::tolower(c); }); /* c++ yeah */
 
     string sexp_layer = args["sexp_layer"] ? args["sexp_layer"].as<string>() : "auto";
@@ -179,8 +179,8 @@ int main(int argc, char **argv) {
     PolygonSink *flattener = nullptr;
     PolygonSink *dilater = nullptr;
     if (fmt == "svg") {
-        string dark_color = args["svg_dark_color"] ? args["svg_dark_color"] : "#000000";
-        string clear_color = args["svg_clear_color"] ? args["svg_clear_color"] : "#ffffff";
+        string dark_color = args["svg_dark_color"] ? args["svg_dark_color"].as<string>() : "#000000";
+        string clear_color = args["svg_clear_color"] ? args["svg_clear_color"].as<string>() : "#ffffff";
         sink = new SimpleSVGOutput(*out_f, only_polys, precision, dark_color, clear_color);
 
     } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber") {
@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
         sel.layers = &gerbolyze::kicad_default_layers;
     }
 
-    string vectorizer = args["vectorizer"] ? args["vectorizer"] : "poisson-disc";
+    string vectorizer = args["vectorizer"] ? args["vectorizer"].as<string>() : "poisson-disc";
     /* Check argument */
     ImageVectorizer *vec = makeVectorizer(vectorizer);
     if (!vec) {
@@ -408,7 +408,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"] : "");
+    VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"].as<string>() : "");
     RenderSettings rset {
         min_feature_size,
         vec_sel,

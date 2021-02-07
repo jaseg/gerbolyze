@@ -7,3 +7,4 @@ recursive-exclude upstream/poisson-disk-sampling/images *
 recursive-exclude upstream/clipper-6.4.2/Documentation *
 recursive-exclude upstream/CavalierContours tests/* examples/*
 recursive-exclude upstream/argagg doc/* examples/* tests/*
+recursive-exclude svg-flatten/build *

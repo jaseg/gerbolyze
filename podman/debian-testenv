@@ -1,0 +1,11 @@
+
+FROM docker.io/debian:latest
+MAINTAINER gerbolyze@jaseg.de
+RUN env DEBIAN_FRONTEND=noninteractive apt update -y
+RUN env DEBIAN_FRONTEND=noninteractive apt install -y libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+RUN sh -c '. ~/.cargo/env && rustup install stable'
+RUN sh -c '. ~/.cargo/env && rustup default stable'
+RUN sh -c '. ~/.cargo/env && cargo install usvg'
+

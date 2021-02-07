@@ -1,6 +1,6 @@
 
 CXX := clang++
-LD := ld
+LD ?= ld
 INSTALL := install
 PKG_CONFIG ?= pkg-config
 
@@ -46,7 +46,8 @@ CXXFLAGS += $(shell $(PKG_CONFIG) --cflags opencv4 2> /dev/null || $(PKG_CONFIG)
 LDFLAGS := -lm -lc -lstdc++
 LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PKG_CONFIG_DEPS))
 # debian hack. see above.
-LDFLAGS += $(shell $(PKG_CONFIG) --libs opencv4 2> /dev/null || $(PKG_CONFIG) --libs opencv 2>/dev/null) 
+OPENCV_LDFLAGS := $(shell $(PKG_CONFIG) --libs opencv4 2> /dev/null || $(PKG_CONFIG) --libs opencv 2>/dev/null) 
+LDFLAGS += $(shell echo $(OPENCV_LDFLAGS) | sed 's/-l\S\+ //g') -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 
 TARGET := svg-flatten
 
@@ -65,7 +66,7 @@ $(BUILDDIR)/%.o: %.cpp
 
 $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	@mkdir -p $(dir $@) 
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ -lstdc++fs
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ -Wl,--start-group $^ -lstdc++fs -Wl,--end-group
 
 .PHONY: install
 install:
