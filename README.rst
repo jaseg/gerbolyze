@@ -12,6 +12,8 @@ high-resolution grayscale emulation while (mostly) guaranteeing trace/space desi
 .. image:: pics/pcbway_sample_02_small.jpg
   :width: 800px
 
+  Seen above: A test board designed using gerbolyze and produced by PCBWay.
+
 Tooling for PCB art is quite limited in both open source and closed source ecosystems. Something as simple as putting a
 pretty picture on a PCB can be an extremely tedious task. Depending on the PCB tool used, various arcane incantations
 may be necessary and even modestly complex images will slow down most PCB tools to a crawl.
@@ -589,11 +591,51 @@ example.
 .. image:: screenshots/15result_cut.png
   :width: 800px
 
-Gallery
--------
+Manufacturing Considerations
+----------------------------
 
-.. image:: pics/sample3.jpg
-  :width: 400px
+The main consideration when designing artwork for PCB processes is the processes' trace/space design rule. The two
+things you can do here is one, to be creative with graphical parts of the design and avoid extremely narrow lines,
+wedges or other thin features that will not come out well. Number two is to keep detail in raster images several times
+larger than the manufacturing processes native capability. For example, to target a trace/space design rule of 100 µm,
+the smallest detail in embedded raster graphics should not be much below 1mm.
+
+Gerbolyze's halftone vectorizers have built-in support for trace/space design rules. While they can still produce small
+artifacts that violate these rules, their output should be close enough to satifsy board houses and close enough for the
+result to look good. The way gerbolyze does this is to clip the halftone cell's values to zero whenevery they get too
+small, and to forcefully split or merge two neighboring cells when they get too close. While this process introduces
+slight steps at the top and bottom of grayscale response, for most inputs these are not noticeable.
+
+On the other hand, for SVG vector elements as well as for traced raster images, Gerbolyze cannot help with these design
+rules. There is no heuristic that would allow Gerbolyze to non-destructively "fix" a design here, so all that's on the
+roadmap here is to eventually include a gerber-level design rule checker.
+
+As far as board houses go, I have made good experiences with the popular Chinese board houses. In my experience, JLC
+will just produce whatever you send them with little fucks being given about design rule adherence or validity of the
+input gerbers. This is great if you just want artistic circuit boards without much of a hassle, and you don't care if
+they come out exactly as you imagined. The worst I've had happen was when an older version of gerbolyze generated
+polygons with holes assuming standard fill-rule processing. The in the board house's online gerber viewer things looked
+fine, and neither did they complain during file review. However, the resulting boards looked completely wrong because
+all the dark halftones were missing.
+
+PCBWay on the other hand has a much more rigurous file review process. They <em>will</em> complain when you throw
+illegal garbage gerbers at them, and they will helpfully guide you through your design rule violations. In this way you
+get much more of a professional service from them and for designs that have to be functional their higher level of
+scrutiny definitely is a good thing. For the design you saw in the first picture in this article, I ended up begging
+them to just plot my files if it doesn't physically break their machines and to their credit, while they seemed unhappy
+about it they did it and the result looks absolutely stunning.
+
+PCBWay is a bit more expensive on their lowest-end offering than JLC, but I found that for anything else (large boards,
+multi-layer, gold plating etc.) their prices match. PCBWay offers a much broader range of manufacturing options such as
+flexible circuit boards, multi-layer boards, thick or thin substrates and high-temperature substrates.
+
+When in doubt about how your design is going to come out on the board, do not hesitate to contact your board house. Most
+of the end customer-facing online PCB services have a number of different factories that do a number of different
+fabrication processes for them depending on order parameters. Places like PCBWay have exceptional quality control and
+good customer service, but that is mostly focused on the technical aspects of the PCB. If you rely on visual aspects
+like silkscreen uniformity or solder mask color that is a strong no concern to everyone else in the electronics
+industry, you may find significant variations between manufacturers or even between orders with the same manufacturer
+and you may encounter challenges communicating your requirements.
 
 Limitations
 -----------
@@ -616,6 +658,22 @@ the output files for errors before submitting them to production.
 
 Gerbolyze is provided without any warranty, but still please open an issue or `send me an email
 <mailto:gerbolyze@jaseg.de>`__ if you find any errors or inconsistencies. 
+
+Trace/Space design rule adherence
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+While the grayscale halftone vectorizers do a reasonable job adhering to a given trace/space design rule, they can still
+produce small parts of output that violate it. For the contour vectorizer as well as for all SVG primitives, you are
+responsible for adhering to design rules yourself as there is no algorithm that gerboyze could use to "fix" its input.
+
+A design rule checker is planned as a future addition to gerbolyze, but is not yet part of it. If in doubt, talk to your
+fab and consider doing a test run of your design before ordering assembled boards ;)
+
+Gallery
+-------
+
+.. image:: pics/sample3.jpg
+  :width: 400px
 
 Licensing
 ---------
