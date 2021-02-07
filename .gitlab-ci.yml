@@ -1,36 +1,33 @@
-variablms:
-  DEBIAN_FRONTEND: noninteractive
+variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  PCB_TOOLS_EXT_DEPS: "python3-cffi python3-cairocffi python3-pycparser"
-  GERBOLYZE_DEPS: "python3-numpy python3-slugify python3-lxml python3-click"
 
 stages:
   - build
 
 debian_10:
   stage: build
-  image: registry.gitlab.com/gerbolyze/build-containers/debian:10
+  image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
   script:
     - "su - bernd -c 'python3 setup.py install --user'"
     - "su - bernd -c 'gerbolyze --help'"
 
 ubuntu_2004:
   stage: build
-  image: registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04
+  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
   script:
     - "su - bernd -c 'python3 setup.py install --user'"
     - "su - bernd -c 'gerbolyze --help'"
 
 fedora_33:
   stage: build
-  image: registry.gitlab.com/gerbolyze/build-containers/fedora:33
+  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
   script:
     - "su - bernd -c 'python3 setup.py install --user'"
     - "su - bernd -c 'gerbolyze --help'"
 
 archlinux:
   stage: build
-  image: registry.gitlab.com/gerbolyze/build-containers/archlinux:latest
+  image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   script:
     - "su - bernd -c 'python setup.py install --user'"
     - "su - bernd -c 'gerbolyze --help'"
