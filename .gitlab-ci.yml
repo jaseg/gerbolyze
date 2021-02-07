@@ -27,10 +27,13 @@ ubuntu_2004:
   stage: build
   image: ubuntu:20.04
   script:
-    - "sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv cargo"
+    - "apt-get update"
+    - "apt-get upgrade --no-install-recommends --assume-yes"
+    - "apt-get install --no-install-recommends --assume-yes libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel python3-pip cargo $GERBOLYZE_DEPS $PCB_TOOLSEXT_DEPS"
     - "cargo install usvg"
     - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "python3 setup.py install --user"
+    - "export PATH=$HOME/.local/bin:$PATH"
     - "gerbolyze --help"
 
 fedora_33:
