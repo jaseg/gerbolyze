@@ -49,7 +49,7 @@ archlinux:
   stage: build
   image: archlinux:latest
   script:
-    - "pacman -Syyu --needed --noconfirm --noprogressbar base-devel pugixml opencv pango cairo git python python-pip make clang rustup cargo pkgconf ${GERBOLYZE_DEPS/python3-/python-} ${PCB_TOOLSEXT_DEPS/python3-/python-}"
+    - "pacman -Syyu --needed --noconfirm --noprogressbar base-devel pugixml opencv pango cairo git python python-pip make clang rustup cargo pkgconf ${GERBOLYZE_DEPS//python3-/python-} ${PCB_TOOLSEXT_DEPS//python3-/python-}"
     - "rustup install stable"
     - "rustup default stable"
     - "cargo install usvg"
