@@ -9,7 +9,7 @@ patterns, dashes and transformations
 Raster images can either be vectorized through contour tracing (like gerbolyze v1.0 did) or they can be embedded using
 high-resolution grayscale emulation while (mostly) guaranteeing trace/space design rules.
 
-.. figure:: pics/pcbway_sample_02_small.jpg
+.. image:: pics/pcbway_sample_02_small.jpg
   :width: 800px
 
   Drawing by `トーコ Toko <https://twitter.com/fluffy2038/status/1317231121269104640>`__ converted using Gerbolyze and printed at PCBWay.
