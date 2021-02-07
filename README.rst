@@ -12,7 +12,8 @@ high-resolution grayscale emulation while (mostly) guaranteeing trace/space desi
 .. figure:: pics/pcbway_sample_02_small.jpg
   :width: 800px
 
-  Seen above: A test board designed using gerbolyze and produced by PCBWay.
+  Drawing by `トーコ Toko <https://twitter.com/fluffy2038/status/1317231121269104640>`__ converted using Gerbolyze and printed at PCBWay.
+
 
 Tooling for PCB art is quite limited in both open source and closed source ecosystems. Something as simple as putting a
 pretty picture on a PCB can be an extremely tedious task. Depending on the PCB tool used, various arcane incantations
