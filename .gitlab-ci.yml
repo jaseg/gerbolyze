@@ -8,14 +8,15 @@ debian_10:
   stage: build
   image: debian:10
   script:
-    - "sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv"
-    - "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    - "apt-get update"
+    - "apt-get upgrade --no-install-recommends --assume-yes"
+    - "apt-get install --no-install-recommends --assume-yes libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-setuptools python3-numpy python3-slugify python3-lxml python3-click python3-cffi python3-cairocffi python3-pycparser"
+    - "curl --proto '=https' --tlsv1.2 -sSf -o rustup.sh https://sh.rustup.rs | sh -s -- -y --default-toolchain stable"
     - "source $HOME/.cargo/env"
-    - "rustup install stable"
-    - "rustup default stable"
     - "cargo install usvg"
     - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "pip3 install --user gerbolyze --no-binary gerbolyze"
+    - "python3 setup.py install --user"
+    - "export PATH=$HOME/.local/bin:$PATH"
     - "gerbolyze --help"
 
 ubuntu_2004:
