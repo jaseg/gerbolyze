@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Gerbolyze Raster image to PCB renderer</title>
+    <title>Gerbolyze Image to PCB Toolchain</title>
     <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
     <link rel="icon" type="image/png" href="{{url_for('static', filename='favicon-512.png')}}">
     <link rel="apple-touch-icon" href="{{url_for('static', filename='favicon-512.png')}}">
@@ -10,157 +10,157 @@
   <body>
     <div class="layout-container">
       <div class="header">
-	<div class="desc">
-	  <h1>Raster image to PCB converter</h1>
-	  <p>
-	  Gerbolyze is a tool for rendering black and white raster (PNG) images directly onto gerber layers. You can
-	  use this to put art on a PCB's silkscreen, solder mask or copper layers. The input is a black-and-white PNG
-	  image that is vectorized and rendered into an existing gerber file. Gerbolyze works with gerber files
-	  produced with any EDA toolchain and has been tested to work with both Altium and KiCAD.
-	  </p>
-	</div>
+        <div class="desc">
+          <h1>SVG/JPG/PNG to PCB converter</h1>
+          <p>
+      Gerbolyze is a tool for rendering arbitrary vector (SVG) and raster (PNG/JPG) images directly onto gerber layers.
+      You can use this to put art on a PCB's silkscreen, solder mask or copper layers. The input is an SVG file
+      generated from a template. This SVG file has one layer for each PCB layer and the layers are rendered one by one
+      into the existing gerber file. SVG primitives are converted as-is with (almost) full SVG support, and bitmap
+      images are vectorized using a vector halftone processor. Gerbolyze works with gerber files produced with any EDA
+      toolchain and has been tested to work with both Altium and KiCAD.
+          </p>
+        </div>
       </div>
 
       {% with messages = get_flashed_messages(with_categories=True) %}
-	{% if messages %}
-	  <div class="flashes">
-	    {% for category, message in messages %}
-	      <div class="flash flash-{{category}}">{{ message }}</div>
-	    {% endfor %}
-	  </div>
-	{% endif %}
+        {% if messages %}
+          <div class="flashes">
+            {% for category, message in messages %}
+              <div class="flash flash-{{category}}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
       {% endwith %}
 
       <form id="reset-form" method="POST" action="{{url_for('session_reset')}}" class="reset-form">{{reset_form.csrf_token}}</form>
 
       <div class="steps">
-	<div class="step" id="step1">
-	  <div class="description">
-	    <h2>Upload zipped gerber files</h2>
-	    <p>
-	    First, upload a zip file containing all your gerber files. The default file names used by KiCAD, Eagle
-	    and Altium are supported.
-	    </p>
-	  </div>
+        <div class="step" id="step1">
+          <div class="description">
+            <h2>Upload zipped gerber files</h2>
+            <p>
+            First, upload a zip file containing all your gerber files. The default file names used by KiCAD, Eagle
+            and Altium are supported.
+            </p>
+          </div>
 
-	  <div class="controls">
-	    <form id="gerber-upload-form" method="POST" action="{{url_for('upload_gerber')}}" enctype="multipart/form-data">
-	      {{gerber_form.csrf_token}}
-	    </form>
-	    <div class="form-controls">
-	      <div class="upload-label">Upload Gerber file:</div>
-	      <input class='upload-button' form="gerber-upload-form" name="upload_file" size="20" type="file">
-	    </div>
-	    <div class="submit-buttons">
-	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
-	      <input class='submit-button' form="gerber-upload-form" type="submit" value="Submit">
-	    </div>
-	  </div>
-	</div>
+          <div class="controls">
+            <form id="gerber-upload-form" method="POST" action="{{url_for('upload_gerber')}}" enctype="multipart/form-data">
+              {{gerber_form.csrf_token}}
+            </form>
+            <div class="form-controls">
+              <div class="upload-label">Upload Gerber file:</div>
+              <input class='upload-button' form="gerber-upload-form" name="upload_file" size="20" type="file">
+            </div>
+            <div class="submit-buttons">
+              <input class='reset-button' form="reset-form" type="submit" value="Start over">
+              <input class='submit-button' form="gerber-upload-form" type="submit" value="Submit">
+            </div>
+          </div>
+        </div>
 
-	{% if 'render_job' in session or has_renders %}
-	<div class="step" id="step2">
-	  <div class="description">
-	    <h2>Download the target side's preview image</h2>
-	    <p>
-	      Second, download either the top or bottom preview image and use it to align and scale your own artwork
-	      in an image editing program such as Gimp.  Then upload your overlay image below.
+        {% if 'render_job' in session or has_renders %}
+        <div class="step" id="step2">
+          <div class="description">
+            <h2>Download the target side's preview image</h2>
+            <p>
+              Second, download either the top or bottom SVG template and place your own artwork in it on the appropriate
+              layers. The template is made to work well with the excellent open-source <a href="https://inkscape.org">Inkscape</a>
+              vector graphics editor.  When you are done, upload your overlay below.
 
-	      Note that you will have to convert grayscale images into binary images yourself. Gerbolyze can't do this
-	      for you since there are lots of variables involved. Our <a href="https://github.com/jaseg/gerbolyze/blob/master/README.rst#image-preprocessing-guide">Guideline on image processing</a> gives an overview on
-	      <i>one</i> way to produce agreeable binary images from grayscale source material.
-	    </p>
-	  </div>
-	  <div class="controls">
-	    {% if 'render_job' in session %}
-	    <div class="loading-message">
-	      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
-	      <div><strong>Processing...</strong></div>
-	      <div>(this may take several minutes!)</div>
-	    </div>
-	    {% else %}
-	    <div class="preview-images">
-	      <a href="{{url_for('render_download', side='top')}}" onclick="document.querySelector('#side-0').checked=true" class="preview preview-top" style="background-image:url('{{url_for('render_preview', side='top')}}');">
-		  <div class="overlay">top</div>
-	      </a>
-	      <a href="{{url_for('render_download', side='bottom')}}" onclick="document.querySelector('#side-1').checked=true" class="preview preview-bottom" style="background-image:url('{{url_for('render_preview', side='bottom')}}');">
-		<div class="overlay">bot<br/>tom</div>
-	      </a>
-	    </div>
-	    {% endif %}
-	    <div class="submit-buttons">
-	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
-	    </div>
-	  </div>
-	</div>
+              If you wish to put a bitmap image (PNG/JPG) on your board, simply place it into the SVG on the appropriate
+              layer. Make sure you select Inkscape's "embed image" option when importing it.
+            </p>
+          </div>
+          <div class="controls">
+            {% if 'render_job' in session %}
+            <div class="loading-message">
+              <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+              <div><strong>Processing...</strong></div>
+              <div>(this may take several minutes!)</div>
+            </div>
+            {% else %}
+            <div class="preview-images">
+              <a href="{{url_for('render_download', side='top')}}" onclick="document.querySelector('#side-0').checked=true" class="preview preview-top" style="background-image:url('{{url_for('render_preview', side='top')}}');">
+                  <div class="overlay">top</div>
+              </a>
+              <a href="{{url_for('render_download', side='bottom')}}" onclick="document.querySelector('#side-1').checked=true" class="preview preview-bottom" style="background-image:url('{{url_for('render_preview', side='bottom')}}');">
+                <div class="overlay">bot<br/>tom</div>
+              </a>
+            </div>
+            {% endif %}
+            <div class="submit-buttons">
+              <input class='reset-button' form="reset-form" type="submit" value="Start over">
+            </div>
+          </div>
+        </div>
 
-	<div class="step" id="step3">
-	  <div class="description">
-	    <h2>Upload overlay image</h2>
-	    <p>
-	      Now, upload your binary overlay image as a PNG and let gerbolyze render it onto the target layer. The PNG
-	      file should be a black and white binary file with details generally above about 10px size. <b>Antialiased
-		edges are supported.</b>
-	    </p>
-	  </div>
-	  <div class="controls">
-	    <form id="overlay-upload-form" method="POST" action="{{url_for('upload_overlay')}}" enctype="multipart/form-data">
-	      {{overlay_form.csrf_token}}
-	    </form>
-	    <div class="form-controls">
-	      <div class="form-label upload-label">Upload Overlay PNG file:</div>
-	      <input class='upload-button' form="overlay-upload-form" name="upload_file" size="20" type="file">
-	    </div>
-	    <div class="form-controls">
-	      <div class="form-label target-label">Target layer:</div>
-	      <input form="overlay-upload-form" name="side" id="side-0" type="radio" value="top">
-	      <label for="side-0">Top</label>
-	      <input form="overlay-upload-form" name="side" id="side-1" type="radio" value="top">
-	      <label for="side-1">Bottom</label>
-	    </div>
-	    <div class="submit-buttons">
-	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
-	      <input class='submit-button' form="overlay-upload-form" type="submit" value="Submit">
-	    </div>
-	  </div>
-	</div>
+        <div class="step" id="step3">
+          <div class="description">
+            <h2>Upload overlay SVG</h2>
+            <p>
+              Now, upload your binary overlay as an SVG and let gerbolyze paste it onto the target layers.
+            </p>
+          </div>
+          <div class="controls">
+            <form id="overlay-upload-form" method="POST" action="{{url_for('upload_overlay')}}" enctype="multipart/form-data">
+              {{overlay_form.csrf_token}}
+            </form>
+            <div class="form-controls">
+              <div class="form-label upload-label">Upload Overlay PNG file:</div>
+              <input class='upload-button' form="overlay-upload-form" name="upload_file" size="20" type="file">
+            </div>
+            <div class="form-controls">
+              <div class="form-label target-label">Target layer:</div>
+              <input form="overlay-upload-form" name="side" id="side-0" type="radio" value="top">
+              <label for="side-0">Top</label>
+              <input form="overlay-upload-form" name="side" id="side-1" type="radio" value="top">
+              <label for="side-1">Bottom</label>
+            </div>
+            <div class="submit-buttons">
+              <input class='reset-button' form="reset-form" type="submit" value="Start over">
+              <input class='submit-button' form="overlay-upload-form" type="submit" value="Submit">
+            </div>
+          </div>
+        </div>
 
-	{% if 'vector_job' in session or has_output %}
-	<div class="step" id="step4">
-	  <div class="description">
-	    <h2>Download the processed gerber files</h2>
-	  </div>
-	  <div class="controls">
-	    {% if 'vector_job' in session %}
-	    <div class="loading-message">
-	      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
-	      <div><strong>Processing...</strong></div>
-	      <div>(this may take several minutes!)</div>
-	    </div>
-	    {% else %}
-	    <div class='download-controls'>
-	      <a class='output-download' href="{{url_for('output_download')}}">Click to download</a>
-	    </div>
-	    {% endif %}
-	    <div class="submit-buttons">
-	      <input class='reset-button' form="reset-form" type="submit" value="Start over">
-	    </div>
-	    <!--4>Debug foo</h4>
-	    <div class="loading-message">
-	      <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
-	      <div><strong>Processing...</strong></div>
-	      <div>(this may take several minutes!)</div>
-	    </div-->
-	  </div>
-	</div>
-	{% endif %} {# vector job #}
-	{% endif %} {# render job #}
+        {% if 'vector_job' in session or has_output %}
+        <div class="step" id="step4">
+          <div class="description">
+            <h2>Download the processed gerber files</h2>
+          </div>
+          <div class="controls">
+            {% if 'vector_job' in session %}
+            <div class="loading-message">
+              <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+              <div><strong>Processing...</strong></div>
+              <div>(this may take several minutes!)</div>
+            </div>
+            {% else %}
+            <div class='download-controls'>
+              <a class='output-download' href="{{url_for('output_download')}}">Click to download</a>
+            </div>
+            {% endif %}
+            <div class="submit-buttons">
+              <input class='reset-button' form="reset-form" type="submit" value="Start over">
+            </div>
+            <!--4>Debug foo</h4>
+            <div class="loading-message">
+              <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+              <div><strong>Processing...</strong></div>
+              <div>(this may take several minutes!)</div>
+            </div-->
+          </div>
+        </div>
+        {% endif %} {# vector job #}
+        {% endif %} {# render job #}
       </div>
       <div class="sample-images">
-	<h1>Sample images</h1>
-	<img src="{{url_for('static', filename='sample1.jpg')}}">
-	<img src="{{url_for('static', filename='sample2.jpg')}}">
-	<img src="{{url_for('static', filename='sample3.jpg')}}">
+        <h1>Sample images</h1>
+        <img src="{{url_for('static', filename='sample1.jpg')}}">
+        <img src="{{url_for('static', filename='sample2.jpg')}}">
+        <img src="{{url_for('static', filename='sample3.jpg')}}">
       </div>
     </div>
   </body>

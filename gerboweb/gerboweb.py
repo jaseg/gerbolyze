@@ -72,7 +72,7 @@ def index():
 
     r = make_response(render_template('index.html',
             has_renders = path.isfile(tempfile_path('gerber.zip')),
-            has_output = path.isfile(tempfile_path('overlay.png')),
+            has_output = path.isfile(tempfile_path('overlay.svg')),
              **forms))
     if 'vector_job' in session or 'render_job' in session:
         r.headers.set('refresh', '10')
@@ -108,7 +108,7 @@ def upload_gerber():
         session['filename'] = secure_filename(f.filename) # Cache filename for later download
 
         render()
-        if path.isfile(tempfile_path('overlay.png')): # Re-vectorize when gerbers change
+        if path.isfile(tempfile_path('overlay.svg')): # Re-vectorize when gerbers change
             vectorize()
 
         flash(f'Gerber file successfully uploaded.', 'success')
@@ -121,7 +121,7 @@ def upload_overlay():
     if upload_form.validate_on_submit():
         # FIXME raise error when no side selected
         f = upload_form.upload_file.data
-        f.save(tempfile_path('overlay.png'))
+        f.save(tempfile_path('overlay.svg'))
         session['side_selected'] = upload_form.side.data
 
         vectorize()
@@ -133,7 +133,7 @@ def upload_overlay():
 def render_preview(side):
     if not side in ('top', 'bottom'):
         return abort(400, 'side must be either "top" or "bottom"')
-    return send_file(tempfile_path(f'render_{side}.small.png'))
+    return send_file(tempfile_path(f'template_{side}.preview.png'))
 
 @app.route('/render/download/<side>')
 def render_download(side):
@@ -141,10 +141,10 @@ def render_download(side):
         return abort(400, 'side must be either "top" or "bottom"')
 
     session['last_download'] = side
-    return send_file(tempfile_path(f'render_{side}.png'),
-            mimetype='image/png',
+    return send_file(tempfile_path(f'template_{side}.svg'),
+            mimetype='image/svg',
             as_attachment=True,
-            attachment_filename=f'{path.splitext(session["filename"])[0]}_render_{side}.png')
+            attachment_filename=f'{path.splitext(session["filename"])[0]}_template_{side}.svg')
 
 @app.route('/output/download')
 def output_download():
