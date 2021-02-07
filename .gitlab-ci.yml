@@ -1,4 +1,4 @@
-variables:
+variablms:
   DEBIAN_FRONTEND: noninteractive
   GIT_SUBMODULE_STRATEGY: recursive
   PCB_TOOLS_EXT_DEPS: "python3-cffi python3-cairocffi python3-pycparser"
@@ -9,56 +9,29 @@ stages:
 
 debian_10:
   stage: build
-  image: debian:10
+  image: registry.gitlab.com/gerbolyze/build-containers/debian:10
   script:
-    - "apt-get update"
-    - "apt-get upgrade --no-install-recommends --assume-yes"
-    - "apt-get install --no-install-recommends --assume-yes libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-setuptools $GERBOLYZE_DEPS $PCB_TOOLSEXT_DEPS"
-    - "curl --proto '=https' --tlsv1.2 -sSf -o rustup.sh https://sh.rustup.rs > rustup.sh"
-    - "chmod +x rustup.sh"
-    - "./rustup.sh -y --default-toolchain stable"
-    - "source $HOME/.cargo/env"
-    - "cargo install usvg"
-    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "python3 setup.py install --user"
-    - "export PATH=$HOME/.local/bin:$PATH"
-    - "gerbolyze --help"
+    - "su - bernd -c 'python3 setup.py install --user'"
+    - "su - bernd -c 'gerbolyze --help'"
 
 ubuntu_2004:
   stage: build
-  image: ubuntu:20.04
+  image: registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04
   script:
-    - "apt-get update"
-    - "apt-get upgrade --no-install-recommends --assume-yes"
-    - "apt-get install --no-install-recommends --assume-yes libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel python3-pip cargo $GERBOLYZE_DEPS $PCB_TOOLSEXT_DEPS"
-    - "cargo install usvg"
-    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "python3 setup.py install --user"
-    - "export PATH=$HOME/.local/bin:$PATH"
-    - "gerbolyze --help"
+    - "su - bernd -c 'python3 setup.py install --user'"
+    - "su - bernd -c 'gerbolyze --help'"
 
 fedora_33:
   stage: build
-  image: fedora:33
+  image: registry.gitlab.com/gerbolyze/build-containers/fedora:33
   script:
-    - "dnf --nodocs --assumeyes --refresh install python3 python3-pip git make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo $GERBOLYZE_DEPS $PCB_TOOLSEXT_DEPS"
-    - "cargo install usvg"
-    - "export PATH=$HOME/.cargo/bin:$PATH"
-    - "pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "python3 setup.py install --user"
-    - "export PATH=$HOME/.local/bin:$PATH"
-    - "gerbolyze --help"
+    - "su - bernd -c 'python3 setup.py install --user'"
+    - "su - bernd -c 'gerbolyze --help'"
 
 archlinux:
   stage: build
-  image: archlinux:latest
+  image: registry.gitlab.com/gerbolyze/build-containers/archlinux:latest
   script:
-    - "pacman -Syyu --needed --noconfirm --noprogressbar base-devel pugixml opencv pango cairo git python python-pip make clang rustup cargo pkgconf ${GERBOLYZE_DEPS//python3-/python-} ${PCB_TOOLSEXT_DEPS//python3-/python-}"
-    - "rustup install stable"
-    - "rustup default stable"
-    - "cargo install usvg"
-    - "pip install --user git+https://git.jaseg.de/pcb-tools-extension.git"
-    - "python setup.py install --user"
-    - "export PATH=$HOME/.local/bin:$PATH"
-    - "gerbolyze --help"
+    - "su - bernd -c 'python setup.py install --user'"
+    - "su - bernd -c 'gerbolyze --help'"
 
