@@ -1,6 +1,8 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 stages:
   - build
-
 
 debian_10:
   stage: build
