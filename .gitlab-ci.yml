@@ -40,7 +40,7 @@ archlinux:
   stage: build
   image: archlinux:latest
   script:
-    - "sudo pacman -S pugixml opencv pango cairo git python make clang rustup cargo pkgconf"
+    - "pacman -Syy --needed --noconfirm --noprogressbar pugixml opencv pango cairo git python make clang rustup cargo pkgconf"
     - "rustup install stable"
     - "rustup default stable"
     - "cargo install usvg"
