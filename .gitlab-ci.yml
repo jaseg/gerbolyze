@@ -1,4 +1,5 @@
 variables:
+  DEBIAN_FRONTEND: noninteractive
   GIT_SUBMODULE_STRATEGY: recursive
   PCB_TOOLS_EXT_DEPS: "python3-cffi python3-cairocffi python3-pycparser"
   GERBOLYZE_DEPS: "python3-numpy python3-slugify python3-lxml python3-click"
