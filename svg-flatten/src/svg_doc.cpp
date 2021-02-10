@@ -231,10 +231,15 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
     }
 
     /* Load path from SVG path data and transform into document units. */
-    PolyTree ptree;
     cairo_save(cr);
     apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
+
+    PolyTree ptree;
     load_svg_path(cr, node, ptree);
+
+    double _y = 0;
+    cairo_user_to_device_distance(cr, &stroke_width, &_y);
+
     cairo_restore (cr);
 
     Paths open_paths, closed_paths;
