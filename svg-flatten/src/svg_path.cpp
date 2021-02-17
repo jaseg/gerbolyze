@@ -110,14 +110,14 @@ static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipp
     return {has_closed, num_subpaths > 1};
 }
 
-void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill) {
+void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill, double curve_tolerance) {
     auto *path_data = node.attribute("d").value();
     auto fill_rule = clipper_fill_rule(node);
 
     /* For open paths, clipper does not correctly remove self-intersections. Thus, we pass everything into
      * clipper twice: Once with all paths set to "closed" to compute fill areas, and once with correct
      * open/closed properties for stroke offsetting. */
-    cairo_set_tolerance (cr, 0.1); /* FIXME make configurable, scale properly for units */
+    cairo_set_tolerance (cr, curve_tolerance); /* FIXME make configurable, scale properly for units */
     cairo_set_fill_rule(cr, CAIRO_FILL_RULE_WINDING);
 
     ClipperLib::Clipper c_stroke;

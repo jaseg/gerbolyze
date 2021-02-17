@@ -42,6 +42,9 @@ int main(int argc, char **argv) {
             {"min_feature_size", {"-d", "--trace-space"},
                 "Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.",
                 1},
+            {"curve_tolerance", {"-c", "--curve-tolerance"},
+                "Tolerance for curve flattening in mm. Default: 0.1mm.",
+                1},
             {"no_header", {"--no-header"},
                 "Do not export output format header/footer, only export the primitives themselves",
                 0},
@@ -243,10 +246,8 @@ int main(int argc, char **argv) {
     }
     delete vec;
 
-    double min_feature_size = 0.1; /* mm */
-    if (args["min_feature_size"]) {
-        min_feature_size = args["min_feature_size"].as<double>();
-    }
+    double min_feature_size = args["min_feature_size"].as<double>(0.1); /* mm */
+    double curve_tolerance = args["curve_tolerance"].as<double>(0.1); /* mm */
 
     string ending = "";
     auto idx = in_f_name.rfind(".");
@@ -411,6 +412,7 @@ int main(int argc, char **argv) {
     VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"].as<string>() : "");
     RenderSettings rset {
         min_feature_size,
+        curve_tolerance,
         vec_sel,
     };
 

@@ -139,6 +139,7 @@ namespace gerbolyze {
     class RenderSettings {
     public:
         double m_minimum_feature_size_mm = 0.1;
+        double curve_tolerance_mm;
         VectorizerSelectorizer &m_vec_sel;
     };
 
@@ -174,7 +175,7 @@ namespace gerbolyze {
             void export_svg_path(const RenderSettings &rset, const pugi::xml_node &node, ClipperLib::Paths &clip_path);
             void setup_debug_output(std::string filename="");
             void setup_viewport_clip();
-            void load_clips();
+            void load_clips(const RenderSettings &rset);
             void load_patterns();
 
             bool _valid;

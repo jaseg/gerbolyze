@@ -86,7 +86,6 @@ bool gerbolyze::SVGDocument::load(istream &in, string debug_out_filename) {
 
     setup_debug_output(debug_out_filename);
     setup_viewport_clip();
-    load_clips();
     load_patterns();
 
     _valid = true;
@@ -142,10 +141,14 @@ bool IDElementSelector::match(const pugi::xml_node &node, bool included, bool is
 
 /* Recursively export all SVG elements in the given group. */
 void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included, bool is_root) {
+
+    /* Load clip paths from defs given bezier flattening tolerance from rset */
+    load_clips(rset);
+    
     /* Enter the group's coordinate system */
     cairo_save(cr);
     apply_cairo_transform_from_svg(cr, group.attribute("transform").value());
-    
+
     /* Fetch clip path from global registry and transform it into document coordinates. */
     Paths clip_path;
     auto *lookup = lookup_clip_path(group);
@@ -237,7 +240,7 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
     PolyTree ptree_stroke;
     PolyTree ptree_fill;
     PolyTree ptree;
-    load_svg_path(cr, node, ptree_stroke, ptree_fill);
+    load_svg_path(cr, node, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
 
     double _y = 0;
     cairo_user_to_device_distance(cr, &stroke_width, &_y);
@@ -462,7 +465,7 @@ void gerbolyze::SVGDocument::load_patterns() {
     }
 }
 
-void gerbolyze::SVGDocument::load_clips() {
+void gerbolyze::SVGDocument::load_clips(const RenderSettings &rset) {
     /* Set up document-wide clip path registry: Extract clip path definitions from <defs> element */
     for (const auto &node : defs_node.children("clipPath")) {
         cairo_save(cr);
@@ -481,7 +484,7 @@ void gerbolyze::SVGDocument::load_clips() {
             cairo_save(cr);
             /* TODO: we currently only support clipPathUnits="userSpaceOnUse", not "objectBoundingBox". */
             apply_cairo_transform_from_svg(cr, child.attribute("transform").value());
-            load_svg_path(cr, child, ptree_stroke, ptree_fill);
+            load_svg_path(cr, child, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
             cairo_restore (cr);
 
             Paths paths;
