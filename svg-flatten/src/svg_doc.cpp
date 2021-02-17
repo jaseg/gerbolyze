@@ -234,29 +234,32 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
     cairo_save(cr);
     apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
 
+    PolyTree ptree_stroke;
+    PolyTree ptree_fill;
     PolyTree ptree;
-    load_svg_path(cr, node, ptree);
+    load_svg_path(cr, node, ptree_stroke, ptree_fill);
 
     double _y = 0;
     cairo_user_to_device_distance(cr, &stroke_width, &_y);
 
     cairo_restore (cr);
 
-    Paths open_paths, closed_paths;
-    OpenPathsFromPolyTree(ptree, open_paths);
-    ClosedPathsFromPolyTree(ptree, closed_paths);
+    Paths open_paths, closed_paths, fill_paths;
+    OpenPathsFromPolyTree(ptree_stroke, open_paths);
+    ClosedPathsFromPolyTree(ptree_stroke, closed_paths);
+    PolyTreeToPaths(ptree_fill, fill_paths);
 
     /* Skip filling for transparent fills */
     if (fill_color) {
         /* Clip paths. Consider all paths closed for filling. */
         if (!clip_path.empty()) {
             Clipper c;
-            c.AddPaths(open_paths, ptSubject, /* closed */ false);
-            c.AddPaths(closed_paths, ptSubject, /* closed */ true);
+            c.AddPaths(fill_paths, ptSubject, /* closed */ true);
             c.AddPaths(clip_path, ptClip, /* closed */ true);
             c.StrictlySimple(true);
             /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
             c.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
+            PolyTreeToPaths(ptree, fill_paths);
         }
 
         /* Call out to pattern tiler for pattern fills. The path becomes the clip here. */
@@ -267,16 +270,14 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
                 cerr << "Warning: Fill pattern with id \"" << fill_pattern_id << "\" not found." << endl;
 
             } else {
-                Paths clip;
-                PolyTreeToPaths(ptree, clip);
-                pattern->tile(rset, clip);
+                pattern->tile(rset, fill_paths);
             }
 
         } else { /* solid fill */
             Paths f_polys;
             /* Important for gerber spec compliance and also for reliable rendering results irrespective of board house
              * and gerber viewer. */
-            dehole_polytree(ptree, f_polys);
+            dehole_polytree(ptree_fill, f_polys);
 
             /* Export SVG */
             cairo_save(cr);
@@ -475,15 +476,16 @@ void gerbolyze::SVGDocument::load_clips() {
          * rendering, and the only way a group might stay is if it affects rasterization (e.g. through mask, clipPath).
          */
         for (const auto &child : node.children("path")) {
-            PolyTree ptree;
+            PolyTree ptree_stroke; /* discarded */
+            PolyTree ptree_fill;
             cairo_save(cr);
             /* TODO: we currently only support clipPathUnits="userSpaceOnUse", not "objectBoundingBox". */
             apply_cairo_transform_from_svg(cr, child.attribute("transform").value());
-            load_svg_path(cr, child, ptree);
+            load_svg_path(cr, child, ptree_stroke, ptree_fill);
             cairo_restore (cr);
 
             Paths paths;
-            PolyTreeToPaths(ptree, paths);
+            PolyTreeToPaths(ptree_fill, paths);
             c.AddPaths(paths, ptSubject, /* closed */ false);
         }
 

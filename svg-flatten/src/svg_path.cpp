@@ -32,7 +32,7 @@ static void clipper_add_cairo_path(cairo_t *cr, ClipperLib::Clipper &c, bool clo
     c.AddPaths(in_poly, ClipperLib::ptSubject, closed);
 }
 
-static bool path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const pugi::char_t *path_data) {
+static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c_stroke, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data) {
     istringstream d(path_data);
 
     string cmd;
@@ -41,6 +41,7 @@ static bool path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const
     bool first = true;
     bool has_closed = false;
     bool path_is_empty = true;
+    int num_subpaths = 0;
     while (!d.eof()) {
         d >> cmd;
         assert (!d.fail());
@@ -48,12 +49,23 @@ static bool path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const
         
         if (cmd == "Z") { /* Close path */
             cairo_close_path(cr);
-            clipper_add_cairo_path(cr, c, /* closed= */ true);
+            clipper_add_cairo_path(cr, c_stroke, /* closed= */ true);
+            clipper_add_cairo_path(cr, c_fill, /* closed= */ true);
             has_closed = true;
             cairo_new_path(cr);
             path_is_empty = true;
+            num_subpaths += 1;
 
         } else if (cmd == "M") { /* Move to */
+            if (!first && !path_is_empty) {
+                cairo_close_path(cr);
+                clipper_add_cairo_path(cr, c_stroke, /* closed= */ false);
+                clipper_add_cairo_path(cr, c_fill, /* closed= */ true);
+                num_subpaths += 1;
+            }
+
+            cairo_new_path (cr);
+
             d >> x >> y;
             /* We need to transform all points ourselves here, and cannot use the transform feature of cairo_to_clipper:
              * Our transform may contain offsets, and clipper only passes its data into cairo's transform functions
@@ -63,10 +75,6 @@ static bool path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const
              */
             cairo_user_to_device(cr, &x, &y);
             assert (!d.fail());
-            if (!first) {
-                clipper_add_cairo_path(cr, c, /* closed= */ false);
-            }
-            cairo_new_path (cr);
             path_is_empty = true;
             cairo_move_to(cr, x, y);
 
@@ -94,13 +102,15 @@ static bool path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c, const
     }
     if (!path_is_empty) {
         cairo_close_path(cr);
-        clipper_add_cairo_path(cr, c, /* closed= */ false);
+        clipper_add_cairo_path(cr, c_stroke, /* closed= */ false);
+        clipper_add_cairo_path(cr, c_fill, /* closed= */ true);
+        num_subpaths += 1;
     }
 
-    return has_closed;
+    return {has_closed, num_subpaths > 1};
 }
 
-void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLib::PolyTree &ptree) {
+void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill) {
     auto *path_data = node.attribute("d").value();
     auto fill_rule = clipper_fill_rule(node);
 
@@ -110,11 +120,14 @@ void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLi
     cairo_set_tolerance (cr, 0.1); /* FIXME make configurable, scale properly for units */
     cairo_set_fill_rule(cr, CAIRO_FILL_RULE_WINDING);
 
-    ClipperLib::Clipper c;
-    c.StrictlySimple(true);
-    bool has_closed = path_to_clipper_via_cairo(cr, c, path_data);
+    ClipperLib::Clipper c_stroke;
+    ClipperLib::Clipper c_fill;
+    c_stroke.StrictlySimple(true);
+    c_fill.StrictlySimple(true);
+    auto res = path_to_clipper_via_cairo(cr, c_stroke, c_fill, path_data);
+    bool has_closed = res.first, has_multiple = res.second;
 
-    if (!has_closed) {
+    if (!has_closed && !has_multiple) {
         /* FIXME: Workaround!
          *
          * When we render silkscreen layers from gerbv's output, we get a lot of two-point paths (lines). Many of these are
@@ -132,12 +145,14 @@ void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLi
         auto le_min = -ClipperLib::loRange;
         auto le_max = ClipperLib::hiRange;
         ClipperLib::Path p = {{le_min, le_min}, {le_max, le_min}, {le_max, le_max}, {le_min, le_max}};
-        c.AddPath(p, ClipperLib::ptClip, /* closed= */ true);
-        c.Execute(ClipperLib::ctIntersection, ptree, fill_rule, ClipperLib::pftNonZero);
+        c_stroke.AddPath(p, ClipperLib::ptClip, /* closed= */ true);
+        c_stroke.Execute(ClipperLib::ctIntersection, ptree_stroke, fill_rule, ClipperLib::pftNonZero);
+        ptree_fill.Clear();
 
     } else {
         /* We cannot clip the polygon here since that would produce incorrect results for our stroke. */
-        c.Execute(ClipperLib::ctUnion, ptree, fill_rule, ClipperLib::pftNonZero);
+        c_stroke.Execute(ClipperLib::ctUnion, ptree_stroke, fill_rule, ClipperLib::pftNonZero);
+        c_fill.Execute(ClipperLib::ctUnion, ptree_fill, fill_rule, ClipperLib::pftNonZero);
     }
 }
 
