@@ -214,7 +214,7 @@ namespace gerbolyze {
 
     class SimpleGerberOutput : public StreamPolygonSink {
     public:
-        SimpleGerberOutput(std::ostream &out, bool only_polys=false, int digits_int=4, int digits_frac=6, double scale=1.0, d2p offset={0,0});
+        SimpleGerberOutput(std::ostream &out, bool only_polys=false, int digits_int=4, int digits_frac=6, double scale=1.0, d2p offset={0,0}, bool flip_polarity=false);
         virtual ~SimpleGerberOutput() {}
         virtual SimpleGerberOutput &operator<<(const Polygon &poly);
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
@@ -229,6 +229,7 @@ namespace gerbolyze {
         long long int m_gerber_scale;
         d2p m_offset;
         double m_scale;
+        bool m_flip_pol;
     };
 
     class SimpleSVGOutput : public StreamPolygonSink {

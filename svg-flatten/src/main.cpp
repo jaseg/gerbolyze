@@ -39,6 +39,9 @@ int main(int argc, char **argv) {
             {"svg_dark_color", {"--dark-color"},
                 "SVG color to use for \"dark\" areas (default: black)",
                 1},
+            {"flip_gerber_polarity", {"-f", "--flip-gerber-polarity"},
+                "Flip polarity of all output gerber primitives for --format gerber.",
+                0},
             {"min_feature_size", {"-d", "--trace-space"},
                 "Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.",
                 1},
@@ -189,7 +192,7 @@ int main(int argc, char **argv) {
     } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber") {
         double scale = args["scale"].as<double>(1.0);
         cerr << "loading @scale=" << scale << endl;
-        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, scale);
+        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, scale, {0,0}, args["flip_gerber_polarity"]);
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
         if (!args["sexp_mod_name"]) {

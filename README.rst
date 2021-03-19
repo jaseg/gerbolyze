@@ -402,10 +402,13 @@ Options:
     happy with too many digits. 5 or 6 is a reasonable choice.
 
 ``--clear-color``
-    SVG color to use for "clear" areas (default: white)
+    SVG color to use in SVG output for "clear" areas (default: white)
 
 ``--dark-color``
-    SVG color to use for "dark" areas (default: black)
+    SVG color to use in SVG output for "dark" areas (default: black)
+
+``-f, --flip-gerber-polarity``
+    Flip polarity of all output gerber primitives for --format gerber.
 
 ``-d, --trace-space``
     Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.

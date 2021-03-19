@@ -27,12 +27,13 @@
 using namespace gerbolyze;
 using namespace std;
 
-SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits_int, int digits_frac, double scale, d2p offset)
+SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits_int, int digits_frac, double scale, d2p offset, bool flip_polarity)
     : StreamPolygonSink(out, only_polys),
     m_digits_int(digits_int),
     m_digits_frac(digits_frac),
     m_offset(offset),
-    m_scale(scale)
+    m_scale(scale),
+    m_flip_pol(flip_polarity)
 {
     assert(1 <= digits_int && digits_int <= 9);
     assert(0 <= digits_frac && digits_frac <= 9);
@@ -58,12 +59,12 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
 }
 
 SimpleGerberOutput& SimpleGerberOutput::operator<<(GerberPolarityToken pol) {
-    if (pol == GRB_POL_DARK) {
+    assert(pol == GRB_POL_DARK || pol == GRB_POL_CLEAR);
+
+    if ((pol == GRB_POL_DARK) != m_flip_pol) {
         m_out << "%LPD*%" << endl;
     } else if (pol == GRB_POL_CLEAR) {
         m_out << "%LPC*%" << endl;
-    } else {
-        assert(false);
     }
 
     return *this;
