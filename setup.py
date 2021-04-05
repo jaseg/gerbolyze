@@ -34,7 +34,7 @@ class CustomInstall(install):
 setup(
     cmdclass={'install': CustomInstall},
     name = 'gerbolyze',
-    version = '2.0.6',
+    version = '2.0.8',
     py_modules = ['gerbolyze'],
     package_dir = {'': 'gerbolyze'},
     entry_points = '''
