@@ -124,6 +124,24 @@ Arch
     pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git
     pip3 install --user gerbolyze --no-binary gerbolyze
 
+macOS (via Homebrew)
+~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: shell
+	# Tested on a fresh Mac OS 10.15.7 Catalina installation
+
+	# Requires homebrew. To install, run:
+	# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"\n
+	# --> Now, restart the terminal app to load new $PATH from /etc/paths <--
+
+	brew install python3 rustup pugixml cairo pango opencv pkg-config
+
+	rustup-init 
+	cargo install usvg
+
+	pip3 install git+https://git.jaseg.de/pcb-tools-extension.git
+	pip3 install gerbolyze --no-binary gerbolyze
+
 Build from source (any distro)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

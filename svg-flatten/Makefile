@@ -66,7 +66,11 @@ $(BUILDDIR)/%.o: %.cpp
 
 $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	@mkdir -p $(dir $@) 
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ -Wl,--start-group $^ -lstdc++fs -Wl,--end-group
+	if [ $$(uname -s) = "Darwin" ]; then \
+		$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^; \
+	else \
+		$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ -Wl,--start-group $^ -lstdc++fs -Wl,--end-group; \
+	fi
 
 .PHONY: install
 install:

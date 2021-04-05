@@ -21,6 +21,7 @@
 #include <map>
 #include <iostream>
 #include <string>
+#include <array>
 #include <pugixml.hpp>
 #include "svg_pattern.h"
 
