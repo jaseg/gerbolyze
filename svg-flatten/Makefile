@@ -17,6 +17,7 @@ SOURCES := src/svg_color.cpp \
 	src/vec_core.cpp \
 	src/vec_grid.cpp \
 	src/main.cpp \
+	src/flatten.cpp \
 	src/out_svg.cpp \
 	src/out_gerber.cpp \
 	src/out_sexp.cpp \

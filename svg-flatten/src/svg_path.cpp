@@ -19,28 +19,26 @@
 #include <cmath>
 #include <assert.h>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include "cairo_clipper.hpp"
 #include "svg_import_defs.h"
 #include "svg_path.h"
+#include "flatten.hpp"
 
 using namespace std;
 
-static void clipper_add_cairo_path(cairo_t *cr, ClipperLib::Clipper &c, bool closed) {
-    ClipperLib::Paths in_poly;
-    ClipperLib::cairo::cairo_to_clipper(cr, in_poly, CAIRO_PRECISION, ClipperLib::cairo::tNone);
-    c.AddPaths(in_poly, ClipperLib::ptSubject, closed);
-}
-
-static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c_stroke, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data) {
+static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c_stroke, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data, double distance_tolerance_mm) {
     istringstream d(path_data);
 
     string cmd;
     double x, y, c1x, c1y, c2x, c2y;
 
+    ClipperLib::Path in_poly;
+    double scale = pow(10.0, CAIRO_PRECISION);
+
     bool first = true;
     bool has_closed = false;
-    bool path_is_empty = true;
     int num_subpaths = 0;
     while (!d.eof()) {
         d >> cmd;
@@ -48,23 +46,20 @@ static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipp
         assert(!first || cmd == "M");
         
         if (cmd == "Z") { /* Close path */
-            cairo_close_path(cr);
-            clipper_add_cairo_path(cr, c_stroke, /* closed= */ true);
-            clipper_add_cairo_path(cr, c_fill, /* closed= */ true);
+            c_stroke.AddPath(in_poly, ClipperLib::ptSubject, true);
+            c_fill.AddPath(in_poly, ClipperLib::ptSubject, true);
+
             has_closed = true;
-            cairo_new_path(cr);
-            path_is_empty = true;
+            in_poly.clear();
             num_subpaths += 1;
 
         } else if (cmd == "M") { /* Move to */
-            if (!first && !path_is_empty) {
-                cairo_close_path(cr);
-                clipper_add_cairo_path(cr, c_stroke, /* closed= */ false);
-                clipper_add_cairo_path(cr, c_fill, /* closed= */ true);
+            if (!first && !in_poly.empty()) {
+                c_stroke.AddPath(in_poly, ClipperLib::ptSubject, false);
+                c_fill.AddPath(in_poly, ClipperLib::ptSubject, true);
                 num_subpaths += 1;
+                in_poly.clear();
             }
-
-            cairo_new_path (cr);
 
             d >> x >> y;
             /* We need to transform all points ourselves here, and cannot use the transform feature of cairo_to_clipper:
@@ -75,17 +70,18 @@ static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipp
              */
             cairo_user_to_device(cr, &x, &y);
             assert (!d.fail());
-            path_is_empty = true;
-            cairo_move_to(cr, x, y);
+
+            in_poly.emplace_back(ClipperLib::IntPoint{(ClipperLib::cInt)round(x*scale), (ClipperLib::cInt)round(y*scale)});
 
         } else if (cmd == "L") { /* Line to */
             d >> x >> y;
             cairo_user_to_device(cr, &x, &y);
             assert (!d.fail());
-            cairo_line_to(cr, x, y);
-            path_is_empty = false;
+
+            in_poly.emplace_back(ClipperLib::IntPoint{(ClipperLib::cInt)round(x*scale), (ClipperLib::cInt)round(y*scale)});
 
         } else { /* Curve to */
+            double sx = x, sy = y;
             assert(cmd == "C");
             d >> c1x >> c1y; /* first control point */
             cairo_user_to_device(cr, &c1x, &c1y);
@@ -94,16 +90,20 @@ static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipp
             d >> x >> y; /* end point */
             cairo_user_to_device(cr, &x, &y);
             assert (!d.fail());
-            cairo_curve_to(cr, c1x, c1y, c2x, c2y, x, y);
-            path_is_empty = false;
+
+            gerbolyze::curve4_div c4div(distance_tolerance_mm);
+            c4div.run(sx, sy, c1x, c1y, c2x, c2y, x, y);
+
+            for (auto &pt : c4div.points()) {
+                in_poly.emplace_back(ClipperLib::IntPoint{(ClipperLib::cInt)round(pt[0]*scale), (ClipperLib::cInt)round(pt[1]*scale)});
+            }
         }
 
         first = false;
     }
-    if (!path_is_empty) {
-        cairo_close_path(cr);
-        clipper_add_cairo_path(cr, c_stroke, /* closed= */ false);
-        clipper_add_cairo_path(cr, c_fill, /* closed= */ true);
+    if (!in_poly.empty()) {
+        c_stroke.AddPath(in_poly, ClipperLib::ptSubject, false);
+        c_fill.AddPath(in_poly, ClipperLib::ptSubject, true);
         num_subpaths += 1;
     }
 
@@ -117,14 +117,13 @@ void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLi
     /* For open paths, clipper does not correctly remove self-intersections. Thus, we pass everything into
      * clipper twice: Once with all paths set to "closed" to compute fill areas, and once with correct
      * open/closed properties for stroke offsetting. */
-    cairo_set_tolerance (cr, curve_tolerance); /* FIXME make configurable, scale properly for units */
     cairo_set_fill_rule(cr, CAIRO_FILL_RULE_WINDING);
 
     ClipperLib::Clipper c_stroke;
     ClipperLib::Clipper c_fill;
     c_stroke.StrictlySimple(true);
     c_fill.StrictlySimple(true);
-    auto res = path_to_clipper_via_cairo(cr, c_stroke, c_fill, path_data);
+    auto res = path_to_clipper_via_cairo(cr, c_stroke, c_fill, path_data, curve_tolerance);
     bool has_closed = res.first, has_multiple = res.second;
 
     if (!has_closed && !has_multiple) {
@@ -145,9 +144,12 @@ void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLi
         auto le_min = -ClipperLib::loRange;
         auto le_max = ClipperLib::hiRange;
         ClipperLib::Path p = {{le_min, le_min}, {le_max, le_min}, {le_max, le_max}, {le_min, le_max}};
+
         c_stroke.AddPath(p, ClipperLib::ptClip, /* closed= */ true);
         c_stroke.Execute(ClipperLib::ctIntersection, ptree_stroke, fill_rule, ClipperLib::pftNonZero);
-        ptree_fill.Clear();
+
+        c_fill.AddPath(p, ClipperLib::ptClip, /* closed= */ true);
+        c_fill.Execute(ClipperLib::ctIntersection, ptree_fill, fill_rule, ClipperLib::pftNonZero);
 
     } else {
         /* We cannot clip the polygon here since that would produce incorrect results for our stroke. */

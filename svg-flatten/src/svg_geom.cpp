@@ -20,6 +20,7 @@
 
 #include <cmath>
 #include <string>
+#include <iostream>
 #include <sstream>
 #include <queue>
 #include <assert.h>
@@ -112,7 +113,6 @@ static void dehole_polytree_worker(PolyNode &ptree, Paths &out, queue<PolyTree> 
             out.push_back(nod->Contour);
 
         } else {
-
             /* Do not add children's children, those were handled in the recursive call above */
             Clipper c;
             c.AddPath(nod->Contour, ptSubject, /* closed= */ true);

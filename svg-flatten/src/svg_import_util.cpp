@@ -94,7 +94,7 @@ void gerbolyze::load_cairo_matrix_from_svg(const string &transform, cairo_matrix
 void gerbolyze::apply_cairo_transform_from_svg(cairo_t *cr, const string &transform) {
     cairo_matrix_t mat;
     load_cairo_matrix_from_svg(transform, mat);
-    cairo_transform(cr, &mat); /* or cairo_transform? */
+    cairo_transform(cr, &mat);
 }
 
 /* Cf. https://tools.ietf.org/html/rfc2397 */

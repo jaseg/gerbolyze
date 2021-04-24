@@ -59,7 +59,8 @@ def vectorize(ctx, side, layer, exact, source, target, image, trace_space):
 @click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
         '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
         'coördinates. MUST MATCH --bbox GIVEN TO PREVIEW')
-@click.option('--dilate', default=0.1, help='Default dilation for subtraction operations in mm')
+@click.option('--dilate', default=0.1, type=float, help='Default dilation for subtraction operations in mm')
+@click.option('--curve-tolerance', type=float, help='Tolerance for curve flattening in mm')
 @click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
 @click.option('--subtract', help='Use user subtraction script from argument (see description above)')
 @click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
@@ -70,7 +71,7 @@ def vectorize(ctx, side, layer, exact, source, target, image, trace_space):
 def paste(input_gerbers, output_gerbers,
         top, bottom, layer_top, layer_bottom,
         bbox,
-        dilate, no_subtract, subtract,
+        dilate, curve_tolerance, no_subtract, subtract,
         preserve_aspect_ratio,
         trace_space, vectorizer, vectorizer_map, exclude_groups):
     """ Render vector data and raster images from SVG file into gerbers. """
@@ -133,7 +134,7 @@ def paste(input_gerbers, output_gerbers,
             def do_dilate(layer, amount):
                 print('dilating', layer, 'by', amount)
                 outfile = tmpdir / f'dilated-{layer}-{amount}.gbr'
-                dilate_gerber(layers, layer, amount, bbox, tmpdir, outfile, units)
+                dilate_gerber(layers, layer, amount, bbox, tmpdir, outfile, units, curve_tolerance)
                 gbr = gerberex.read(str(outfile))
                 gbr.offset(bounds[0][0], bounds[1][0])
                 return gbr
@@ -157,7 +158,7 @@ def paste(input_gerbers, output_gerbers,
                 overlay_file = tmpdir / f'overlay-{side}-{layer}.gbr'
                 layer_arg = layer if target_layer is None else None # slightly confusing but trust me :)
                 svg_to_gerber(in_svg_or_png, overlay_file, layer_arg,
-                        trace_space, vectorizer, vectorizer_map, exclude_groups,
+                        trace_space, vectorizer, vectorizer_map, exclude_groups, curve_tolerance,
                         bounds_for_png=bounds, preserve_aspect_ratio=preserve_aspect_ratio)
 
                 overlay_grb = gerberex.read(str(overlay_file))
@@ -566,7 +567,7 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
 # SVG/gerber import
 #==================
 
-def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units):
+def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units, curve_tolerance):
     if layer_name not in layers:
         raise ValueError(f'Cannot dilate layer {layer_name}: layer not found in input dir')
 
@@ -592,13 +593,13 @@ def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units):
 
     # dilate & render back to gerber
     # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
-    svg_to_gerber(tmpfile, outfile, dilate=-dilation*72.0/25.4, dpi=72, scale=25.4/72.0)
+    svg_to_gerber(tmpfile, outfile, dilate=-dilation*72.0/25.4, dpi=72, scale=25.4/72.0, curve_tolerance=curve_tolerance)
 
 def svg_to_gerber(infile, outfile,
         layer=None, trace_space:'mm'=0.1,
         vectorizer=None, vectorizer_map=None,
         exclude_groups=None,
-        dilate=None,
+        dilate=None, curve_tolerance=None,
         dpi=None, scale=None, bounds_for_png=None,
         preserve_aspect_ratio=None,
         force_png=False, force_svg=False):
@@ -633,6 +634,9 @@ def svg_to_gerber(infile, outfile,
         args += ['--exclude-groups', exclude_groups]
     if dilate:
         args += ['--dilate', str(dilate)]
+    if curve_tolerance is not None:
+        print('applying curve tolerance', curve_tolerance)
+        args += ['--curve-tolerance', str(curve_tolerance)]
     if dpi:
         args += ['--usvg-dpi', str(dpi)]
     if scale:
