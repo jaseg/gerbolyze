@@ -32,7 +32,14 @@ gerbolyze::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _nod
     y = usvg_double_attr(node, "y");
     w = usvg_double_attr(node, "width");
     h = usvg_double_attr(node, "height");
-    patternTransform = node.attribute("patternTransform").value();
+
+    patternTransform = xform2d(node.attribute("patternTransform").value());
+
+    bool invert_success = false;
+    patternTransform_inv = xform2d(patternTransform).invert(&invert_success);
+    if (!invert_success) {
+        cerr << "Warning: Cannot invert patternTransform matrix on pattern \"" << node.attribute("id").value() << "\"." << endl;
+    }
 
     string vb_s(node.attribute("viewBox").value());
     has_vb = !vb_s.empty();
@@ -47,24 +54,15 @@ gerbolyze::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _nod
 
 /* Tile pattern into gerber. Note that this function may be called several times in case the pattern is
  * referenced from multiple places, so we must not clobber any of the object's state. */
-void gerbolyze::Pattern::tile (const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip) {
+void gerbolyze::Pattern::tile (xform2d &mat, const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip) {
     assert(doc);
-    cairo_t *cr = doc->cairo();
-    assert(cr);
 
-    cairo_save(cr);
     /* Transform x, y, w, h from pattern coordinate space into parent coordinates by applying the inverse
      * patternTransform. This is necessary so we iterate over the correct bounds when tiling below */
-    cairo_matrix_t mat;
-    load_cairo_matrix_from_svg(patternTransform, mat);
-    if (cairo_matrix_invert(&mat) != CAIRO_STATUS_SUCCESS) {
-        cerr << "Cannot invert patternTransform matrix on pattern \"" << _node.attribute("id").value() << "\"." << endl;
-        cairo_restore(cr);
-    }
-    double inst_x = x, inst_y = y, inst_w = w, inst_h = h;
-    cairo_user_to_device(cr, &inst_x, &inst_y);
-    cairo_user_to_device_distance(cr, &inst_w, &inst_h);
-    cairo_restore(cr);
+    d2p pos_xf = patternTransform_inv.doc2phys(d2p{x, y});
+    double inst_x = pos_xf[0], inst_y = pos_xf[1];
+    double inst_w = patternTransform_inv.doc2phys_dist(w);
+    double inst_h = patternTransform_inv.doc2phys_dist(h);
 
     ClipperLib::IntRect clip_bounds = get_paths_bounds(clip);
     double bx = clip_bounds.left / clipper_scale;
@@ -80,9 +78,9 @@ void gerbolyze::Pattern::tile (const gerbolyze::RenderSettings &rset, ClipperLib
     }
 
     /* Switch to pattern coordinates */
-    cairo_save(cr);
-    cairo_translate(cr, bx, by);
-    apply_cairo_transform_from_svg(cr, patternTransform);
+    xform2d local_xf(mat);
+    local_xf.translate(bx, by);
+    local_xf.transform(patternTransform);
 
     /* Iterate over all pattern tiles in pattern coordinates */
     for (double inst_off_x = fmod(inst_x, inst_w) - inst_w;
@@ -93,21 +91,19 @@ void gerbolyze::Pattern::tile (const gerbolyze::RenderSettings &rset, ClipperLib
                 inst_off_y < bh + inst_h;
                 inst_off_y += inst_h) {
 
-            cairo_save(cr);
+            xform2d elem_xf(local_xf);
             /* Change into this individual tile's coordinate system */
-            cairo_translate(cr, inst_off_x, inst_off_y);
+            elem_xf.translate(inst_off_x, inst_off_y);
             if (has_vb) {
-                cairo_translate(cr, vb_x, vb_y);
-                cairo_scale(cr, inst_w / vb_w, inst_h / vb_h);
+                elem_xf.translate(vb_x, vb_y);
+                elem_xf.scale(inst_w / vb_w, inst_h / vb_h);
             } else if (patternContentUnits == SVG_ObjectBoundingBox) {
-                cairo_scale(cr, bw, bh);
+                elem_xf.scale(bw, bh);
             }
 
             /* Export the pattern tile's content like a group */
-            doc->export_svg_group(rset, _node, clip);
-            cairo_restore(cr);
+            doc->export_svg_group(elem_xf, rset, _node, clip);
         }
     }
-    cairo_restore(cr);
 }
 

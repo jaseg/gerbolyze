@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include <cairo.h>
 #include <pugixml.hpp>
 #include <clipper.hpp>
 #include <gerbolyze.hpp>
@@ -30,7 +29,7 @@ namespace gerbolyze {
     public:
         VoronoiVectorizer(grid_type grid, bool relax=true) : m_relax(relax), m_grid_type(grid) {}
 
-        virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px);
+        virtual void vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px);
     private:
         double m_relax;
         grid_type m_grid_type;
@@ -40,19 +39,19 @@ namespace gerbolyze {
     public:
         OpenCVContoursVectorizer() {}
 
-        virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px);
+        virtual void vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px);
     };
 
     class DevNullVectorizer : public ImageVectorizer {
     public:
         DevNullVectorizer() {}
 
-        virtual void vectorize_image(cairo_t *, const pugi::xml_node &, ClipperLib::Paths &, cairo_matrix_t &, PolygonSink &, double) {}
+        virtual void vectorize_image(xform2d &, const pugi::xml_node &, ClipperLib::Paths &, PolygonSink &, double) {}
     };
 
     void parse_img_meta(const pugi::xml_node &node, double &x, double &y, double &width, double &height);
     std::string read_img_data(const pugi::xml_node &node);
-    void draw_bg_rect(cairo_t *cr, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink, cairo_matrix_t &viewport_matrix);
+    void draw_bg_rect(xform2d &mat, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink);
     void handle_aspect_ratio(std::string spec, double &scale_x, double &scale_y, double &off_x, double &off_y, double cols, double rows);
 }
 

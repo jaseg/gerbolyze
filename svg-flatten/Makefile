@@ -24,10 +24,11 @@ SOURCES := src/svg_color.cpp \
 	src/out_flattener.cpp \
 	src/out_dilater.cpp \
 	src/lambda_sink.cpp \
+	src/flatten.cpp \
 	$(UPSTREAM_DIR)/cpp-base64/base64.cpp
 
-CLIPPER_SOURCES ?= $(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp $(UPSTREAM_DIR)/clipper-6.4.2/cpp/cpp_cairo/cairo_clipper.cpp
-CLIPPER_INCLUDES 	?= -I$(UPSTREAM_DIR)/clipper-6.4.2/cpp -I$(UPSTREAM_DIR)/clipper-6.4.2/cpp/cpp_cairo/
+CLIPPER_SOURCES ?= $(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp
+CLIPPER_INCLUDES 	?= -I$(UPSTREAM_DIR)/clipper-6.4.2/cpp
 VORONOI_INCLUDES 	?= -I$(UPSTREAM_DIR)/voronoi/src
 POISSON_INCLUDES 	?= -I$(UPSTREAM_DIR)/poisson-disk-sampling/thinks/poisson_disk_sampling/
 BASE64_INCLUDES 	?= -I$(UPSTREAM_DIR)/cpp-base64
@@ -38,7 +39,7 @@ SUBPROCESS_INCLUDES	?= -I$(UPSTREAM_DIR)/subprocess.h
 SOURCES += $(CLIPPER_SOURCES)
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES)
 
-PKG_CONFIG_DEPS := pangocairo pugixml
+PKG_CONFIG_DEPS := pugixml
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
 CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKG_CONFIG_DEPS)) 
 # hack for stone age opencv in debian stable
@@ -57,7 +58,7 @@ all: $(BUILDDIR)/$(TARGET)
 .PHONY: check-deps
 check-deps:
 	@echo
-	@$(PKG_CONFIG) --cflags --libs pangocairo pugixml >/dev/null
+	@$(PKG_CONFIG) --cflags --libs pugixml >/dev/null
 	# debian hack. see above.
 	@$(PKG_CONFIG) --cflags --libs opencv4 >/dev/null ||$(PKG_CONFIG) --cflags --libs opencv >/dev/null 
 

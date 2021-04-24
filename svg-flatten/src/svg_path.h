@@ -19,11 +19,11 @@
 #pragma once
 
 #include <vector>
-#include <cairo.h>
 #include "svg_geom.h"
+#include "geom2d.hpp"
 
 namespace gerbolyze {
-void load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill, double curve_tolerance);
+void load_svg_path(xform2d &mat, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill, double curve_tolerance);
 void parse_dasharray(const pugi::xml_node &node, std::vector<double> &out);
 void dash_path(const ClipperLib::Path &in, ClipperLib::Paths &out, const std::vector<double> dasharray, double dash_offset=0.0);
 }

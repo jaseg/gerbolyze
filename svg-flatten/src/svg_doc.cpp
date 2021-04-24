@@ -30,21 +30,14 @@ using namespace gerbolyze;
 using namespace std;
 using namespace ClipperLib;
 
-gerbolyze::SVGDocument::~SVGDocument() {
-    if (cr)
-        cairo_destroy (cr);
-    if (surface)
-        cairo_surface_destroy (surface);
-}
-
-bool gerbolyze::SVGDocument::load(string filename, string debug_out_filename) {
+bool gerbolyze::SVGDocument::load(string filename) {
     ifstream in_f;
     in_f.open(filename);
 
-    return in_f && load(in_f, debug_out_filename);
+    return in_f && load(in_f);
 }
 
-bool gerbolyze::SVGDocument::load(istream &in, string debug_out_filename) {
+bool gerbolyze::SVGDocument::load(istream &in) {
     /* Load XML document */
     auto res = svg_doc.load(in);
     if (!res) {
@@ -84,7 +77,6 @@ bool gerbolyze::SVGDocument::load(istream &in, string debug_out_filename) {
         cerr << "Warning: Input file is missing <defs> node" << endl;
     }
 
-    setup_debug_output(debug_out_filename);
     setup_viewport_clip();
     load_patterns();
 
@@ -140,14 +132,14 @@ bool IDElementSelector::match(const pugi::xml_node &node, bool included, bool is
 }
 
 /* Recursively export all SVG elements in the given group. */
-void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included, bool is_root) {
+void gerbolyze::SVGDocument::export_svg_group(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included, bool is_root) {
 
     /* Load clip paths from defs given bezier flattening tolerance from rset */
     load_clips(rset);
     
     /* Enter the group's coordinate system */
-    cairo_save(cr);
-    apply_cairo_transform_from_svg(cr, group.attribute("transform").value());
+    xform2d local_xf(mat);
+    local_xf.transform(xform2d(group.attribute("transform").value()));
 
     /* Fetch clip path from global registry and transform it into document coordinates. */
     Paths clip_path;
@@ -161,7 +153,7 @@ void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const 
     } else {
         clip_path = *lookup;
     }
-    transform_paths(cr, clip_path);
+    local_xf.transform_paths(clip_path);
 
     /* Clip against parent's clip path (both are now in document coordinates) */
     if (!parent_clip_path.empty()) {
@@ -185,7 +177,7 @@ void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const 
                 *polygon_sink << tok;
             }
 
-            export_svg_group(rset, node, clip_path, sel, true);
+            export_svg_group(local_xf, rset, node, clip_path, sel, true);
             
             if (is_root) {
                 LayerNameToken tok {""};
@@ -193,7 +185,7 @@ void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const 
             }
 
         } else if (name == "path") {
-            export_svg_path(rset, node, clip_path);
+            export_svg_path(local_xf, rset, node, clip_path);
 
         } else if (name == "image") {
             ImageVectorizer *vec = rset.m_vec_sel.select(node);
@@ -203,7 +195,7 @@ void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const 
             }
 
             double min_feature_size_px = mm_to_doc_units(rset.m_minimum_feature_size_mm);
-            vec->vectorize_image(cr, node, clip_path, viewport_matrix, *polygon_sink, min_feature_size_px);
+            vec->vectorize_image(local_xf, node, clip_path, *polygon_sink, min_feature_size_px);
             delete vec;
 
         } else if (name == "defs") {
@@ -212,12 +204,10 @@ void gerbolyze::SVGDocument::export_svg_group(const RenderSettings &rset, const 
             cerr << "  Unexpected child: <" << node.name() << ">" << endl;
         }
     }
-
-    cairo_restore(cr);
 }
 
 /* Export an SVG path element to gerber. Apply patterns and clip on the fly. */
-void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const pugi::xml_node &node, Paths &clip_path) {
+void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &node, Paths &clip_path) {
     enum gerber_color fill_color = gerber_fill_color(node);
     enum gerber_color stroke_color = gerber_stroke_color(node);
 
@@ -234,18 +224,13 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
     }
 
     /* Load path from SVG path data and transform into document units. */
-    cairo_save(cr);
-    apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
+    xform2d local_xf(mat);
+    local_xf.transform(xform2d(node.attribute("transform").value()));
 
     PolyTree ptree_stroke;
     PolyTree ptree_fill;
     PolyTree ptree;
-    load_svg_path(cr, node, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
-
-    double _y = 0;
-    cairo_user_to_device_distance(cr, &stroke_width, &_y);
-
-    cairo_restore (cr);
+    load_svg_path(local_xf, node, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
 
     Paths open_paths, closed_paths, fill_paths;
     OpenPathsFromPolyTree(ptree_stroke, open_paths);
@@ -273,7 +258,7 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
                 cerr << "Warning: Fill pattern with id \"" << fill_pattern_id << "\" not found." << endl;
 
             } else {
-                pattern->tile(rset, fill_paths);
+                pattern->tile(local_xf, rset, fill_paths);
             }
 
         } else { /* solid fill */
@@ -282,20 +267,7 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
              * and gerber viewer. */
             dehole_polytree(ptree_fill, f_polys);
 
-            /* Export SVG */
-            cairo_save(cr);
-            cairo_set_matrix(cr, &viewport_matrix);
-            cairo_new_path(cr);
-            ClipperLib::cairo::clipper_to_cairo(f_polys, cr, CAIRO_PRECISION, ClipperLib::cairo::tNone);
-            if (fill_color == GRB_DARK) {
-                cairo_set_source_rgba(cr, 0.0, 0.0, 1.0, dbg_fill_alpha);
-            } else { /* GRB_CLEAR */
-                cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, dbg_fill_alpha);
-            }
-            cairo_fill (cr);
-
             /* export gerber */
-            cairo_identity_matrix(cr);
             for (const auto &poly : f_polys) {
                 vector<array<double, 2>> out;
                 for (const auto &p : poly)
@@ -304,7 +276,6 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
                             });
                 *polygon_sink << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
             }
-            cairo_restore(cr);
         }
     }
 
@@ -363,27 +334,14 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
             } else {
                 Paths clip;
                 PolyTreeToPaths(ptree, clip);
-                pattern->tile(rset, clip);
+                pattern->tile(local_xf, rset, clip);
             }
 
         } else {
             Paths s_polys;
             dehole_polytree(ptree, s_polys);
 
-            /* Export debug svg */
-            cairo_save(cr);
-            cairo_set_matrix(cr, &viewport_matrix);
-            cairo_new_path(cr);
-            ClipperLib::cairo::clipper_to_cairo(s_polys, cr, CAIRO_PRECISION, ClipperLib::cairo::tNone);
-            if (stroke_color == GRB_DARK) {
-                cairo_set_source_rgba(cr, 0.0, 0.0, 1.0, dbg_stroke_alpha);
-            } else { /* GRB_CLEAR */
-                cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, dbg_stroke_alpha);
-            }
-            cairo_fill (cr);
-
             /* export gerber */
-            cairo_identity_matrix(cr);
             for (const auto &poly : s_polys) {
                 vector<array<double, 2>> out;
                 for (const auto &p : poly)
@@ -392,7 +350,6 @@ void gerbolyze::SVGDocument::export_svg_path(const RenderSettings &rset, const p
                             });
                 *polygon_sink << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
             }
-            cairo_restore(cr);
         }
     }
 }
@@ -409,7 +366,8 @@ void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sin
     c.AddPaths(vb_paths, ptSubject, /* closed */ true);
     ClipperLib::IntRect bbox = c.GetBounds();
     cerr << "document viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
-    export_svg_group(rset, root_elem, vb_paths, sel, false, true);
+    xform2d xf;
+    export_svg_group(xf, rset, root_elem, vb_paths, sel, false, true);
     sink.footer();
 }
 
@@ -418,31 +376,6 @@ void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<p
             out.emplace_back(pair<Polygon, GerberPolarityToken>{poly, pol});
         });
     render(rset, sink, sel);
-}
-
-void gerbolyze::SVGDocument::setup_debug_output(string filename) {
-    /* Setup cairo to draw into a SVG surface (for debugging). For actual rendering, something like a recording surface
-     * would work fine, too. */
-    /* Cairo expects the SVG surface size to be given in pt (72.0 pt = 1.0 in = 25.4 mm) */
-    const char *fn = filename.empty() ? nullptr : filename.c_str();
-    assert (!cr);
-    assert (!surface);
-    surface = cairo_svg_surface_create(fn, page_w_mm / 25.4 * 72.0, page_h_mm / 25.4 * 72.0);
-    cr = cairo_create (surface);
-    /* usvg returns "pixels", cairo thinks we draw "points" at 72.0 pt per inch. */
-    cairo_scale(cr, page_w / vb_w * 72.0 / assumed_usvg_dpi, page_h / vb_h * 72.0 / assumed_usvg_dpi);
-
-    cairo_translate(cr, -vb_x, -vb_y);
-
-    /* Store viewport transform and reset cairo's active transform. We have to do this since we have to render out all
-     * gerber primitives in mm, not px and most gerber primitives we export pass through Cairo at some point.
-     *
-     * We manually apply this viewport transform every time for debugging we actually use Cairo to export SVG. */
-    cairo_get_matrix(cr, &viewport_matrix);
-    cairo_identity_matrix(cr);
-
-    cairo_set_line_width (cr, 0.1);
-    cairo_set_source_rgba (cr, 1.0, 0.0, 0.0, 1.0);
 }
 
 void gerbolyze::SVGDocument::setup_viewport_clip() {
@@ -468,8 +401,8 @@ void gerbolyze::SVGDocument::load_patterns() {
 void gerbolyze::SVGDocument::load_clips(const RenderSettings &rset) {
     /* Set up document-wide clip path registry: Extract clip path definitions from <defs> element */
     for (const auto &node : defs_node.children("clipPath")) {
-        cairo_save(cr);
-        apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
+
+        xform2d local_xf(node.attribute("transform").value());
 
         string meta_clip_path_id(usvg_id_url(node.attribute("clip-path").value()));
         Clipper c;
@@ -481,11 +414,11 @@ void gerbolyze::SVGDocument::load_clips(const RenderSettings &rset) {
         for (const auto &child : node.children("path")) {
             PolyTree ptree_stroke; /* discarded */
             PolyTree ptree_fill;
-            cairo_save(cr);
             /* TODO: we currently only support clipPathUnits="userSpaceOnUse", not "objectBoundingBox". */
-            apply_cairo_transform_from_svg(cr, child.attribute("transform").value());
-            load_svg_path(cr, child, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
-            cairo_restore (cr);
+            xform2d child_xf(local_xf);
+            child_xf.transform(xform2d(child.attribute("transform").value()));
+
+            load_svg_path(child_xf, child, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
 
             Paths paths;
             PolyTreeToPaths(ptree_fill, paths);
@@ -510,8 +443,6 @@ void gerbolyze::SVGDocument::load_clips(const RenderSettings &rset) {
         c.Execute(ctUnion, ptree, pftNonZero, pftNonZero);
         /* Insert into document clip path map */
         PolyTreeToPaths(ptree, clip_path_map[node.attribute("id").value()]);
-
-        cairo_restore(cr);
     }
 }
 

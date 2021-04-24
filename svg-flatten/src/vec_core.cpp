@@ -46,15 +46,6 @@ ImageVectorizer *gerbolyze::makeVectorizer(const std::string &name) {
     return nullptr;
 }
 
-/* debug function */
-static void dbg_show_cv_image(cv::Mat &img) {
-    string windowName = "Debug image";
-    cv::namedWindow(windowName);
-    cv::imshow(windowName, img);
-    cv::waitKey(0);
-    cv::destroyWindow(windowName);
-}
-
 /* From jcv voronoi README */
 static void voronoi_relax_points(const jcv_diagram* diagram, jcv_point* points) {
     const jcv_site* sites = jcv_diagram_get_sites(diagram);
@@ -113,17 +104,19 @@ cv::Mat read_img_opencv(const pugi::xml_node &node) {
     return img;
 }
 
-void gerbolyze::draw_bg_rect(cairo_t *cr, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink, cairo_matrix_t &viewport_matrix) {
-    /* For both our debug SVG output and for the gerber output, we have to paint the image's bounding box in black as
-     * background for our halftone blobs. We cannot simply draw a rect here, though. Instead we have to first intersect
-     * the bounding box with the clip path we get from the caller, then we have to translate it into Cairo-SVG's
-     * document units. */
-    /* First, setup the bounding box rectangle in our local px coordinate space. */
+void gerbolyze::draw_bg_rect(xform2d &mat, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink) {
+    /* For our output to look correct, we have to paint the image's bounding box in black as background for our halftone
+     * blobs. We cannot simply draw a rect here, though. Instead we have to first intersect the bounding box with the
+     * clip path we get from the caller.
+     *
+     * First, setup the bounding box rectangle in our local px coordinate space. */
     ClipperLib::Path rect_path;
     for (auto &elem : vector<pair<double, double>> {{0, 0}, {width, 0}, {width, height}, {0, height}}) {
-        double x = elem.first, y = elem.second;
-        cairo_user_to_device(cr, &x, &y);
-        rect_path.push_back({ (ClipperLib::cInt)round(x * clipper_scale), (ClipperLib::cInt)round(y * clipper_scale) });
+        d2p xf(mat.doc2phys(d2p{elem.first, elem.second}));
+        rect_path.push_back({
+                (ClipperLib::cInt)round(xf[0] * clipper_scale),
+                (ClipperLib::cInt)round(xf[1] * clipper_scale)
+        });
     }
 
     /* Intersect the bounding box with the caller's clip path */
@@ -137,17 +130,7 @@ void gerbolyze::draw_bg_rect(cairo_t *cr, double width, double height, ClipperLi
     c.StrictlySimple(true);
     c.Execute(ClipperLib::ctIntersection, rect_out, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 
-    /* Finally, translate into Cairo-SVG's document units and draw. */
-    cairo_save(cr);
-    cairo_set_matrix(cr, &viewport_matrix);
-    cairo_new_path(cr);
-    ClipperLib::cairo::clipper_to_cairo(rect_out, cr, CAIRO_PRECISION, ClipperLib::cairo::tNone);
-    cairo_set_source_rgba (cr, 0.0, 0.0, 0.0, 1.0);
-    /* First, draw into SVG */
-    cairo_fill(cr);
-    cairo_restore(cr);
-
-    /* Second, draw into gerber. */
+    /* draw into gerber. */
     for (const auto &poly : rect_out) {
         vector<array<double, 2>> out;
         for (const auto &p : poly)
@@ -178,17 +161,17 @@ void gerbolyze::draw_bg_rect(cairo_t *cr, double width, double height, ClipperLi
  * 4. It scales each of these voronoi cell polygons to match the input images brightness at the spot covered by this
  *    cell.
  */
-void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) {
+void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px) {
     double x, y, width, height;
     parse_img_meta(node, x, y, width, height);
     cv::Mat img = read_img_opencv(node);
     if (img.empty())
         return;
 
-    cairo_save(cr);
     /* Set up target transform using SVG transform and x/y attributes */
-    apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
-    cairo_translate(cr, x, y);
+    xform2d local_xf(mat);
+    local_xf.transform(xform2d(node.attribute("transform").value()));
+    local_xf.translate(x, y);
 
     double orig_rows = img.rows;
     double orig_cols = img.cols;
@@ -200,11 +183,9 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
             scale_x, scale_y, off_x, off_y, orig_cols, orig_rows);
 
     /* Adjust minimum feature size given in mm and translate into px document units in our local coordinate system. */
-    double f_x = min_feature_size_px, f_y = 0;
-    cairo_device_to_user_distance(cr, &f_x, &f_y);
-    min_feature_size_px = sqrt(f_x*f_x + f_y*f_y);
+    min_feature_size_px = local_xf.doc2phys_dist(min_feature_size_px);
 
-    draw_bg_rect(cr, width, height, clip_path, sink, viewport_matrix);
+    draw_bg_rect(local_xf, width, height, clip_path, sink);
 
     /* Set up a poisson-disc sampled point "grid" covering the image. Calculate poisson disc parameters from given
      * minimum feature size. */
@@ -272,7 +253,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
         /* FIXME: This is a workaround for a memory corruption bug that happens with the square-grid setting. When using
          * square-grid on a fairly small test image, sometimes sites[i].index will be out of bounds here.
          */
-        if (sites[i].index < fill_factors.size())
+        if (sites[i].index < (int)fill_factors.size())
             fill_factors[sites[i].index] = sqrt(pxd);
     }
 
@@ -331,23 +312,25 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
             if (last_fill_factor != fill_factor) {
                 /* Fill factor was adjusted since last edge, so generate one extra point so we have a nice radial
                  * "step". */
-                double x = e->pos[0].x;
-                double y = e->pos[0].y;
-                x = off_x + center.x + (x - center.x) * fill_factor;
-                y = off_y + center.y + (y - center.y) * fill_factor;
-
-                cairo_user_to_device(cr, &x, &y);
-                cell_path.push_back({ (ClipperLib::cInt)round(x * clipper_scale), (ClipperLib::cInt)round(y * clipper_scale) });
+                d2p p = local_xf.doc2phys(d2p{
+                    off_x + center.x + (e->pos[0].x - center.x) * fill_factor,
+                    off_y + center.y + (e->pos[0].y - center.y) * fill_factor
+                });
+                cell_path.push_back({
+                        (ClipperLib::cInt)round(p[0] * clipper_scale),
+                        (ClipperLib::cInt)round(p[1] * clipper_scale)
+                });
             }
 
             /* Emit endpoint of current edge */
-            double x = e->pos[1].x;
-            double y = e->pos[1].y;
-            x = off_x + center.x + (x - center.x) * fill_factor;
-            y = off_y + center.y + (y - center.y) * fill_factor;
-
-            cairo_user_to_device(cr, &x, &y);
-            cell_path.push_back({ (ClipperLib::cInt)round(x * clipper_scale), (ClipperLib::cInt)round(y * clipper_scale) });
+            d2p p = local_xf.doc2phys(d2p{
+                off_x + center.x + (e->pos[1].x - center.x) * fill_factor,
+                off_y + center.y + (e->pos[1].y - center.y) * fill_factor
+            });
+            cell_path.push_back({
+                    (ClipperLib::cInt)round(p[0] * clipper_scale),
+                    (ClipperLib::cInt)round(p[1] * clipper_scale)
+            });
 
             j += 1;
             last_fill_factor = fill_factor;
@@ -365,16 +348,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
         c.StrictlySimple(true);
         c.Execute(ClipperLib::ctIntersection, polys, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 
-        /* Export halftone blob to debug svg */
-        cairo_save(cr);
-        cairo_set_matrix(cr, &viewport_matrix);
-        cairo_new_path(cr);
-        ClipperLib::cairo::clipper_to_cairo(polys, cr, CAIRO_PRECISION, ClipperLib::cairo::tNone);
-        cairo_set_source_rgba(cr, 1, 1, 1, 1);
-        cairo_fill(cr);
-        cairo_restore(cr);
-
-        /* And finally, export halftone blob to gerber. */
+        /* Export halftone blob to gerber. */
         for (const auto &poly : polys) {
             vector<array<double, 2>> out;
             for (const auto &p : poly)
@@ -388,7 +362,6 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_
     blurred.release();
     jcv_diagram_free( &diagram );
     delete grid_centers;
-    cairo_restore(cr);
 }
 
 void gerbolyze::handle_aspect_ratio(string spec, double &scale_x, double &scale_y, double &off_x, double &off_y, double cols, double rows) {
@@ -446,17 +419,18 @@ void gerbolyze::handle_aspect_ratio(string spec, double &scale_x, double &scale_
 }
 
 
-void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) {
+void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px) {
+    (void) min_feature_size_px; /* unused by this vectorizer */
     double x, y, width, height;
     parse_img_meta(node, x, y, width, height);
     cv::Mat img = read_img_opencv(node);
     if (img.empty())
         return;
 
-    cairo_save(cr);
     /* Set up target transform using SVG transform and x/y attributes */
-    apply_cairo_transform_from_svg(cr, node.attribute("transform").value());
-    cairo_translate(cr, x, y);
+    xform2d local_xf(mat);
+    local_xf.transform(xform2d(node.attribute("transform").value()));
+    local_xf.translate(x, y);
 
     double scale_x = (double)width / (double)img.cols;
     double scale_y = (double)height / (double)img.rows;
@@ -465,7 +439,7 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pug
     handle_aspect_ratio(node.attribute("preserveAspectRatio").value(),
             scale_x, scale_y, off_x, off_y, img.cols, img.rows);
 
-    draw_bg_rect(cr, width, height, clip_path, sink, viewport_matrix);
+    draw_bg_rect(local_xf, width, height, clip_path, sink);
 
     vector<vector<cv::Point>> contours;
     vector<cv::Vec4i> hierarchy;
@@ -489,10 +463,14 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pug
 
             ClipperLib::Path out;
             for (const auto &p : contours[i]) {
-                double x = off_x + (double)p.x * scale_x;
-                double y = off_y + (double)p.y * scale_y;
-                cairo_user_to_device(cr, &x, &y);
-                out.push_back({ (ClipperLib::cInt)round(x * clipper_scale), (ClipperLib::cInt)round(y * clipper_scale) });
+                d2p q = local_xf.doc2phys(d2p{
+                    off_x + (double)p.x * scale_x,
+                    off_y + (double)p.y * scale_y
+                });
+                out.push_back({
+                        (ClipperLib::cInt)round(q[0] * clipper_scale),
+                        (ClipperLib::cInt)round(q[1] * clipper_scale)
+                });
             }
 
             ClipperLib::Clipper c;
@@ -504,17 +482,7 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pug
             ClipperLib::Paths polys;
             c.Execute(ClipperLib::ctIntersection, polys, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 
-            /* Finally, translate into Cairo-SVG's document units and draw. */
-            cairo_save(cr);
-            cairo_set_matrix(cr, &viewport_matrix);
-            cairo_new_path(cr);
-            ClipperLib::cairo::clipper_to_cairo(polys, cr, CAIRO_PRECISION, ClipperLib::cairo::tNone);
-            cairo_set_source_rgba (cr, 0.0, 0.0, 0.0, 1.0);
-            /* First, draw into SVG */
-            cairo_fill(cr);
-            cairo_restore(cr);
-
-            /* Second, draw into gerber. */
+            /* Draw into gerber. */
             for (const auto &poly : polys) {
                 vector<array<double, 2>> out;
                 for (const auto &p : poly)
@@ -527,8 +495,6 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(cairo_t *cr, const pug
 
         child_stack.pop();
     }
-
-    cairo_restore(cr);
 }
 
 gerbolyze::VectorizerSelectorizer::VectorizerSelectorizer(const string default_vectorizer, const string defs)

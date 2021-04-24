@@ -24,7 +24,6 @@
 #include <sstream>
 #include <queue>
 #include <assert.h>
-#include <cairo.h>
 #include "svg_import_defs.h"
 
 using namespace ClipperLib;
@@ -158,25 +157,4 @@ void gerbolyze::combine_clip_paths(Paths &in_a, Paths &in_b, Paths &out) {
     /* Nonzero fill since both input clip paths must already have been preprocessed by clipper. */
     c.Execute(ctIntersection, out, pftNonZero);
 }
-
-/* Transform given clipper paths under the given cairo transform. If no transform is given, use cairo's current
- * user-to-device transform. */
-void gerbolyze::transform_paths(cairo_t *cr, Paths &paths, cairo_matrix_t *mat) {
-    cairo_save(cr);
-    if (mat != nullptr) {
-        cairo_set_matrix(cr, mat);
-    }
-    
-    for (Path &p : paths) {
-        transform(p.begin(), p.end(), p.begin(),
-                [cr](IntPoint p) -> IntPoint {
-                    double x = p.X / clipper_scale, y = p.Y / clipper_scale;
-                    cairo_user_to_device(cr, &x, &y);
-                    return { (cInt)round(x * clipper_scale), (cInt)round(y * clipper_scale) };
-                });
-    }
-
-    cairo_restore(cr);
-}
-
 

@@ -5,9 +5,9 @@ namespace gerbolyze {
     class curve4_div {
         public:
             curve4_div(double distance_tolerance=0.1, double angle_tolerance=0.0, double cusp_limit=0.0)
-                : m_distance_tolerance_square(0.25*distance_tolerance*distance_tolerance),
-                m_angle_tolerance(angle_tolerance),
-                m_cusp_limit(cusp_limit)
+                : m_cusp_limit(cusp_limit),
+                m_distance_tolerance_square(0.25*distance_tolerance*distance_tolerance),
+                m_angle_tolerance(angle_tolerance)
                 {
                 }
 

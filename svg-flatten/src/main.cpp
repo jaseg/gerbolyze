@@ -422,7 +422,7 @@ int main(int argc, char **argv) {
     SVGDocument doc;
     cerr << "Loading temporary file " << frob << endl;
     ifstream load_f(frob);
-    if (!doc.load(load_f, "/tmp/debug.svg")) {
+    if (!doc.load(load_f)) {
         cerr <<  "Error loading input file \"" << in_f_name << "\", exiting." << endl;
         return EXIT_FAILURE;
     }

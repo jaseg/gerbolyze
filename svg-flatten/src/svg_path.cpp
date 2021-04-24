@@ -21,28 +21,27 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include "cairo_clipper.hpp"
+
 #include "svg_import_defs.h"
 #include "svg_path.h"
 #include "flatten.hpp"
 
 using namespace std;
 
-static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipper &c_stroke, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data, double distance_tolerance_mm) {
-    istringstream d(path_data);
+static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Clipper &c_stroke, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data, double distance_tolerance_mm) {
+    istringstream in(path_data);
 
     string cmd;
-    double x, y, c1x, c1y, c2x, c2y;
+    gerbolyze::d2p a, b, c, d;
 
     ClipperLib::Path in_poly;
-    double scale = pow(10.0, CAIRO_PRECISION);
 
     bool first = true;
     bool has_closed = false;
     int num_subpaths = 0;
-    while (!d.eof()) {
-        d >> cmd;
-        assert (!d.fail());
+    while (!in.eof()) {
+        in >> cmd;
+        assert (!in.fail());
         assert(!first || cmd == "M");
         
         if (cmd == "Z") { /* Close path */
@@ -61,46 +60,59 @@ static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipp
                 in_poly.clear();
             }
 
-            d >> x >> y;
+            in >> a[0] >> a[1];
+            assert (!in.fail()); /* guaranteed by usvg */
+
             /* We need to transform all points ourselves here, and cannot use the transform feature of cairo_to_clipper:
              * Our transform may contain offsets, and clipper only passes its data into cairo's transform functions
              * after scaling up to its internal fixed-point ints, but it does not scale the transform accordingly. This
              * means a scale/rotation we set before calling clipper works out fine, but translations get lost as they
              * get scaled by something like 1e-6.
              */
-            cairo_user_to_device(cr, &x, &y);
-            assert (!d.fail());
+            a = mat.doc2phys(a);
 
-            in_poly.emplace_back(ClipperLib::IntPoint{(ClipperLib::cInt)round(x*scale), (ClipperLib::cInt)round(y*scale)});
+            in_poly.emplace_back(ClipperLib::IntPoint{
+                    (ClipperLib::cInt)round(a[0]*clipper_scale),
+                    (ClipperLib::cInt)round(a[1]*clipper_scale)
+            });
 
         } else if (cmd == "L") { /* Line to */
-            d >> x >> y;
-            cairo_user_to_device(cr, &x, &y);
-            assert (!d.fail());
+            in >> a[0] >> a[1];
+            assert (!in.fail()); /* guaranteed by usvg */
 
-            in_poly.emplace_back(ClipperLib::IntPoint{(ClipperLib::cInt)round(x*scale), (ClipperLib::cInt)round(y*scale)});
+            a = mat.doc2phys(a);
+            in_poly.emplace_back(ClipperLib::IntPoint{
+                    (ClipperLib::cInt)round(a[0]*clipper_scale),
+                    (ClipperLib::cInt)round(a[1]*clipper_scale)
+            });
 
         } else { /* Curve to */
-            double sx = x, sy = y;
-            assert(cmd == "C");
-            d >> c1x >> c1y; /* first control point */
-            cairo_user_to_device(cr, &c1x, &c1y);
-            d >> c2x >> c2y; /* second control point */
-            cairo_user_to_device(cr, &c2x, &c2y);
-            d >> x >> y; /* end point */
-            cairo_user_to_device(cr, &x, &y);
-            assert (!d.fail());
+            assert(cmd == "C"); /* guaranteed by usvg */
+            in >> b[0] >> b[1]; /* first control point */
+            in >> c[0] >> c[1]; /* second control point */
+            in >> d[0] >> d[1]; /* end point */
+            assert (!in.fail()); /* guaranteed by usvg */
+
+            b = mat.doc2phys(b);
+            c = mat.doc2phys(c);
+            d = mat.doc2phys(d);
 
             gerbolyze::curve4_div c4div(distance_tolerance_mm);
-            c4div.run(sx, sy, c1x, c1y, c2x, c2y, x, y);
+            c4div.run(a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1]);
 
             for (auto &pt : c4div.points()) {
-                in_poly.emplace_back(ClipperLib::IntPoint{(ClipperLib::cInt)round(pt[0]*scale), (ClipperLib::cInt)round(pt[1]*scale)});
+                in_poly.emplace_back(ClipperLib::IntPoint{
+                        (ClipperLib::cInt)round(pt[0]*clipper_scale),
+                        (ClipperLib::cInt)round(pt[1]*clipper_scale)
+                });
             }
+
+            a = d; /* set last point to curve end point */
         }
 
         first = false;
     }
+
     if (!in_poly.empty()) {
         c_stroke.AddPath(in_poly, ClipperLib::ptSubject, false);
         c_fill.AddPath(in_poly, ClipperLib::ptSubject, true);
@@ -110,20 +122,18 @@ static pair<bool, bool> path_to_clipper_via_cairo(cairo_t *cr, ClipperLib::Clipp
     return {has_closed, num_subpaths > 1};
 }
 
-void gerbolyze::load_svg_path(cairo_t *cr, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill, double curve_tolerance) {
+void gerbolyze::load_svg_path(xform2d &mat, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill, double curve_tolerance) {
     auto *path_data = node.attribute("d").value();
     auto fill_rule = clipper_fill_rule(node);
 
     /* For open paths, clipper does not correctly remove self-intersections. Thus, we pass everything into
      * clipper twice: Once with all paths set to "closed" to compute fill areas, and once with correct
      * open/closed properties for stroke offsetting. */
-    cairo_set_fill_rule(cr, CAIRO_FILL_RULE_WINDING);
-
     ClipperLib::Clipper c_stroke;
     ClipperLib::Clipper c_fill;
     c_stroke.StrictlySimple(true);
     c_fill.StrictlySimple(true);
-    auto res = path_to_clipper_via_cairo(cr, c_stroke, c_fill, path_data, curve_tolerance);
+    auto res = flatten_path(mat, c_stroke, c_fill, path_data, curve_tolerance);
     bool has_closed = res.first, has_multiple = res.second;
 
     if (!has_closed && !has_multiple) {

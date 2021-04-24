@@ -22,16 +22,17 @@
 #include <iostream>
 #include <string>
 #include <array>
+
 #include <pugixml.hpp>
+
 #include "svg_pattern.h"
+#include "geom2d.hpp"
 
 namespace gerbolyze {
 
     constexpr char lib_version[] = "2.0";
 
-    typedef std::array<double, 2> d2p;
     typedef std::function<std::vector<d2p> *(double, double, double)> sampling_fun;
-    typedef std::vector<d2p> Polygon;
 
     enum GerberPolarityToken {
         GRB_POL_CLEAR,
@@ -121,7 +122,7 @@ namespace gerbolyze {
     class ImageVectorizer {
     public:
         virtual ~ImageVectorizer() {};
-        virtual void vectorize_image(cairo_t *cr, const pugi::xml_node &node, ClipperLib::Paths &clip_path, cairo_matrix_t &viewport_matrix, PolygonSink &sink, double min_feature_size_px) = 0;
+        virtual void vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px) = 0;
     };
     
     ImageVectorizer *makeVectorizer(const std::string &name);
@@ -147,11 +148,10 @@ namespace gerbolyze {
     class SVGDocument {
         public:
             SVGDocument() : _valid(false) {}
-            ~SVGDocument();
 
             /* true -> load successful */
-            bool load(std::istream &in, std::string debug_out_filename="/tmp/kicad_svg_debug.svg");
-            bool load(std::string filename, std::string debug_out_filename="/tmp/kicad_svg_debug.svg");
+            bool load(std::istream &in);
+            bool load(std::string filename);
             /* true -> load successful */
             bool valid() const { return _valid; }
             operator bool() const { return valid(); }
@@ -168,13 +168,11 @@ namespace gerbolyze {
         private:
             friend class Pattern;
 
-            cairo_t *cairo() { return cr; }
             const ClipperLib::Paths *lookup_clip_path(const pugi::xml_node &node);
             Pattern *lookup_pattern(const std::string id);
 
-            void export_svg_group(const RenderSettings &rset, const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true, bool is_root=false);
-            void export_svg_path(const RenderSettings &rset, const pugi::xml_node &node, ClipperLib::Paths &clip_path);
-            void setup_debug_output(std::string filename="");
+            void export_svg_group(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true, bool is_root=false);
+            void export_svg_path(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &node, ClipperLib::Paths &clip_path);
             void setup_viewport_clip();
             void load_clips(const RenderSettings &rset);
             void load_patterns();
@@ -188,11 +186,7 @@ namespace gerbolyze {
             double page_w_mm, page_h_mm;
             std::map<std::string, Pattern> pattern_map;
             std::map<std::string, ClipperLib::Paths> clip_path_map;
-            cairo_matrix_t viewport_matrix;
             ClipperLib::Paths vb_paths; /* viewport clip rect */
-
-            cairo_t *cr = nullptr;
-            cairo_surface_t *surface = nullptr;
 
             PolygonSink *polygon_sink = nullptr;
 

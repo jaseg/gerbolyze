@@ -19,10 +19,12 @@
 #pragma once
 
 #include <string>
-#include <cairo.h>
+
 #include <pugixml.hpp>
 #include <clipper.hpp>
+
 #include "svg_import_util.h"
+#include "geom2d.hpp"
 
 namespace gerbolyze {
 
@@ -34,13 +36,14 @@ public:
     Pattern() {}
     Pattern(const pugi::xml_node &node, SVGDocument &doc);
 
-    void tile (const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip);
+    void tile (xform2d &mat, const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip);
 
 private:
     double x, y, w, h;
     double vb_x, vb_y, vb_w, vb_h;
     bool has_vb;
-    std::string patternTransform;
+    xform2d patternTransform;
+    xform2d patternTransform_inv;
     enum RelativeUnits patternUnits;
     enum RelativeUnits patternContentUnits;
     const pugi::xml_node _node;

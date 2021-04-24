@@ -22,26 +22,6 @@
 
 using namespace std;
 
-void gerbolyze::print_matrix(cairo_t *cr, bool print_examples) {
-    cairo_matrix_t mat;
-    cairo_get_matrix(cr, &mat);
-    cerr << "    xform matrix = { xx=" << mat.xx << ", yx=" << mat.yx << ", xy=" << mat.xy << ", yy=" << mat.yy << ", x0=" << mat.x0 << ", y0=" << mat.y0 << " }" << endl;
-    if (print_examples) {
-        double x=0, y=0;
-        cairo_user_to_device(cr, &x, &y);
-        cerr << "        (0, 0) -> (" << x << ", " << y << ")" << endl;
-        x = 1, y = 0;
-        cairo_user_to_device(cr, &x, &y);
-        cerr << "        (1, 0) -> (" << x << ", " << y << ")" << endl;
-        x = 0, y = 1;
-        cairo_user_to_device(cr, &x, &y);
-        cerr << "        (0, 1) -> (" << x << ", " << y << ")" << endl;
-        x = 1, y = 1;
-        cairo_user_to_device(cr, &x, &y);
-        cerr << "        (1, 1) -> (" << x << ", " << y << ")" << endl;
-    }
-}
-
 /* Read a double value formatted like usvg formats doubles from an SVG attribute */
 double gerbolyze::usvg_double_attr(const pugi::xml_node &node, const char *attr, double default_value) {
     const auto *val = node.attribute(attr).value();
@@ -69,34 +49,6 @@ gerbolyze::RelativeUnits gerbolyze::map_str_to_units(string str, gerbolyze::Rela
     return default_val;
 }
 
-void gerbolyze::load_cairo_matrix_from_svg(const string &transform, cairo_matrix_t &mat) {
-    if (transform.empty()) {
-        cairo_matrix_init_identity(&mat);
-        return;
-    }
-
-    string start("matrix(");
-    assert(transform.substr(0, start.length()) == start);
-    assert(transform.back() == ')');
-    const string &foo = transform.substr(start.length(), transform.length());
-    const string &bar = foo.substr(0, foo.length() - 1);
-
-    istringstream xform(bar);
-
-    double a, c, e,
-           b, d, f;
-    xform >> a >> b >> c >> d >> e >> f;
-    assert(!xform.fail());
-
-    cairo_matrix_init(&mat, a, b, c, d, e, f);
-}
-
-void gerbolyze::apply_cairo_transform_from_svg(cairo_t *cr, const string &transform) {
-    cairo_matrix_t mat;
-    load_cairo_matrix_from_svg(transform, mat);
-    cairo_transform(cr, &mat);
-}
-
 /* Cf. https://tools.ietf.org/html/rfc2397 */
 string gerbolyze::parse_data_iri(const string &data_url) {
     if (data_url.rfind("data:", 0) == string::npos) /* check if url starts with "data:" */
@@ -110,14 +62,5 @@ string gerbolyze::parse_data_iri(const string &data_url) {
     assert(b64_begin != string::npos);
 
     return base64_decode(data_url.substr(b64_begin));
-}
-
-/* for debug svg output */
-void gerbolyze::apply_viewport_matrix(cairo_t *cr, cairo_matrix_t &viewport_matrix) {
-    /* Multiply viewport matrix *from the left*, i.e. as if it had been applied *before* the currently set matrix. */
-    cairo_matrix_t old_matrix;
-    cairo_get_matrix(cr, &old_matrix);
-    cairo_set_matrix(cr, &viewport_matrix);
-    cairo_transform(cr, &old_matrix);
 }
 

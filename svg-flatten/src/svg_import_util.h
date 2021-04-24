@@ -29,11 +29,7 @@
 #include <sstream>
 #include <regex>
 
-#include <pango/pangocairo.h>
-#include <cairo-svg.h>
-
 #include <clipper.hpp>
-#include "cairo_clipper.hpp"
 
 #include <pugixml.hpp>
 
@@ -48,14 +44,10 @@ enum RelativeUnits {
     SVG_ObjectBoundingBox,
 };
 
-void print_matrix(cairo_t *cr, bool print_examples=false);
 double usvg_double_attr(const pugi::xml_node &node, const char *attr, double default_value=0.0);
 std::string usvg_id_url(std::string attr);
 RelativeUnits map_str_to_units(std::string str, RelativeUnits default_val=SVG_UnknownUnits);
-void load_cairo_matrix_from_svg(const std::string &transform, cairo_matrix_t &mat);
-void apply_cairo_transform_from_svg(cairo_t *cr, const std::string &transform);
 std::string parse_data_iri(const std::string &data_url);
-void apply_viewport_matrix(cairo_t *cr, cairo_matrix_t &viewport_matrix);
 
 } /* namespace gerbolyze */
 

@@ -7,7 +7,6 @@
 using namespace gerbolyze;
 
 namespace gerbolyze {
-    const double curve_distance_epsilon                  = 1e-15;
     const double curve_collinearity_epsilon              = 1e-15;
     const double curve_angle_tolerance_epsilon           = 0.1;
     constexpr unsigned curve_recursion_limit             = 20;
