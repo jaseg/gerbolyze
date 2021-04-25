@@ -49,6 +49,21 @@ namespace gerbolyze {
             virtual ~PolygonSink() {}
             virtual void header(d2p origin, d2p size) {(void) origin; (void) size;}
             virtual PolygonSink &operator<<(const Polygon &poly) = 0;
+            virtual PolygonSink &operator<<(const ClipperLib::Paths paths) {
+                for (const auto &poly : paths) {
+                    *this << poly;
+                }
+                return *this;
+            };
+            virtual PolygonSink &operator<<(const ClipperLib::Path poly) {
+                vector<array<double, 2>> out;
+                for (const auto &p : poly) {
+                    out.push_back(std::array<double, 2>{
+                            ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
+                    });
+                }
+                return *this << out;
+            };
             virtual PolygonSink &operator<<(const LayerNameToken &) { return *this; };
             virtual PolygonSink &operator<<(GerberPolarityToken pol) = 0;
             virtual void footer() {}
@@ -143,6 +158,7 @@ namespace gerbolyze {
         double m_minimum_feature_size_mm = 0.1;
         double curve_tolerance_mm;
         VectorizerSelectorizer &m_vec_sel;
+        bool outline_mode = false;
     };
 
     class SVGDocument {
@@ -209,7 +225,7 @@ namespace gerbolyze {
 
     class SimpleGerberOutput : public StreamPolygonSink {
     public:
-        SimpleGerberOutput(std::ostream &out, bool only_polys=false, int digits_int=4, int digits_frac=6, double scale=1.0, d2p offset={0,0}, bool flip_polarity=false);
+        SimpleGerberOutput(std::ostream &out, bool only_polys=false, int digits_int=4, int digits_frac=6, double scale=1.0, d2p offset={0,0}, bool flip_polarity=false, bool outline_mode=false);
         virtual ~SimpleGerberOutput() {}
         virtual SimpleGerberOutput &operator<<(const Polygon &poly);
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
@@ -225,6 +241,7 @@ namespace gerbolyze {
         d2p m_offset;
         double m_scale;
         bool m_flip_pol;
+        bool m_outline_mode;
     };
 
     class SimpleSVGOutput : public StreamPolygonSink {

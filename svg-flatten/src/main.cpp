@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
                 "Print version and exit",
                 0},
             {"ofmt", {"-o", "--format"},
-                "Output format. Supported: gerber, svg, s-exp (KiCAD S-Expression)",
+                "Output format. Supported: gerber, gerber-outline (for board outline layer), svg, s-exp (KiCAD S-Expression)",
                 1},
             {"precision", {"-p", "--precision"},
                 "Number of decimal places use for exported coordinates (gerber: 1-9, SVG: 0-*)",
@@ -181,6 +181,7 @@ int main(int argc, char **argv) {
 
     bool force_flatten = false;
     bool is_sexp = false;
+    bool outline_mode = false;
     PolygonSink *sink = nullptr;
     PolygonSink *flattener = nullptr;
     PolygonSink *dilater = nullptr;
@@ -189,10 +190,16 @@ int main(int argc, char **argv) {
         string clear_color = args["svg_clear_color"] ? args["svg_clear_color"].as<string>() : "#ffffff";
         sink = new SimpleSVGOutput(*out_f, only_polys, precision, dark_color, clear_color);
 
-    } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber") {
+    } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber" || fmt == "gerber-outline") {
+        outline_mode = fmt == "gerber-outline";
+
         double scale = args["scale"].as<double>(1.0);
-        cerr << "loading @scale=" << scale << endl;
-        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, scale, {0,0}, args["flip_gerber_polarity"]);
+        if (scale != 1.0) {
+            cerr << "loading @scale=" << scale << endl;
+        }
+
+        sink = new SimpleGerberOutput(
+                *out_f, only_polys, 4, precision, scale, {0,0}, args["flip_gerber_polarity"], outline_mode);
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
         if (!args["sexp_mod_name"]) {
@@ -417,6 +424,7 @@ int main(int argc, char **argv) {
         min_feature_size,
         curve_tolerance,
         vec_sel,
+        outline_mode,
     };
 
     SVGDocument doc;

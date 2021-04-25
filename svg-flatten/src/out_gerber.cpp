@@ -27,13 +27,14 @@
 using namespace gerbolyze;
 using namespace std;
 
-SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits_int, int digits_frac, double scale, d2p offset, bool flip_polarity)
+SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits_int, int digits_frac, double scale, d2p offset, bool flip_polarity, bool outline_mode)
     : StreamPolygonSink(out, only_polys),
     m_digits_int(digits_int),
     m_digits_frac(digits_frac),
     m_offset(offset),
     m_scale(scale),
-    m_flip_pol(flip_polarity)
+    m_flip_pol(flip_polarity),
+    m_outline_mode(outline_mode)
 {
     assert(1 <= digits_int && digits_int <= 9);
     assert(0 <= digits_frac && digits_frac <= 9);
@@ -61,16 +62,20 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
 SimpleGerberOutput& SimpleGerberOutput::operator<<(GerberPolarityToken pol) {
     assert(pol == GRB_POL_DARK || pol == GRB_POL_CLEAR);
 
+    if (m_outline_mode) {
+        assert(pol == GRB_POL_DARK);
+    }
+
     if ((pol == GRB_POL_DARK) != m_flip_pol) {
         m_out << "%LPD*%" << endl;
-    } else if (pol == GRB_POL_CLEAR) {
+    } else {
         m_out << "%LPC*%" << endl;
     }
 
     return *this;
 }
 SimpleGerberOutput& SimpleGerberOutput::operator<<(const Polygon &poly) {
-    if (poly.size() < 3) {
+    if (poly.size() < 3 && !m_outline_mode) {
         cerr << "Warning: " << poly.size() << "-element polygon passed to SimpleGerberOutput" << endl;
         return *this;
     }
@@ -78,11 +83,15 @@ SimpleGerberOutput& SimpleGerberOutput::operator<<(const Polygon &poly) {
     /* NOTE: Clipper and gerber both have different fixed-point scales. We get points in double mm. */
     double x = round((poly[0][0] * m_scale + m_offset[0]) * m_gerber_scale);
     double y = round((m_height - poly[0][1] * m_scale + m_offset[1]) * m_gerber_scale);
-    m_out << "G36*" << endl;
+    if (!m_outline_mode) {
+        m_out << "G36*" << endl;
+    }
+
     m_out << "X" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal /* isn't C++ a marvel of engineering? */ << (long long int)x
           << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal << (long long int)y
           << "D02*" << endl;
     m_out << "G01*" << endl;
+
     for (size_t i=1; i<poly.size(); i++) {
         double x = round((poly[i][0] * m_scale + m_offset[0]) * m_gerber_scale);
         double y = round((m_height - poly[i][1] * m_scale + m_offset[1]) * m_gerber_scale);
@@ -90,7 +99,10 @@ SimpleGerberOutput& SimpleGerberOutput::operator<<(const Polygon &poly) {
               << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal << (long long int)y
               << "D01*" << endl;
     }
-    m_out << "G37*" << endl;
+
+    if (!m_outline_mode) {
+        m_out << "G37*" << endl;
+    }
 
     return *this;
 }
