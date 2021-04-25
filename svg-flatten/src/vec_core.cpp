@@ -170,8 +170,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
 
     /* Set up target transform using SVG transform and x/y attributes */
     xform2d local_xf(mat);
-    local_xf.transform(xform2d(node.attribute("transform").value()));
     local_xf.translate(x, y);
+    local_xf.transform(xform2d(node.attribute("transform").value()));
 
     double orig_rows = img.rows;
     double orig_cols = img.cols;

@@ -152,8 +152,8 @@ void gerbolyze::SVGDocument::export_svg_group(xform2d &mat, const RenderSettings
 
     } else {
         clip_path = *lookup;
+        local_xf.transform_paths(clip_path);
     }
-    local_xf.transform_paths(clip_path);
 
     /* Clip against parent's clip path (both are now in document coordinates) */
     if (!parent_clip_path.empty()) {
@@ -251,9 +251,10 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             c.AddPaths(fill_paths, ptSubject, /* closed */ true);
             c.AddPaths(clip_path, ptClip, /* closed */ true);
             c.StrictlySimple(true);
+
             /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
-            c.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
-            PolyTreeToPaths(ptree, fill_paths);
+            c.Execute(ctIntersection, ptree_fill, pftNonZero, pftNonZero);
+            PolyTreeToPaths(ptree_fill, fill_paths);
         }
 
         /* Call out to pattern tiler for pattern fills. The path becomes the clip here. */

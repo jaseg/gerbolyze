@@ -67,8 +67,8 @@ namespace gerbolyze {
             }
 
             xform2d &translate(double x, double y) {
-                x0 += x;
-                y0 += y;
+                x0 += x*xx + y*xy;
+                y0 += y*yy + x*yx;
                 return *this;
             }
 
@@ -109,7 +109,7 @@ namespace gerbolyze {
             d2p doc2phys(const d2p p) {
                 return d2p {
                     xx * p[0] + xy * p[1] + x0,
-                    xy * p[1] + yy * p[1] + y0
+                    yx * p[0] + yy * p[1] + y0
                 };
             }
 

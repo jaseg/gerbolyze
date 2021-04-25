@@ -59,16 +59,24 @@ void gerbolyze::Pattern::tile (xform2d &mat, const gerbolyze::RenderSettings &rs
 
     /* Transform x, y, w, h from pattern coordinate space into parent coordinates by applying the inverse
      * patternTransform. This is necessary so we iterate over the correct bounds when tiling below */
-    d2p pos_xf = patternTransform_inv.doc2phys(d2p{x, y});
+    d2p pos_xf = mat.doc2phys(d2p{x, y});
     double inst_x = pos_xf[0], inst_y = pos_xf[1];
-    double inst_w = patternTransform_inv.doc2phys_dist(w);
-    double inst_h = patternTransform_inv.doc2phys_dist(h);
+    double inst_w = mat.doc2phys_dist(w);
+    double inst_h = mat.doc2phys_dist(h);
 
     ClipperLib::IntRect clip_bounds = get_paths_bounds(clip);
     double bx = clip_bounds.left / clipper_scale;
     double by = clip_bounds.top / clipper_scale;
     double bw = (clip_bounds.right - clip_bounds.left) / clipper_scale;
     double bh = (clip_bounds.bottom - clip_bounds.top) / clipper_scale;
+
+    d2p clip_p0 = patternTransform_inv.doc2phys(d2p{bx, by});
+    d2p clip_p1 = patternTransform_inv.doc2phys(d2p{bx+bw, by+bh});
+
+    bx = fmin(clip_p0[0], clip_p1[0]);
+    by = fmin(clip_p0[1], clip_p1[1]);
+    bw = fmax(clip_p0[0], clip_p1[0]) - bx;
+    bh = fmax(clip_p0[1], clip_p1[1]) - by;
 
     if (patternUnits == SVG_ObjectBoundingBox) {
         inst_x *= bw;
@@ -79,16 +87,15 @@ void gerbolyze::Pattern::tile (xform2d &mat, const gerbolyze::RenderSettings &rs
 
     /* Switch to pattern coordinates */
     xform2d local_xf(mat);
-    local_xf.translate(bx, by);
     local_xf.transform(patternTransform);
 
     /* Iterate over all pattern tiles in pattern coordinates */
-    for (double inst_off_x = fmod(inst_x, inst_w) - inst_w;
-            inst_off_x < bw + inst_w;
+    for (double inst_off_x = fmod(inst_x, inst_w) - 2*inst_w;
+            inst_off_x < bw + 2*inst_w;
             inst_off_x += inst_w) {
 
-        for (double inst_off_y = fmod(inst_y, inst_h) - inst_h;
-                inst_off_y < bh + inst_h;
+        for (double inst_off_y = fmod(inst_y, inst_h) - 2*inst_h;
+                inst_off_y < bh + 2*inst_h;
                 inst_off_y += inst_h) {
 
             xform2d elem_xf(local_xf);
