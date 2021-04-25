@@ -322,8 +322,8 @@ Options:
 
 ``-o, --outline TEXT``
     SVG file to be used for board outline layers. Can be the same file used for ``--top`` or ``--bottom``. Note that on
-    board outline layers, strokes are "thinned" and patterned strokes are not supported. However, dashed strokes *are*
-    supported (for mouse bites etc.).
+    board outline layers, SVG handling is slightly different since fabs don't support filled regions on these layers.
+    See `below <outline_layers_>`_ for details.
 
 ``--layer-top``
     Top side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk.
@@ -357,6 +357,28 @@ Options:
 ``--exclude-groups TEXT``
     Passed through to svg-flatten, see `below <svg_flatten_>`__.
 
+
+.. _outline_layers:
+
+Outline layers
+**************
+
+Outline layers require special handling since PCB fabs do not support filled G36/G37 polygons on these layers. Gerbolyze
+handles outline layers via the ``--outline [input.svg]`` option. This option tells it to add the input SVG's outline to
+the outline gerber output layer. ``--outline`` expects the same SVG format that is also used for ``--top`` and
+``--bottom``. Both templates contain an Inkscape layer for the outline, so you can use either template for the outline
+layer as well. Since ``--outline`` will ignore all other layers, you can even put your outline into the same SVG as your
+top or bottom side layers and pass that same file to both ``--top/--bottom`` and ``--outline``.
+
+The main difference between normal layers and outline layers is how strokes are handled. On outline layers, strokes are
+translated to normal Gerber draw commands (D01, D02 etc.) with an aperture set to the stroke's width instead of tracing
+them to G36/G37 filled regions. This means that on outline layers, SVG end caps and line join types do not work: All
+lines are redered with round joins and end caps.
+
+One exception from this are patterns, which work as expected for both fills and strokes with full support for joins and
+end caps.
+
+Dashed strokes are supported on outline layers and can be used to make easy mouse bites.
 
 .. _subtraction_script:
 
