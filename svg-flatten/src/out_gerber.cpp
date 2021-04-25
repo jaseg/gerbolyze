@@ -34,7 +34,9 @@ SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits
     m_offset(offset),
     m_scale(scale),
     m_flip_pol(flip_polarity),
-    m_outline_mode(outline_mode)
+    m_outline_mode(outline_mode),
+    m_current_aperture(0.0),
+    m_aperture_num(10) /* See gerber standard */
 {
     assert(1 <= digits_int && digits_int <= 9);
     assert(0 <= digits_frac && digits_frac <= 9);
@@ -57,6 +59,20 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
     m_out << "G01*" << endl;
     m_out << "%ADD10C,0.050000*%" << endl;
     m_out << "D10*" << endl;
+}
+
+SimpleGerberOutput& SimpleGerberOutput::operator<<(const ApertureToken &ap) {
+    if (ap.m_size == m_current_aperture) {
+        return *this;
+    }
+    m_current_aperture = ap.m_size;
+    m_aperture_num += 1;
+
+    double size = (ap.m_size > 0.0) ? ap.m_size : 0.05;
+    m_out << "%ADD" << m_aperture_num << "C," << size << "*%" << endl;
+    m_out << "D" << m_aperture_num << "*" << endl;
+
+    return *this;
 }
 
 SimpleGerberOutput& SimpleGerberOutput::operator<<(GerberPolarityToken pol) {

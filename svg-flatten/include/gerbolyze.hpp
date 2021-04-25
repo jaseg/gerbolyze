@@ -44,6 +44,12 @@ namespace gerbolyze {
         std::string m_name;
     };
 
+    class ApertureToken {
+    public:
+        ApertureToken(double size=0.0) : m_size(size) {}
+        double m_size = 0.0;
+    };
+
     class PolygonSink {
         public:
             virtual ~PolygonSink() {}
@@ -66,6 +72,7 @@ namespace gerbolyze {
             };
             virtual PolygonSink &operator<<(const LayerNameToken &) { return *this; };
             virtual PolygonSink &operator<<(GerberPolarityToken pol) = 0;
+            virtual PolygonSink &operator<<(const ApertureToken &) { return *this; };
             virtual void footer() {}
     };
 
@@ -229,6 +236,7 @@ namespace gerbolyze {
         virtual ~SimpleGerberOutput() {}
         virtual SimpleGerberOutput &operator<<(const Polygon &poly);
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
+        virtual SimpleGerberOutput &operator<<(const ApertureToken &ap);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
 
@@ -242,6 +250,8 @@ namespace gerbolyze {
         double m_scale;
         bool m_flip_pol;
         bool m_outline_mode;
+        double m_current_aperture;
+        unsigned int m_aperture_num;
     };
 
     class SimpleSVGOutput : public StreamPolygonSink {

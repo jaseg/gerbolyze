@@ -226,6 +226,8 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
     /* Load path from SVG path data and transform into document units. */
     xform2d local_xf(mat);
     local_xf.transform(xform2d(node.attribute("transform").value()));
+    /* FIXME transform stroke width here? */
+    stroke_width = local_xf.doc2phys_dist(stroke_width);
 
     PolyTree ptree_stroke;
     PolyTree ptree_fill;
@@ -307,7 +309,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                 if (rset.outline_mode) {
                     /* In outline mode, manually close polys */
                     poly.push_back(poly[0]);
-                    *polygon_sink << poly;
+                    *polygon_sink << ApertureToken() << poly;
 
                 } else {
                     offx.AddPath(poly, join_type, etClosedLine);
@@ -320,7 +322,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                 dash_path(poly_copy, out, dasharray);
 
                 if (rset.outline_mode) {
-                    *polygon_sink << out;
+                    *polygon_sink << ApertureToken(stroke_width) << out;
                 } else {
                     offx.AddPaths(out, join_type, end_type);
                 }
@@ -332,7 +334,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             dash_path(poly, out, dasharray);
 
             if (rset.outline_mode) {
-                *polygon_sink << out;
+                *polygon_sink << ApertureToken(stroke_width) << out;
             } else {
                 offx.AddPaths(out, join_type, end_type);
             }
@@ -373,10 +375,11 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                 Paths s_polys;
                 dehole_polytree(ptree, s_polys);
 
-                *polygon_sink << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
+                *polygon_sink << ApertureToken() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
             }
         }
     }
+    *polygon_sink << ApertureToken();
 }
 
 void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector *sel) {
