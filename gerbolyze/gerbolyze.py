@@ -54,6 +54,7 @@ def vectorize(ctx, side, layer, exact, source, target, image, trace_space):
 @click.argument('output_gerbers')
 @click.option('-t', '--top', help='Top side SVG or PNG overlay') 
 @click.option('-b', '--bottom', help='Bottom side SVG or PNG overlay') 
+@click.option('-o', '--outline', help='SVG file to use for board outline. Can be the same one used for --top or --bottom.') 
 @click.option('--layer-top', help='Top side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk.') 
 @click.option('--layer-bottom', help='Bottom side SVG or PNG target layer. See --layer-top.')
 @click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
@@ -69,7 +70,7 @@ def vectorize(ctx, side, layer, exact, source, target, image, trace_space):
 @click.option('--preserve-aspect-ratio', help='PNG/JPG files only: passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
 def paste(input_gerbers, output_gerbers,
-        top, bottom, layer_top, layer_bottom,
+        top, bottom, outline, layer_top, layer_bottom,
         bbox,
         dilate, curve_tolerance, no_subtract, subtract,
         preserve_aspect_ratio,
@@ -102,7 +103,8 @@ def paste(input_gerbers, output_gerbers,
 
         for side, in_svg_or_png, target_layer in [
                 ('top', top, layer_top),
-                ('bottom', bottom, layer_bottom)]:
+                ('bottom', bottom, layer_bottom),
+                ('outline', outline, None)]:
 
             if not in_svg_or_png:
                 continue
@@ -112,7 +114,7 @@ def paste(input_gerbers, output_gerbers,
 
             print()
             print('#########################################')
-            print('processing side', side, 'infile', in_svg_or_png)
+            print('processing ', side, 'input file ', in_svg_or_png)
             print('#########################################')
             print()
 
@@ -159,7 +161,8 @@ def paste(input_gerbers, output_gerbers,
                 layer_arg = layer if target_layer is None else None # slightly confusing but trust me :)
                 svg_to_gerber(in_svg_or_png, overlay_file, layer_arg,
                         trace_space, vectorizer, vectorizer_map, exclude_groups, curve_tolerance,
-                        bounds_for_png=bounds, preserve_aspect_ratio=preserve_aspect_ratio)
+                        bounds_for_png=bounds, preserve_aspect_ratio=preserve_aspect_ratio,
+                        outline_mode=(layer == 'outline'))
 
                 overlay_grb = gerberex.read(str(overlay_file))
                 if not overlay_grb.primitives:
@@ -392,6 +395,10 @@ LAYER_SPEC = {
             'outline':  '.gko|.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb',
             'drill':    '.drl|.txt|-npth.drl',
         },
+        'outline': {
+            'outline':  '.gko|.gm1|-Edge_Cuts.gbr|-Edge.Cuts.gbr|.gmb',
+            'drill':    '.drl|.txt|-npth.drl',
+        }
     }
 
 # Maps keys from LAYER_SPEC to pcb-tools layer classes (see pcb-tools'es gerber/layers.py)
@@ -602,7 +609,8 @@ def svg_to_gerber(infile, outfile,
         dilate=None, curve_tolerance=None,
         dpi=None, scale=None, bounds_for_png=None,
         preserve_aspect_ratio=None,
-        force_png=False, force_svg=False):
+        force_png=False, force_svg=False,
+        outline_mode=False):
 
     infile = Path(infile)
 
@@ -621,7 +629,7 @@ def svg_to_gerber(infile, outfile,
                 # next to this python source file in the development repo
                 str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]
 
-    args = [ '--format', 'gerber',
+    args = [ '--format', ('gerber-outline' if outline_mode else 'gerber'),
             '--precision', '6', # intermediate file, use higher than necessary precision
             '--trace-space', str(trace_space) ]
     if layer:
