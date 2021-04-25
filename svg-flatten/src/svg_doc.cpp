@@ -306,7 +306,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             /* Special case: A closed path becomes a number of open paths when it is dashed. */
             if (dasharray.empty()) {
 
-                if (rset.outline_mode) {
+                if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
                     /* In outline mode, manually close polys */
                     poly.push_back(poly[0]);
                     *polygon_sink << ApertureToken() << poly;
@@ -321,7 +321,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                 Paths out;
                 dash_path(poly_copy, out, dasharray);
 
-                if (rset.outline_mode) {
+                if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
                     *polygon_sink << ApertureToken(stroke_width) << out;
                 } else {
                     offx.AddPaths(out, join_type, end_type);
@@ -333,50 +333,48 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             Paths out;
             dash_path(poly, out, dasharray);
 
-            if (rset.outline_mode) {
+            if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
                 *polygon_sink << ApertureToken(stroke_width) << out;
             } else {
                 offx.AddPaths(out, join_type, end_type);
             }
         }
 
-        if (!rset.outline_mode) {
-            /* Execute clipper offset operation to generate stroke outlines */
-            offx.Execute(ptree, 0.5 * stroke_width * clipper_scale);
+        /* Execute clipper offset operation to generate stroke outlines */
+        offx.Execute(ptree, 0.5 * stroke_width * clipper_scale);
 
-            /* Clip. Note that after the outline, all we have is closed paths as any open path's stroke outline is itself
-             * a closed path. */
-            if (!clip_path.empty()) {
-                Clipper c;
+        /* Clip. Note that after the outline, all we have is closed paths as any open path's stroke outline is itself
+         * a closed path. */
+        if (!clip_path.empty()) {
+            Clipper c;
 
-                Paths outline_paths;
-                PolyTreeToPaths(ptree, outline_paths);
-                c.AddPaths(outline_paths, ptSubject, /* closed */ true);
-                c.AddPaths(clip_path, ptClip, /* closed */ true);
-                c.StrictlySimple(true);
-                /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
-                c.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
-            }
+            Paths outline_paths;
+            PolyTreeToPaths(ptree, outline_paths);
+            c.AddPaths(outline_paths, ptSubject, /* closed */ true);
+            c.AddPaths(clip_path, ptClip, /* closed */ true);
+            c.StrictlySimple(true);
+            /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
+            c.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
+        }
 
-            /* Call out to pattern tiler for pattern strokes. The stroke's outline becomes the clip here. */
-            if (stroke_color == GRB_PATTERN_FILL) {
-                string stroke_pattern_id = usvg_id_url(node.attribute("stroke").value());
-                Pattern *pattern = lookup_pattern(stroke_pattern_id);
-                if (!pattern) {
-                    cerr << "Warning: Fill pattern with id \"" << stroke_pattern_id << "\" not found." << endl;
-
-                } else {
-                    Paths clip;
-                    PolyTreeToPaths(ptree, clip);
-                    pattern->tile(local_xf, rset, clip);
-                }
+        /* Call out to pattern tiler for pattern strokes. The stroke's outline becomes the clip here. */
+        if (stroke_color == GRB_PATTERN_FILL) {
+            string stroke_pattern_id = usvg_id_url(node.attribute("stroke").value());
+            Pattern *pattern = lookup_pattern(stroke_pattern_id);
+            if (!pattern) {
+                cerr << "Warning: Fill pattern with id \"" << stroke_pattern_id << "\" not found." << endl;
 
             } else {
-                Paths s_polys;
-                dehole_polytree(ptree, s_polys);
-
-                *polygon_sink << ApertureToken() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
+                Paths clip;
+                PolyTreeToPaths(ptree, clip);
+                pattern->tile(local_xf, rset, clip);
             }
+
+        } else if (!rset.outline_mode) {
+            Paths s_polys;
+            dehole_polytree(ptree, s_polys);
+
+            *polygon_sink << ApertureToken() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
         }
     }
     *polygon_sink << ApertureToken();
