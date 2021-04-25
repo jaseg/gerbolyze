@@ -186,6 +186,8 @@ Input on the left, output on the right.
 * Renders SVG templates from input gerbers for accurate and easy scaling and positioning of artwork
 * layer masking with offset (e.g. all silk within 1mm of soldermask)
 * Can read gerbers from zip files
+* Limited SVG support for board outline layers (no fill/region support)
+* Dashed lines supported on board outline layers
 
 Gerbolyze is the end-to-end "paste this svg into these gerbers" command that handles all layers on both board sides at
 once.  The heavy-duty computer geometry logic of gerbolyze is handled by the svg-flatten utility (``svg-flatten``
@@ -239,7 +241,7 @@ Render design from an SVG made with the template above into a set of gerber file
 
 .. code-block:: shell
 
-    gerbolyze paste [options] [-t|--top top_side_design.svg] [-b|--bottom ...] input_dir_or.zip output_dir
+    gerbolyze paste [options] [-t|--top top_side_design.svg] [-b|--bottom ...] [-o|--outline ...] input_dir_or.zip output_dir
 
 Use svg-flatten to convert an SVG file into Gerber or flattened SVG:
 
@@ -305,7 +307,9 @@ Options:
 
 Usage: ``gerbolyze paste [OPTIONS] INPUT_GERBERS OUTPUT_GERBERS``
 
-Render vector data and raster images from SVG file into gerbers.
+Render vector data and raster images from SVG file into gerbers. SVG input files are given with ``--top``, ``--bottom``
+and ``--outline``. Note that for board outline layers, handling slightly differs from other layers as PCB fabs do not
+support filled Gerber regions on these layers.
 
 Options:
 ********
@@ -315,6 +319,11 @@ Options:
 
 ``-b, --bottom TEXT``
     Bottom side SVG overlay input file. At least one of this and ``--top`` should be given.
+
+``-o, --outline TEXT``
+    SVG file to be used for board outline layers. Can be the same file used for ``--top`` or ``--bottom``. Note that on
+    board outline layers, strokes are "thinned" and patterned strokes are not supported. However, dashed strokes *are*
+    supported (for mouse bites etc.).
 
 ``--layer-top``
     Top side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk.
@@ -414,7 +423,7 @@ Options:
     Print version and exit
 
 ``-o, --format``
-    Output format. Supported: gerber, svg, s-exp (KiCAD S-Expression)
+    Output format. Supported: gerber, gerber-outline (for board outline layers), svg, s-exp (KiCAD S-Expression)
 
 ``-p, --precision``
     Number of decimal places use for exported coordinates (gerber: 1-9, SVG: >=0). Note that not all gerber viewers are
