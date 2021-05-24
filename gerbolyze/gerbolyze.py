@@ -504,7 +504,7 @@ DEFAULT_EXTRA_LAYERS = [ layer for layer in LAYER_RENDER_ORDER if layer != "dril
 def template_layer(name):
     return f'<g id="g-{slugify(name)}" inkscape:label="{name}" inkscape:groupmode="layer"></g>'
 
-def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS):
+def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS, current_layer='silk'):
     (x1, x2), (y1, y2) = bounds
     w_mm, h_mm = (x2 - x1), (y2 - y1)
 
@@ -519,6 +519,7 @@ def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS):
            xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
            width="{w_mm}mm" height="{h_mm}mm" viewBox="0 0 {w_mm} {h_mm}" >
           <defs/>
+          <sodipodi:namedview inkscape:current-layer="g-{slugify(current_layer)}" />
           <g inkscape:label="Preview" inkscape:groupmode="layer" id="g-preview" sodipodi:insensitive="true" style="opacity:0.5">
             <image x="0" y="0" width="{w_mm}" height="{h_mm}"
                xlink:href="data:image/jpeg;base64,{base64.b64encode(png_data).decode()}" />
@@ -538,7 +539,7 @@ def svg_pt_to_mm(pt_len, dpi=CAIRO_SVG_HARDCODED_DPI):
 
     return f'{float(pt_len) / dpi * MM_PER_INCH}mm'
 
-def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS):
+def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS, current_layer='silk'):
     svg = etree.fromstring(svg_data)
 
     # add inkscape namespaces
@@ -554,6 +555,11 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
     # convert document units to mm
     svg.set('width', svg_pt_to_mm(svg.get('width')))
     svg.set('height', svg_pt_to_mm(svg.get('height')))
+
+    # add inkscape <namedview> elem to set currently selected layer
+    namedview_elem = etree.SubElement(svg, SODIPODI_NS+'namedview')
+    namedview_elem.set('id', "namedview23")
+    namedview_elem.set(INKSCAPE_NS+'current-layer', f'g-{current_layer}')
 
     # make original group an inkscape layer
     orig_g = svg.find(SVG_NS+'g')
