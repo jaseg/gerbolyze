@@ -99,11 +99,11 @@ namespace gerbolyze {
             };
 
             double doc2phys_dist(double dist_doc) {
-                return xx * dist_doc;
+                return dist_doc * sqrt(xx*xx + xy * xy);
             }
 
             double phys2doc_dist(double dist_doc) {
-                return xx * dist_doc;
+                return dist_doc / sqrt(xx*xx + xy * xy);
             }
 
             d2p doc2phys(const d2p p) {
