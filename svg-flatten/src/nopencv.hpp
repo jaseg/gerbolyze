@@ -65,6 +65,14 @@ namespace gerbolyze {
                 return m_data[y*m_cols + x];
             };
 
+            void set_at(int x, int y, int val) {
+                assert(x >= 0 && y >= 0 && x < m_cols && y < m_rows);
+                assert(m_data != nullptr);
+
+                m_data[y*m_cols + x] = val;
+                cerr << "set_at " << x << " " << y << ": " << val << " -> " << at(x, y) << endl;
+            };
+
             const int32_t &at(int x, int y) const {
                 assert(x >= 0 && y >= 0 && x < m_cols && y < m_rows);
                 assert(m_data != nullptr);
@@ -92,7 +100,7 @@ namespace gerbolyze {
             int m_rows=0, m_cols=0;
         };
 
-        void find_blobs(Image32 img, ContourCallback cb);
+        void find_blobs(Image32 &img, ContourCallback cb);
     }
 }
 

@@ -47,7 +47,7 @@ static Direction flip_direction[8] = {
     D_SE
 };
 
-static void follow(gerbolyze::nopencv::Image32 img, int start_x, int start_y, Direction initial_direction, int nbd, int connectivity, Polygon &poly) {
+static void follow(gerbolyze::nopencv::Image32 &img, int start_x, int start_y, Direction initial_direction, int nbd, int connectivity, Polygon &poly) {
 
     //cerr << "follow " << start_x << " " << start_y << " | dir=" << dir_str[initial_direction] << " nbd=" << nbd << " conn=" << connectivity << endl;
     int dir_inc = (connectivity == 4) ? 2 : 1;
@@ -122,7 +122,7 @@ static void follow(gerbolyze::nopencv::Image32 img, int start_x, int start_y, Di
 }
 
 
-void gerbolyze::nopencv::find_blobs(gerbolyze::nopencv::Image32 img, gerbolyze::nopencv::ContourCallback cb) {
+void gerbolyze::nopencv::find_blobs(gerbolyze::nopencv::Image32 &img, gerbolyze::nopencv::ContourCallback cb) {
     int nbd = 1;
     Polygon poly;
     for (int y=0; y<img.rows(); y++) {

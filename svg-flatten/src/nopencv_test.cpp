@@ -18,6 +18,17 @@ using namespace gerbolyze::nopencv;
 
 char msg[1024];
 
+class TempfileHack {
+public:
+    TempfileHack(const string ext) : m_path { filesystem::temp_directory_path() / (std::tmpnam(nullptr) + ext) } {}
+    ~TempfileHack() { remove(m_path); }
+
+    const char *c_str() { return m_path.c_str(); }
+
+private:
+    filesystem::path m_path;
+};
+
 MU_TEST(test_complex_example_from_paper) {
     int32_t img_data[6*9] = {
         0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -116,38 +127,39 @@ MU_TEST(test_complex_example_from_paper) {
     }
 }
 
-MU_TEST(test_round_trip) {
+static void testdata_roundtrip(const char *fn) {
     int x, y;
-    uint8_t *data = stbi_load("testdata/paper-example.png", &x, &y, nullptr, 1);
+    uint8_t *data = stbi_load(fn, &x, &y, nullptr, 1);
     Image32 ref_img(x, y);
     for (int cy=0; cy<y; cy++) {
         for (int cx=0; cx<x; cx++) {
-            ref_img.at(cx, cy) = data[cy*x + cx];
+            ref_img.at(cx, cy) = data[cy*x + cx] / 255;
         }
     }
     stbi_image_free(data);
     Image32 ref_img_copy(ref_img);
 
-    filesystem::path tmp_svg = { filesystem::temp_directory_path() /= (std::tmpnam(nullptr) + string(".svg")) };
-    filesystem::path tmp_png = { filesystem::temp_directory_path() /= (std::tmpnam(nullptr) + string(".png")) };
+    TempfileHack tmp_svg(".svg");
+    TempfileHack tmp_png(".png");
+
     ofstream svg(tmp_svg.c_str());
 
     svg << "<svg width=\"" << x << "px\" height=\"" << y << "px\" viewBox=\"0 0 "
         << x << " " << y << "\" "
         << "xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">" << endl;
-    svg << "<rect width=\"100%\" height=\"100%\" fill=\"black\">" << endl;
+    svg << "<rect width=\"100%\" height=\"100%\" fill=\"black\"/>" << endl;
 
     gerbolyze::nopencv::find_blobs(ref_img, [&svg](Polygon poly, ContourPolarity pol) {
         mu_assert(poly.size() > 0, "Empty contour returned");
         mu_assert(poly.size() > 2, "Contour has less than three points, no area");
         mu_assert(pol == CP_CONTOUR || pol == CP_HOLE, "Contour has invalid polarity");
 
-        svg << "<path fill=\"" << (pol == CP_HOLE ? "black" : "white") << "\" d=\"";
+        svg << "<path fill=\"" << ((pol == CP_HOLE) ? "black" : "white") << "\" d=\"";
         svg << "M " << poly[0][0] << " " << poly[0][1];
         for (size_t i=1; i<poly.size(); i++) {
             svg << " L " << poly[i][0] << " " << poly[i][1];
         }
-        svg << " Z\">" << endl;
+        svg << " Z\"/>" << endl;
     });
     svg << "</svg>" << endl;
     svg.close();
@@ -155,27 +167,27 @@ MU_TEST(test_round_trip) {
     const char *command_line[] = {"resvg", tmp_svg.c_str(), tmp_png.c_str()};
     struct subprocess_s subprocess;
     int rc = subprocess_create(command_line, subprocess_option_inherit_environment, &subprocess);
-    mu_assert_int_eq(rc, 0);
+    mu_assert_int_eq(0, rc);
 
     int resvg_rc = -1;
     rc = subprocess_join(&subprocess, &resvg_rc);
-    mu_assert_int_eq(rc, 0);
-    mu_assert_int_eq(resvg_rc, 0);
+    mu_assert_int_eq(0, rc);
+    mu_assert_int_eq(0, resvg_rc);
 
     rc = subprocess_destroy(&subprocess);
-    mu_assert_int_eq(rc, 0);
+    mu_assert_int_eq(0, rc);
 
     int out_x, out_y;
     uint8_t *out_data = stbi_load(tmp_png.c_str(), &out_x, &out_y, nullptr, 1);
-    mu_assert_int_eq(out_x, x);
-    mu_assert_int_eq(out_y, y);
+    mu_assert_int_eq(x, out_x);
+    mu_assert_int_eq(y, out_y);
 
     for (int cy=0; cy<y; cy++) {
         for (int cx=0; cx<x; cx++) {
             int actual = out_data[cy*x + cx];
-            int expected = ref_img_copy.at(x, y);
+            int expected = ref_img_copy.at(cx, cy)*255;
             if (actual != expected) {
-                snprintf(msg, sizeof(msg), "Result does not match input @(%d, %d): %d != %d\n", cx, cy, actual, expected);
+                snprintf(msg, sizeof(msg), "%s: Result does not match input @(%d, %d): %d != %d\n", fn, cx, cy, actual, expected);
                 mu_fail(msg);
             }
         }
@@ -183,10 +195,41 @@ MU_TEST(test_round_trip) {
     stbi_image_free(out_data);
 }
 
+MU_TEST(test_round_trip_blank)              { testdata_roundtrip("testdata/blank.png"); }
+MU_TEST(test_round_trip_white)              { testdata_roundtrip("testdata/white.png"); }
+MU_TEST(test_round_trip_blob_border_w)      { testdata_roundtrip("testdata/blob-border-w.png"); }
+MU_TEST(test_round_trip_blobs_borders)      { testdata_roundtrip("testdata/blobs-borders.png"); }
+MU_TEST(test_round_trip_blobs_corners)      { testdata_roundtrip("testdata/blobs-corners.png"); }
+MU_TEST(test_round_trip_blobs_crossing)     { testdata_roundtrip("testdata/blobs-crossing.png"); }
+MU_TEST(test_round_trip_cross)              { testdata_roundtrip("testdata/cross.png"); }
+MU_TEST(test_round_trip_letter_e)           { testdata_roundtrip("testdata/letter-e.png"); }
+MU_TEST(test_round_trip_paper_example)      { testdata_roundtrip("testdata/paper-example.png"); }
+MU_TEST(test_round_trip_paper_example_inv)  { testdata_roundtrip("testdata/paper-example-inv.png"); }
+MU_TEST(test_round_trip_single_px)          { testdata_roundtrip("testdata/single-px.png"); }
+MU_TEST(test_round_trip_single_px_inv)      { testdata_roundtrip("testdata/single-px-inv.png"); }
+MU_TEST(test_round_trip_two_blobs)          { testdata_roundtrip("testdata/two-blobs.png"); }
+MU_TEST(test_round_trip_two_px)             { testdata_roundtrip("testdata/two-px.png"); }
+MU_TEST(test_round_trip_two_px_inv)         { testdata_roundtrip("testdata/two-px-inv.png"); }
+
+
 MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(test_complex_example_from_paper);
-//    MU_RUN_TEST(test_round_trip);
-}
+    MU_RUN_TEST(test_round_trip_blank);
+    MU_RUN_TEST(test_round_trip_white);
+    MU_RUN_TEST(test_round_trip_blob_border_w);
+    MU_RUN_TEST(test_round_trip_blobs_borders);
+    MU_RUN_TEST(test_round_trip_blobs_corners);
+    MU_RUN_TEST(test_round_trip_blobs_crossing);
+    MU_RUN_TEST(test_round_trip_cross);
+    MU_RUN_TEST(test_round_trip_letter_e);
+    MU_RUN_TEST(test_round_trip_paper_example);
+    MU_RUN_TEST(test_round_trip_paper_example_inv);
+    MU_RUN_TEST(test_round_trip_single_px);
+    MU_RUN_TEST(test_round_trip_single_px_inv);
+    MU_RUN_TEST(test_round_trip_two_blobs);
+    MU_RUN_TEST(test_round_trip_two_px);
+    MU_RUN_TEST(test_round_trip_two_px_inv);
+};
 
 int main(int argc, char **argv) {
     (void)argc;

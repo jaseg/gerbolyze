@@ -35,9 +35,11 @@ BASE64_INCLUDES 	?= -I$(UPSTREAM_DIR)/cpp-base64
 ARGAGG_INCLUDES 	?= -I$(UPSTREAM_DIR)/argagg/include/argagg
 CAVC_INCLUDES 		?= -I$(UPSTREAM_DIR)/CavalierContours/include/cavc/
 SUBPROCESS_INCLUDES	?= -I$(UPSTREAM_DIR)/subprocess.h
+MINUNIT_INCLUDES	?= -I$(UPSTREAM_DIR)/minunit
+STB_INCLUDES		?= -isystem$(UPSTREAM_DIR)/stb
 
 SOURCES += $(CLIPPER_SOURCES)
-INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES)
+INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES) $(MINUNIT_INCLUDES) $(STB_INCLUDES)
 
 PKG_CONFIG_DEPS := pugixml
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
@@ -73,6 +75,14 @@ $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	else \
 		$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ -Wl,--start-group $^ -lstdc++fs -Wl,--end-group; \
 	fi
+
+$(BUILDDIR)/nopencv-tests: src/nopencv_test.cpp src/nopencv.cpp
+	@mkdir -p $(dir $@) 
+	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $@ $^
+
+
+.PHONY: tests
+tests: $(BUILDDIR)/nopencv-tests
 
 .PHONY: install
 install:
