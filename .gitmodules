@@ -16,3 +16,9 @@
 [submodule "upstream/subprocess.h"]
 	path = upstream/subprocess.h
 	url = https://github.com/sheredom/subprocess.h
+[submodule "svg-flatten/upstream/minunit"]
+	path = upstream/minunit
+	url = https://github.com/siu/minunit
+[submodule "upstream/stb"]
+	path = upstream/stb
+	url = https://github.com/nothings/stb
