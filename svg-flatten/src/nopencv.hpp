@@ -37,7 +37,7 @@ namespace gerbolyze {
             CP_HOLE
         };
 
-        typedef std::function<void(Polygon, ContourPolarity)> ContourCallback;
+        typedef std::function<void(Polygon_i&, ContourPolarity)> ContourCallback;
 
         class Image32 {
         public:
@@ -101,6 +101,7 @@ namespace gerbolyze {
         };
 
         void find_blobs(Image32 &img, ContourCallback cb);
+        ContourCallback simplify_contours_teh_chin(int kcos, ContourCallback cb);
     }
 }
 

@@ -35,6 +35,9 @@ namespace gerbolyze {
     typedef std::array<double, 2> d2p;
     typedef std::vector<d2p> Polygon;
 
+    typedef std::array<int64_t, 2> i2p;
+    typedef std::vector<i2p> Polygon_i;
+
     class xform2d {
         public:
             xform2d(double xx, double yx, double xy, double yy, double x0=0.0, double y0=0.0) :
