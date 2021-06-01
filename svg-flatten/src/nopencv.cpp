@@ -156,7 +156,7 @@ void gerbolyze::nopencv::find_blobs(gerbolyze::nopencv::Image32 &img, gerbolyze:
 
             } else if (val_xy >= 1 && img.at_default(x+1, y) == 0) { /* hole border starting point */
                 nbd += 1;
-                follow(img, x, y, D_E, nbd, 8, poly);
+                follow(img, x, y, D_E, nbd, 8, poly); /* FIXME should be 4? */
                 cb(poly, CP_HOLE);
                 poly.clear();
             }
@@ -170,7 +170,8 @@ static size_t region_of_support(Polygon_i poly, size_t i) {
     double last_l = 0;
     double last_r = 0;
     size_t k;
-    for (k=0; k<sz/2; k++) {
+    //cerr << "d: ";
+    for (k=1; k<(sz+1)/2; k++) {
         size_t idx1 = (i + k) % sz;
         size_t idx2 = (i + sz - k) % sz;
         double x1 = poly[idx1][0], y1 = poly[idx1][1], x2 = poly[idx2][0], y2 = poly[idx2][1];
@@ -179,17 +180,19 @@ static size_t region_of_support(Polygon_i poly, size_t i) {
          * TODO: Check whether distance-to-line is an ok implementation here, the paper asks for distance to chord.
          */
         double d = ((x2-x1)*(y1-y0) - (x1-x0)*(y2-y1)) / sqrt(pow(x2-x1, 2) + pow(y2-y1, 2));
+        //cerr << d << " ";
         double r = d/l;
 
         bool cond_a = l < last_l;
-        bool cond_b = (d > 0) ? (r < last_r) : (r > last_r);
+        bool cond_b = ((d > 0) && (r < last_r)) || ((d < 0) && (r > last_r));
 
-        if (cond_a || cond_b)
+        if (k > 2 && (cond_a || cond_b))
             break;
 
         last_l = l;
         last_r = r;
     }
+    //cerr << endl;
     k -= 1;
     return k;
 }
@@ -228,7 +231,7 @@ double k_curvature(const Polygon_i &poly, size_t i, size_t k) {
     for (size_t idx = 0; idx < k; idx++) {
         acc += freeman_angle(poly, (i + 2*sz - idx) % sz) - freeman_angle(poly, (i+idx + 1) % sz);
     }
-    return acc / (2*k);
+    return acc / k;
 }
 
 double k_cos(const Polygon_i &poly, size_t i, size_t k) {
@@ -244,15 +247,17 @@ double k_cos(const Polygon_i &poly, size_t i, size_t k) {
     return dp / (sqrt(sq_a)*sqrt(sq_b));
 }
 
-ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(int kcos, ContourCallback cb) {
-    return [&cb, kcos](Polygon_i &poly, ContourPolarity cpol) {
+ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback cb) {
+    return [&cb](Polygon_i &poly, ContourPolarity cpol) {
         size_t sz = poly.size();
         vector<size_t> ros(sz);
         vector<double> sig(sz);
+        vector<double> cur(sz);
         vector<bool> retain(sz);
         for (size_t i=0; i<sz; i++) {
             ros[i] = region_of_support(poly, i);
-            sig[i] = fabs(k_cos(poly, i, kcos));
+            sig[i] = fabs(k_cos(poly, i, ros[i]));
+            cur[i] = k_curvature(poly, i, 1);
             retain[i] = true;
         }
 
@@ -281,9 +286,23 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(int kcos, Contour
         }
         cerr << endl;
 
+        /* Pass 0 (like opencv): Remove points with zero 1-curvature */
+        for (size_t i=0; i<sz; i++) {
+            if (cur[i] == 0) {
+                retain[i] = false;
+                break;
+            }
+        }
+
+        cerr << "pass 0: ";
+        for (size_t i=0; i<sz; i++) {
+            cerr << (retain[i] ? "#" : ".");
+        }
+        cerr << endl;
+
         /* 3a, Pass 1: Non-maxima suppression */
         for (size_t i=0; i<sz; i++) {
-            for (size_t j=0; j<ros[i]/2; j++) {
+            for (size_t j=1; j<ros[i]/2; j++) {
                 if (sig[i] < sig[(i + j) % sz] || sig[i] < sig[(i + sz - j) % sz]) {
                     retain[i] = false;
                     break;
@@ -299,8 +318,10 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(int kcos, Contour
         
         /* 3b, Pass 2: Zero-curvature suppression */
         for (size_t i=0; i<sz; i++) {
-            if (retain[i] && k_cos(poly, i, kcos) == 0) {
-                retain[i] = false;
+            if (retain[i] && ros[i] == 1) {
+                if (sig[i] <= sig[(i + 1) % sz] || sig[i] <= sig[(i + sz - 1) % sz]) {
+                    retain[i] = false;
+                }
             }
         }
 

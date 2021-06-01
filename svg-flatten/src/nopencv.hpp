@@ -101,7 +101,7 @@ namespace gerbolyze {
         };
 
         void find_blobs(Image32 &img, ContourCallback cb);
-        ContourCallback simplify_contours_teh_chin(int kcos, ContourCallback cb);
+        ContourCallback simplify_contours_teh_chin(ContourCallback cb);
     }
 }
 

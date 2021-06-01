@@ -233,7 +233,7 @@ static void chain_approx_test(const char *fn) {
         << "xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">" << endl;
     svg << "<rect width=\"100%\" height=\"100%\" fill=\"black\"/>" << endl;
 
-    gerbolyze::nopencv::find_blobs(ref_img, simplify_contours_teh_chin(2, [&svg](Polygon_i &poly, ContourPolarity pol) {
+    gerbolyze::nopencv::find_blobs(ref_img, simplify_contours_teh_chin([&svg](Polygon_i &poly, ContourPolarity pol) {
         svg << "<path fill=\"" << ((pol == CP_HOLE) ? "black" : "white") << "\" d=\"";
         svg << "M " << poly[0][0] << " " << poly[0][1];
         for (size_t i=1; i<poly.size(); i++) {
