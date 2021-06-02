@@ -245,7 +245,7 @@ static void test_polygon_area(const char *fn) {
     }
 
     double pos_sum = 0.0;
-    double neg_sum = black_px_count;
+    double neg_sum = ref_img.size();
     gerbolyze::nopencv::find_blobs(ref_img, [&pos_sum, &neg_sum](Polygon_i& poly, ContourPolarity pol) {
             double area = polygon_area(poly);
             //cerr << endl << fn << ": " << area << " " << pos_sum << " / " << neg_sum << " -- " << white_px_count << " / " << black_px_count << " GOT: " << poly.size() << " w/ " << pol << endl;
