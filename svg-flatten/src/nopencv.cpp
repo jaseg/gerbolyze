@@ -427,3 +427,14 @@ bool gerbolyze::nopencv::Image32::stb_to_internal(uint8_t *data) {
     stbi_image_free(data);
     return true;
 }
+
+double gerbolyze::nopencv::polygon_area(Polygon_i &poly) {
+    double acc = 0;
+    size_t prev = poly.size() - 1;
+    for (size_t cur=0; cur<poly.size(); cur++) {
+        acc += (poly[prev][0] + poly[cur][0]) * (poly[prev][1] - poly[cur][1]);
+        prev = cur;
+    }
+    return acc / 2;
+}
+

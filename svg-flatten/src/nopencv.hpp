@@ -102,6 +102,8 @@ namespace gerbolyze {
 
         void find_blobs(Image32 &img, ContourCallback cb);
         ContourCallback simplify_contours_teh_chin(ContourCallback cb);
+
+        double polygon_area(Polygon_i &poly);
     }
 }
 

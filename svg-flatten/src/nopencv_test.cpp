@@ -226,6 +226,59 @@ MU_TEST(test_round_trip_two_blobs)          { testdata_roundtrip("testdata/two-b
 MU_TEST(test_round_trip_two_px)             { testdata_roundtrip("testdata/two-px.png"); }
 MU_TEST(test_round_trip_two_px_inv)         { testdata_roundtrip("testdata/two-px-inv.png"); }
 
+static void test_polygon_area(const char *fn) {
+    cerr << endl << "poly area test " << fn << endl;
+    Image32 ref_img;
+    mu_assert(ref_img.load(fn), "Input image failed to load");
+    ref_img.binarize();
+
+    int white_px_count = 0;
+    int black_px_count = 0;
+    for (int y=0; y<ref_img.rows(); y++) {
+        for (int x=0; x<ref_img.cols(); x++) {
+            if (ref_img.at(x, y)) {
+                white_px_count += 1;
+            } else {
+                black_px_count += 1;
+            }
+        }
+    }
+
+    double pos_sum = 0.0;
+    double neg_sum = 0.0;
+    gerbolyze::nopencv::find_blobs(ref_img, [fn, white_px_count, black_px_count, &pos_sum, &neg_sum](Polygon_i& poly, ContourPolarity pol) {
+            double area = polygon_area(poly);
+            cerr << endl << fn << ": " << area << pos_sum << " / " << neg_sum << " -- " << white_px_count << " / " << black_px_count << endl;
+            mu_assert(fabs(area) > 0.99, "Polygon smaller than a single pixel");
+            mu_assert((pol == CP_CONTOUR) == (area >= 0), "Polygon area has incorrect sign");
+
+            if (area > 0) {
+                pos_sum += area;
+            } else {
+                neg_sum -= area;
+            }
+        });
+
+    mu_assert(pos_sum - white_px_count < 0.01, "Calculated area outside tolerance");
+    mu_assert(neg_sum - black_px_count < 0.01, "Calculated area outside tolerance");
+    cerr << endl << "poly area test " << fn << " done" << endl;
+}
+
+MU_TEST(test_polygon_area_blank)              { test_polygon_area("testdata/blank.png"); }
+MU_TEST(test_polygon_area_white)              { test_polygon_area("testdata/white.png"); }
+MU_TEST(test_polygon_area_blob_border_w)      { test_polygon_area("testdata/blob-border-w.png"); }
+MU_TEST(test_polygon_area_blobs_borders)      { test_polygon_area("testdata/blobs-borders.png"); }
+MU_TEST(test_polygon_area_blobs_corners)      { test_polygon_area("testdata/blobs-corners.png"); }
+MU_TEST(test_polygon_area_blobs_crossing)     { test_polygon_area("testdata/blobs-crossing.png"); }
+MU_TEST(test_polygon_area_cross)              { test_polygon_area("testdata/cross.png"); }
+MU_TEST(test_polygon_area_letter_e)           { test_polygon_area("testdata/letter-e.png"); }
+MU_TEST(test_polygon_area_paper_example)      { test_polygon_area("testdata/paper-example.png"); }
+MU_TEST(test_polygon_area_paper_example_inv)  { test_polygon_area("testdata/paper-example-inv.png"); }
+MU_TEST(test_polygon_area_single_px)          { test_polygon_area("testdata/single-px.png"); }
+MU_TEST(test_polygon_area_single_px_inv)      { test_polygon_area("testdata/single-px-inv.png"); }
+MU_TEST(test_polygon_area_two_blobs)          { test_polygon_area("testdata/two-blobs.png"); }
+MU_TEST(test_polygon_area_two_px)             { test_polygon_area("testdata/two-px.png"); }
+MU_TEST(test_polygon_area_two_px_inv)         { test_polygon_area("testdata/two-px-inv.png"); }
 
 static void chain_approx_test(const char *fn) {
     //cout << endl << "Testing \"" << fn << "\"" << endl;
@@ -293,6 +346,7 @@ MU_TEST(chain_approx_test_two_px_inv)         { chain_approx_test("testdata/two-
 
 
 MU_TEST_SUITE(nopencv_contours_suite) {
+    /*
     MU_RUN_TEST(test_complex_example_from_paper);
     MU_RUN_TEST(test_round_trip_blank);
     MU_RUN_TEST(test_round_trip_white);
@@ -325,6 +379,22 @@ MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(chain_approx_test_two_blobs);
     MU_RUN_TEST(chain_approx_test_two_px);
     MU_RUN_TEST(chain_approx_test_two_px_inv);
+    */
+    MU_RUN_TEST(test_polygon_area_blank);
+    MU_RUN_TEST(test_polygon_area_white);
+    MU_RUN_TEST(test_polygon_area_blob_border_w);
+    MU_RUN_TEST(test_polygon_area_blobs_borders);
+    MU_RUN_TEST(test_polygon_area_blobs_corners);
+    MU_RUN_TEST(test_polygon_area_blobs_crossing);
+    MU_RUN_TEST(test_polygon_area_cross);
+    MU_RUN_TEST(test_polygon_area_letter_e);
+    MU_RUN_TEST(test_polygon_area_paper_example);
+    MU_RUN_TEST(test_polygon_area_paper_example_inv);
+    MU_RUN_TEST(test_polygon_area_single_px);
+    MU_RUN_TEST(test_polygon_area_single_px_inv);
+    MU_RUN_TEST(test_polygon_area_two_blobs);
+    MU_RUN_TEST(test_polygon_area_two_px);
+    MU_RUN_TEST(test_polygon_area_two_px_inv);
 };
 
 int main(int argc, char **argv) {
