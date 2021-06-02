@@ -28,7 +28,9 @@ SOURCES := src/svg_color.cpp \
 	src/nopencv.cpp \
 	$(UPSTREAM_DIR)/cpp-base64/base64.cpp
 
-CLIPPER_SOURCES ?= $(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp
+PUGIXML_SOURCES 	?= $(UPSTREAM_DIR)/pugixml/src/pugixml.cpp
+PUGIXML_INCLUDES 	?= -I$(UPSTREAM_DIR)/pugixml/src
+CLIPPER_SOURCES 	?= $(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp
 CLIPPER_INCLUDES 	?= -I$(UPSTREAM_DIR)/clipper-6.4.2/cpp
 VORONOI_INCLUDES 	?= -I$(UPSTREAM_DIR)/voronoi/src
 POISSON_INCLUDES 	?= -I$(UPSTREAM_DIR)/poisson-disk-sampling/thinks/poisson_disk_sampling/
@@ -42,12 +44,17 @@ STB_INCLUDES		?= -isystem$(UPSTREAM_DIR)/stb
 SOURCES += $(CLIPPER_SOURCES)
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES) $(MINUNIT_INCLUDES) $(STB_INCLUDES)
 
-PKG_CONFIG_DEPS := pugixml
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
-CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKG_CONFIG_DEPS)) 
-
 LDFLAGS := -lm -lc -lstdc++
-LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PKG_CONFIG_DEPS))
+
+PKG_CONFIG_DEPS := 
+ifdef USE_SYSTEM_PUGIXML
+	CXXFLAGS += $(shell $(PKG_CONFIG) --cflags pugixml)
+	LDFLAGS += $(shell $(PKG_CONFIG) --libs pugixml)
+else
+	SOURCES += $(PUGIXML_SOURCES)
+	INCLUDES += $(PUGIXML_INCLUDES)
+endif
 
 TARGET := svg-flatten
 
