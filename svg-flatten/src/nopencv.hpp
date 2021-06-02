@@ -39,30 +39,37 @@ namespace gerbolyze {
 
         typedef std::function<void(Polygon_i&, ContourPolarity)> ContourCallback;
 
-        class Image32 {
+        template<typename T> class Image {
         public:
-            Image32() {}
-            Image32(int size_x, int size_y, const int32_t *data=nullptr);
-            Image32(const Image32 &other) : Image32(other.cols(), other.rows(), other.ptr()) {}
+            Image() {}
+            Image(int w, int h, const T *data=nullptr);
+            Image(const Image<T> &other) : Image<T>(other.cols(), other.rows(), other.ptr()) {}
+            template<typename U> Image(const Image<U> &other) : Image<T>(other.cols(), other.rows()) {
+                for (size_t y=0; y<m_rows; y++) {
+                    for (size_t x=0; x<m_cols; x++) {
+                        at(x, y) = other.at(x, y);
+                    }
+                }
+            }
 
-            ~Image32() {
+            ~Image() {
                 if (m_data) {
                     delete m_data;
                 }
             }
             
             bool load(const char *filename);
-            bool load_memory(uint8_t *buf, size_t len);
+            bool load_memory(const void *buf, size_t len);
             void binarize();
 
-            int32_t &at(int x, int y) {
+            T &at(int x, int y) {
                 assert(x >= 0 && y >= 0 && x < m_cols && y < m_rows);
                 assert(m_data != nullptr);
 
                 return m_data[y*m_cols + x];
             };
 
-            void set_at(int x, int y, int val) {
+            void set_at(int x, int y, T val) {
                 assert(x >= 0 && y >= 0 && x < m_cols && y < m_rows);
                 assert(m_data != nullptr);
 
@@ -70,14 +77,14 @@ namespace gerbolyze {
                 cerr << "set_at " << x << " " << y << ": " << val << " -> " << at(x, y) << endl;
             };
 
-            const int32_t &at(int x, int y) const {
+            const T &at(int x, int y) const {
                 assert(x >= 0 && y >= 0 && x < m_cols && y < m_rows);
                 assert(m_data != nullptr);
 
                 return m_data[y*m_cols + x];
             };
 
-            int32_t at_default(int x, int y, int32_t default_value=0) const {
+            T at_default(int x, int y, T default_value=0) const {
                 assert(m_data != nullptr);
 
                 if (x >= 0 && y >= 0 && x < m_cols && y < m_rows) {
@@ -88,19 +95,26 @@ namespace gerbolyze {
                 }
             };
 
+            void blur(int radius);
+            void resize(int new_w, int new_h);
+
             int rows() const { return m_rows; }
             int cols() const { return m_cols; }
             int size() const { return m_cols*m_rows; }
-            const int32_t *ptr() const { return m_data; }
+            const T *ptr() const { return m_data; }
 
         private:
             bool stb_to_internal(uint8_t *data);
 
-            int32_t *m_data = nullptr;
+            T *m_data = nullptr;
             int m_rows=0, m_cols=0;
         };
 
-        void find_blobs(Image32 &img, ContourCallback cb);
+        typedef Image<uint8_t> Image8;
+        typedef Image<int32_t> Image32;
+        typedef Image<float> Image32f;
+
+        void find_contours(Image32 &img, ContourCallback cb);
         ContourCallback simplify_contours_teh_chin(ContourCallback cb);
 
         double polygon_area(Polygon_i &poly);

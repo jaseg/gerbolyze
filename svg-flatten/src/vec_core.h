@@ -50,7 +50,6 @@ namespace gerbolyze {
     };
 
     void parse_img_meta(const pugi::xml_node &node, double &x, double &y, double &width, double &height);
-    std::string read_img_data(const pugi::xml_node &node);
     void draw_bg_rect(xform2d &mat, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink);
     void handle_aspect_ratio(std::string spec, double &scale_x, double &scale_y, double &off_x, double &off_y, double cols, double rows);
 }

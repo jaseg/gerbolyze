@@ -97,7 +97,7 @@ MU_TEST(test_complex_example_from_paper) {
     const ContourPolarity expected_polarities[3] = {CP_CONTOUR, CP_HOLE, CP_HOLE};
     
     int invocation_count = 0;
-    gerbolyze::nopencv::find_blobs(test_img, [&invocation_count, &expected_polarities, &expected_polys](Polygon_i &poly, ContourPolarity pol) {
+    gerbolyze::nopencv::find_contours(test_img, [&invocation_count, &expected_polarities, &expected_polys](Polygon_i &poly, ContourPolarity pol) {
             invocation_count += 1;
             mu_assert((invocation_count <= 3), "Too many contours returned"); 
 
@@ -188,7 +188,7 @@ static void testdata_roundtrip(const char *fn) {
     TempfileHack tmp_png(".png");
 
     SVGPolyRenderer ctx(tmp_svg.c_str(), ref_img.cols(), ref_img.rows());
-    gerbolyze::nopencv::find_blobs(ref_img, ctx.callback());
+    gerbolyze::nopencv::find_contours(ref_img, ctx.callback());
     ctx.close();
 
     mu_assert_int_eq(0, render_svg(tmp_svg.c_str(), tmp_png.c_str()));
@@ -246,7 +246,7 @@ static void test_polygon_area(const char *fn) {
 
     double pos_sum = 0.0;
     double neg_sum = ref_img.size();
-    gerbolyze::nopencv::find_blobs(ref_img, [&pos_sum, &neg_sum](Polygon_i& poly, ContourPolarity pol) {
+    gerbolyze::nopencv::find_contours(ref_img, [&pos_sum, &neg_sum](Polygon_i& poly, ContourPolarity pol) {
             double area = polygon_area(poly);
             //cerr << endl << fn << ": " << area << " " << pos_sum << " / " << neg_sum << " -- " << white_px_count << " / " << black_px_count << " GOT: " << poly.size() << " w/ " << pol << endl;
             mu_assert(fabs(area) > 0.99, "Polygon smaller than a single pixel");
@@ -288,7 +288,7 @@ static void chain_approx_test(const char *fn) {
     TempfileHack tmp_png(".png");
 
     SVGPolyRenderer ctx(tmp_svg.c_str(), ref_img.cols(), ref_img.rows());
-    gerbolyze::nopencv::find_blobs(ref_img, simplify_contours_teh_chin(ctx.callback()));
+    gerbolyze::nopencv::find_contours(ref_img, simplify_contours_teh_chin(ctx.callback()));
     ctx.close();
 
     mu_assert_int_eq(0, render_svg(tmp_svg.c_str(), tmp_png.c_str()));
@@ -344,6 +344,7 @@ MU_TEST(chain_approx_test_two_px_inv)         { chain_approx_test("testdata/two-
 
 MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(test_complex_example_from_paper);
+
     MU_RUN_TEST(test_round_trip_blank);
     MU_RUN_TEST(test_round_trip_white);
     MU_RUN_TEST(test_round_trip_blob_border_w);
@@ -359,6 +360,7 @@ MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(test_round_trip_two_blobs);
     MU_RUN_TEST(test_round_trip_two_px);
     MU_RUN_TEST(test_round_trip_two_px_inv);
+
     MU_RUN_TEST(chain_approx_test_chromosome);
     MU_RUN_TEST(chain_approx_test_blank);
     MU_RUN_TEST(chain_approx_test_white);
@@ -375,6 +377,7 @@ MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(chain_approx_test_two_blobs);
     MU_RUN_TEST(chain_approx_test_two_px);
     MU_RUN_TEST(chain_approx_test_two_px_inv);
+
     MU_RUN_TEST(test_polygon_area_blank);
     MU_RUN_TEST(test_polygon_area_white);
     MU_RUN_TEST(test_polygon_area_blob_border_w);

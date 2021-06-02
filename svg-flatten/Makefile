@@ -25,6 +25,7 @@ SOURCES := src/svg_color.cpp \
 	src/out_dilater.cpp \
 	src/lambda_sink.cpp \
 	src/flatten.cpp \
+	src/nopencv.cpp \
 	$(UPSTREAM_DIR)/cpp-base64/base64.cpp
 
 CLIPPER_SOURCES ?= $(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp
@@ -44,14 +45,9 @@ INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_IN
 PKG_CONFIG_DEPS := pugixml
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
 CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(PKG_CONFIG_DEPS)) 
-# hack for stone age opencv in debian stable
-CXXFLAGS += $(shell $(PKG_CONFIG) --cflags opencv4 2> /dev/null || $(PKG_CONFIG) --cflags opencv 2>/dev/null) 
 
 LDFLAGS := -lm -lc -lstdc++
 LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PKG_CONFIG_DEPS))
-# debian hack. see above.
-OPENCV_LDFLAGS := $(shell $(PKG_CONFIG) --libs opencv4 2> /dev/null || $(PKG_CONFIG) --libs opencv 2>/dev/null) 
-LDFLAGS += $(shell echo $(OPENCV_LDFLAGS) | sed 's/-l\S\+ //g') -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 
 TARGET := svg-flatten
 
@@ -61,8 +57,6 @@ all: $(BUILDDIR)/$(TARGET)
 check-deps:
 	@echo
 	@$(PKG_CONFIG) --cflags --libs pugixml >/dev/null
-	# debian hack. see above.
-	@$(PKG_CONFIG) --cflags --libs opencv4 >/dev/null ||$(PKG_CONFIG) --cflags --libs opencv >/dev/null 
 
 $(BUILDDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@) 

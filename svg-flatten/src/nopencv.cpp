@@ -2,10 +2,20 @@
 #include <iostream>
 #include <iomanip>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 #include "nopencv.hpp"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include <stb_image_resize.h>
+
+#define IIR_GAUSS_BLUR_IMPLEMENTATION
+#include "iir_gauss_blur.h"
+
+template void iir_gauss_blur<uint8_t>(unsigned int width, unsigned int height, unsigned char components, uint8_t* image, float sigma);
+template void iir_gauss_blur<uint32_t> (unsigned int width, unsigned int height, unsigned char components, uint32_t* image, float sigma);
+template void iir_gauss_blur<float> (unsigned int width, unsigned int height, unsigned char components, float* image, float sigma);
 
 using namespace gerbolyze;
 using namespace gerbolyze::nopencv;
@@ -138,7 +148,7 @@ static void follow(gerbolyze::nopencv::Image32 &img, int start_x, int start_y, D
 }
 
 
-void gerbolyze::nopencv::find_blobs(gerbolyze::nopencv::Image32 &img, gerbolyze::nopencv::ContourCallback cb) {
+void gerbolyze::nopencv::find_contours(gerbolyze::nopencv::Image32 &img, gerbolyze::nopencv::ContourCallback cb) {
     /* Implementation of the hierarchical contour finding algorithm from Suzuki and Abe, 1983: Topological Structural
      * Analysis of Digitized Binary Images by Border Following
      *
@@ -387,57 +397,6 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
     };
 }
 
-
-gerbolyze::nopencv::Image32::Image32(int size_x, int size_y, const int32_t *data) {
-    assert(size_x > 0 && size_x < 100000);
-    assert(size_y > 0 && size_y < 100000);
-    m_data = new int32_t[size_x * size_y] { 0 };
-    m_rows = size_y;
-    m_cols = size_x;
-    if (data != nullptr) {
-        memcpy(m_data, data, sizeof(int32_t) * size_x * size_y);
-    }
-}
-
-bool gerbolyze::nopencv::Image32::load(const char *filename) {
-    return stb_to_internal(stbi_load(filename, &m_cols, &m_rows, nullptr, 1));
-}
-
-bool gerbolyze::nopencv::Image32::load_memory(uint8_t *buf, size_t len) {
-    return stb_to_internal(stbi_load_from_memory(buf, len, &m_cols, &m_rows, nullptr, 1));
-}
-
-void gerbolyze::nopencv::Image32::binarize() {
-    assert(m_data != nullptr);
-    assert(m_rows > 0 && m_cols > 0);
-
-    for (int y=0; y<m_rows; y++) {
-        for (int x=0; x<m_cols; x++) {
-            m_data[y*m_cols + x] = m_data[y*m_cols + x] > 0;
-        }
-    }
-}
-
-bool gerbolyze::nopencv::Image32::stb_to_internal(uint8_t *data) {
-    if (data == nullptr)
-        return false;
-
-    if (m_rows < 0 || m_rows > 100000)
-        return false;
-    if (m_cols < 0 || m_cols > 100000)
-        return false;
-
-    m_data = new int32_t[size()] { 0 };
-    for (int y=0; y<m_rows; y++) {
-        for (int x=0; x<m_cols; x++) {
-            m_data[y*m_cols + x] = data[y*m_cols + x];
-        }
-    }
-
-    stbi_image_free(data);
-    return true;
-}
-
 double gerbolyze::nopencv::polygon_area(Polygon_i &poly) {
     double acc = 0;
     size_t prev = poly.size() - 1;
@@ -448,3 +407,105 @@ double gerbolyze::nopencv::polygon_area(Polygon_i &poly) {
     return acc / 2;
 }
 
+template<typename T>
+gerbolyze::nopencv::Image<T>::Image(int size_x, int size_y, const T *data) {
+    assert(size_x > 0 && size_x < 100000);
+    assert(size_y > 0 && size_y < 100000);
+    m_data = new T[size_x * size_y] { 0 };
+    m_rows = size_y;
+    m_cols = size_x;
+    if (data != nullptr) {
+        memcpy(m_data, data, sizeof(T) * size_x * size_y);
+    }
+}
+
+template<typename T>
+bool gerbolyze::nopencv::Image<T>::load(const char *filename) {
+    return stb_to_internal(stbi_load(filename, &m_cols, &m_rows, nullptr, 1));
+}
+
+template<typename T>
+bool gerbolyze::nopencv::Image<T>::load_memory(const void *buf, size_t len) {
+    return stb_to_internal(stbi_load_from_memory(reinterpret_cast<const uint8_t *>(buf), len, &m_cols, &m_rows, nullptr, 1));
+}
+
+template<typename T>
+void gerbolyze::nopencv::Image<T>::binarize() {
+    assert(m_data != nullptr);
+    assert(m_rows > 0 && m_cols > 0);
+
+    for (int y=0; y<m_rows; y++) {
+        for (int x=0; x<m_cols; x++) {
+            m_data[y*m_cols + x] = m_data[y*m_cols + x] > 0;
+        }
+    }
+}
+
+template<typename T>
+bool gerbolyze::nopencv::Image<T>::stb_to_internal(uint8_t *data) {
+    if (data == nullptr)
+        return false;
+
+    if (m_rows < 0 || m_rows > 100000)
+        return false;
+    if (m_cols < 0 || m_cols > 100000)
+        return false;
+
+    m_data = new T[size()] { 0 };
+    for (int y=0; y<m_rows; y++) {
+        for (int x=0; x<m_cols; x++) {
+            m_data[y*m_cols + x] = data[y*m_cols + x];
+        }
+    }
+
+    stbi_image_free(data);
+    return true;
+}
+
+template<typename T>
+void gerbolyze::nopencv::Image<T>::blur(int radius) {
+    iir_gauss_blur(m_cols, m_rows, 1, m_data, radius/2.0);
+}
+
+template<>
+void gerbolyze::nopencv::Image<float>::resize(int new_w, int new_h) {
+    float *old_data = m_data;
+    m_data = new float[new_w * new_h];
+    stbir_resize_float(old_data, m_cols, m_rows, 0,
+                        m_data, new_w, new_h, 0,
+                        1);
+    m_cols = new_w;
+    m_rows = new_h;
+}
+
+template<>
+void gerbolyze::nopencv::Image<uint8_t>::resize(int new_w, int new_h) {
+    uint8_t *old_data = m_data;
+    m_data = new uint8_t[new_w * new_h];
+    stbir_resize_uint8(old_data, m_cols, m_rows, 0,
+                        m_data, new_w, new_h, 0,
+                        1);
+    m_cols = new_w;
+    m_rows = new_h;
+}
+
+template gerbolyze::nopencv::Image<int32_t>::Image(int size_x, int size_y, const int32_t *data);
+template bool gerbolyze::nopencv::Image<int32_t>::load(const char *filename);
+template bool gerbolyze::nopencv::Image<int32_t>::load_memory(const void *buf, size_t len);
+template void gerbolyze::nopencv::Image<int32_t>::binarize();
+template bool gerbolyze::nopencv::Image<int32_t>::stb_to_internal(uint8_t *data);
+template void gerbolyze::nopencv::Image<int32_t>::blur(int radius);
+
+template gerbolyze::nopencv::Image<uint8_t>::Image(int size_x, int size_y, const uint8_t *data);
+template bool gerbolyze::nopencv::Image<uint8_t>::load(const char *filename);
+template bool gerbolyze::nopencv::Image<uint8_t>::load_memory(const void *buf, size_t len);
+template void gerbolyze::nopencv::Image<uint8_t>::binarize();
+template bool gerbolyze::nopencv::Image<uint8_t>::stb_to_internal(uint8_t *data);
+template void gerbolyze::nopencv::Image<uint8_t>::blur(int radius);
+
+template gerbolyze::nopencv::Image<float>::Image(int size_x, int size_y, const float *data);
+template bool gerbolyze::nopencv::Image<float>::load(const char *filename);
+template bool gerbolyze::nopencv::Image<float>::load_memory(const void *buf, size_t len);
+template void gerbolyze::nopencv::Image<float>::binarize();
+template bool gerbolyze::nopencv::Image<float>::stb_to_internal(uint8_t *data);
+template void gerbolyze::nopencv::Image<float>::blur(int radius);

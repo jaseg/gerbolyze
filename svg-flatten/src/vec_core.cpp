@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <vector>
 #include <regex>
-#include <opencv2/opencv.hpp>
+#include "nopencv.hpp"
 #include "svg_import_util.h"
 #include "vec_core.h"
 #include "svg_import_defs.h"
@@ -78,27 +78,18 @@ void gerbolyze::parse_img_meta(const pugi::xml_node &node, double &x, double &y,
     cerr << "image elem: w="<<width<<", h="<<height<<endl;
 }
 
-string gerbolyze::read_img_data(const pugi::xml_node &node) {
+template<typename T> nopencv::Image<T> *img_from_node(const pugi::xml_node &node) {
     /* Read image from data:base64... URL */
     string img_data = parse_data_iri(node.attribute("xlink:href").value());
     if (img_data.empty()) {
         cerr << "Warning: Empty or invalid image element with id \"" << node.attribute("id").value() << "\"" << endl;
-        return "";
+        return nullptr;
     }
-    return img_data;
-}
 
-cv::Mat read_img_opencv(const pugi::xml_node &node) {
-    string img_data = read_img_data(node);
-
-    /* slightly annoying round-trip through the std:: and cv:: APIs */
-    vector<unsigned char> img_vec(img_data.begin(), img_data.end());
-    cv::Mat data_mat(img_vec, true);
-    cv::Mat img = cv::imdecode(data_mat, cv::ImreadModes::IMREAD_GRAYSCALE | cv::ImreadModes::IMREAD_ANYDEPTH);
-    data_mat.release();
-
-    if (img.empty()) {
+    auto *img = new nopencv::Image<T>();
+    if (!img->load_memory(img_data.c_str(), img_data.size())) {
         cerr << "Warning: Could not decode content of image element with id \"" << node.attribute("id").value() << "\"" << endl;
+        return nullptr;
     }
 
     return img;
@@ -164,8 +155,8 @@ void gerbolyze::draw_bg_rect(xform2d &mat, double width, double height, ClipperL
 void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px) {
     double x, y, width, height;
     parse_img_meta(node, x, y, width, height);
-    cv::Mat img = read_img_opencv(node);
-    if (img.empty())
+    nopencv::Image32f *img = img_from_node<float>(node);
+    if (img == nullptr)
         return;
 
     /* Set up target transform using SVG transform and x/y attributes */
@@ -173,8 +164,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
     local_xf.translate(x, y);
     local_xf.transform(xform2d(node.attribute("transform").value()));
 
-    double orig_rows = img.rows;
-    double orig_cols = img.cols;
+    double orig_rows = img->rows();
+    double orig_cols = img->cols();
     double scale_x = (double)width / orig_cols;
     double scale_y = (double)height / orig_rows;
     double off_x = 0;
@@ -206,19 +197,15 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
     double px_h = height / min_feature_size_px * scale_featuresize_factor;
 
     /* Scale intermediate image (step 1.2) to have <scale_featuresize_factor> pixels per min_feature_size. */ 
-    cv::Mat scaled(cv::Size{(int)round(px_w), (int)round(px_h)}, img.type());
-    cv::resize(img, scaled, scaled.size(), 0, 0);
-    cerr << "scaled " << img.cols << ", " << img.rows << " -> " << scaled.cols << ", " << scaled.rows << endl;
-    img.release();
+    cerr << "scaled " << img->cols() << ", " << img->rows() << " -> " << ((int)round(px_w)) << ", " << ((int)round(px_h)) << endl;
+    img->resize((int)round(px_w), (int)round(px_h));
 
     /* Blur image with a kernel larger than our minimum feature size to avoid aliasing. */
-    cv::Mat blurred(scaled.size(), scaled.type());
-    int blur_size = (int)ceil(fmax(scaled.cols / width, scaled.rows / height) * center_distance);
+    int blur_size = (int)ceil(fmax(img->cols() / width, img->rows() / height) * center_distance);
     if (blur_size%2 == 0)
         blur_size += 1;
     cerr << "blur size " << blur_size << endl;
-    cv::GaussianBlur(scaled, blurred, {blur_size, blur_size}, 0, 0);
-    scaled.release();
+    img->blur(blur_size);
     
     /* Calculate voronoi diagram for the grid generated above. */
     jcv_diagram diagram;
@@ -247,9 +234,9 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
     for (int i=0; i<diagram.numsites; i++) {
         const jcv_point center = sites[i].p;
 
-        double pxd = (double)blurred.at<unsigned char>(
-                (int)round(center.y / (scale_y * orig_rows / blurred.rows)),
-                (int)round(center.x / (scale_x * orig_cols / blurred.cols))) / 255.0; 
+        double pxd = img->at(
+                (int)round(center.y / (scale_y * orig_rows / img->rows())),
+                (int)round(center.x / (scale_x * orig_cols / img->cols()))) / 255.0; 
         /* FIXME: This is a workaround for a memory corruption bug that happens with the square-grid setting. When using
          * square-grid on a fairly small test image, sometimes sites[i].index will be out of bounds here.
          */
@@ -359,9 +346,9 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
         }
     }
 
-    blurred.release();
     jcv_diagram_free( &diagram );
     delete grid_centers;
+    delete img;
 }
 
 void gerbolyze::handle_aspect_ratio(string spec, double &scale_x, double &scale_y, double &off_x, double &off_y, double cols, double rows) {
@@ -423,8 +410,8 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
     (void) min_feature_size_px; /* unused by this vectorizer */
     double x, y, width, height;
     parse_img_meta(node, x, y, width, height);
-    cv::Mat img = read_img_opencv(node);
-    if (img.empty())
+    nopencv::Image32 *img = img_from_node<int32_t>(node);
+    if (img == nullptr)
         return;
 
     /* Set up target transform using SVG transform and x/y attributes */
@@ -432,69 +419,53 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
     local_xf.transform(xform2d(node.attribute("transform").value()));
     local_xf.translate(x, y);
 
-    double scale_x = (double)width / (double)img.cols;
-    double scale_y = (double)height / (double)img.rows;
+    double scale_x = (double)width / (double)img->cols();
+    double scale_y = (double)height / (double)img->rows();
     double off_x = 0;
     double off_y = 0;
     handle_aspect_ratio(node.attribute("preserveAspectRatio").value(),
-            scale_x, scale_y, off_x, off_y, img.cols, img.rows);
+            scale_x, scale_y, off_x, off_y, img->cols(), img->rows());
 
     draw_bg_rect(local_xf, width, height, clip_path, sink);
 
-    vector<vector<cv::Point>> contours;
-    vector<cv::Vec4i> hierarchy;
-    cv::findContours(img, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_TC89_KCOS);
+    nopencv::find_contours(*img, [&sink, &local_xf, &clip_path, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
+        sink << ((pol == nopencv::CP_CONTOUR) ? GRB_POL_DARK : GRB_POL_CLEAR);
 
-    queue<pair<size_t, bool>> child_stack;
-    child_stack.push({ 0, true });
+        bool is_clockwise = nopencv::polygon_area(poly) > 0;
+        if (!is_clockwise)
+            std::reverse(poly.begin(), poly.end());
 
-    while (!child_stack.empty()) {
-        bool dark = child_stack.front().second;
-        for (int i=child_stack.front().first; i>=0; i = hierarchy[i][0]) {
-            if (hierarchy[i][2] >= 0) {
-                child_stack.push({ hierarchy[i][2], !dark });
-            }
-
-            sink << (dark ? GRB_POL_DARK : GRB_POL_CLEAR);
-
-            bool is_clockwise = cv::contourArea(contours[i], true) > 0;
-            if (!is_clockwise)
-                std::reverse(contours[i].begin(), contours[i].end());
-
-            ClipperLib::Path out;
-            for (const auto &p : contours[i]) {
-                d2p q = local_xf.doc2phys(d2p{
-                    off_x + (double)p.x * scale_x,
-                    off_y + (double)p.y * scale_y
-                });
-                out.push_back({
-                        (ClipperLib::cInt)round(q[0] * clipper_scale),
-                        (ClipperLib::cInt)round(q[1] * clipper_scale)
-                });
-            }
-
-            ClipperLib::Clipper c;
-            c.AddPath(out, ClipperLib::ptSubject, /* closed */ true);
-            if (!clip_path.empty()) {
-                c.AddPaths(clip_path, ClipperLib::ptClip, /* closed */ true);
-            }
-            c.StrictlySimple(true);
-            ClipperLib::Paths polys;
-            c.Execute(ClipperLib::ctIntersection, polys, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
-
-            /* Draw into gerber. */
-            for (const auto &poly : polys) {
-                vector<array<double, 2>> out;
-                for (const auto &p : poly)
-                    out.push_back(std::array<double, 2>{
-                            ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
-                            });
-                sink << out;
-            }
+        ClipperLib::Path out;
+        for (const auto &p : poly) {
+            d2p q = local_xf.doc2phys(d2p{
+                off_x + (double)p[0] * scale_x,
+                off_y + (double)p[1] * scale_y
+            });
+            out.push_back({
+                    (ClipperLib::cInt)round(q[0] * clipper_scale),
+                    (ClipperLib::cInt)round(q[1] * clipper_scale)
+            });
         }
 
-        child_stack.pop();
-    }
+        ClipperLib::Clipper c;
+        c.AddPath(out, ClipperLib::ptSubject, /* closed */ true);
+        if (!clip_path.empty()) {
+            c.AddPaths(clip_path, ClipperLib::ptClip, /* closed */ true);
+        }
+        c.StrictlySimple(true);
+        ClipperLib::Paths polys;
+        c.Execute(ClipperLib::ctIntersection, polys, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
+
+        /* Draw into gerber. */
+        for (const auto &poly : polys) {
+            vector<array<double, 2>> out;
+            for (const auto &p : poly)
+                out.push_back(std::array<double, 2>{
+                        ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
+                        });
+            sink << out;
+        }
+    });
 }
 
 gerbolyze::VectorizerSelectorizer::VectorizerSelectorizer(const string default_vectorizer, const string defs)
