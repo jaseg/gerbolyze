@@ -10,6 +10,8 @@
 using namespace gerbolyze;
 using namespace gerbolyze::nopencv;
 
+static constexpr bool debug = false;
+
 /* directions:
  *        0
  *   7         1
@@ -33,7 +35,7 @@ enum Direction {
     D_NW
 };
 
-//const char * const dir_str[8] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+const char * const dir_str[8] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
 
 static struct {
     int x;
@@ -53,7 +55,10 @@ static Direction flip_direction[8] = {
 
 static void follow(gerbolyze::nopencv::Image32 &img, int start_x, int start_y, Direction initial_direction, int nbd, int connectivity, Polygon_i &poly) {
 
-    //cerr << "follow " << start_x << " " << start_y << " | dir=" << dir_str[initial_direction] << " nbd=" << nbd << " conn=" << connectivity << endl;
+    if (debug) {
+        cerr << "follow " << start_x << " " << start_y << " | dir=" << dir_str[initial_direction] << " nbd=" << nbd << " conn=" << connectivity << endl;
+    }
+
     int dir_inc = (connectivity == 4) ? 2 : 1;
 
     int probe_x, probe_y;
@@ -73,10 +78,11 @@ static void follow(gerbolyze::nopencv::Image32 &img, int start_x, int start_y, D
 
     if (!found) { /* No nonzero pixels found. This is a single-pixel contour */
         img.at(start_x, start_y) = nbd;
-        poly.emplace_back(i2p{start_x,   start_y});
-        poly.emplace_back(i2p{start_x+1, start_y});
-        poly.emplace_back(i2p{start_x+1, start_y+1});
+        /* We must return these vertices counter-clockwise! */
         poly.emplace_back(i2p{start_x,   start_y+1});
+        poly.emplace_back(i2p{start_x+1, start_y+1});
+        poly.emplace_back(i2p{start_x+1, start_y});
+        poly.emplace_back(i2p{start_x,   start_y});
 
         return;
     }
@@ -85,7 +91,10 @@ static void follow(gerbolyze::nopencv::Image32 &img, int start_x, int start_y, D
     int current_direction = k % 8;
     int start_direction = current_direction;
     int center_x = start_x, center_y = start_y;
-    //cerr << "  init: " << center_x << " " << center_y << " / " << dir_str[current_direction] << endl;
+
+    if (debug) {
+        cerr << "  init: " << center_x << " " << center_y << " / " << dir_str[current_direction] << endl;
+    }
 
     do {
         bool flag = false;
@@ -122,7 +131,9 @@ static void follow(gerbolyze::nopencv::Image32 &img, int start_x, int start_y, D
         center_y = probe_y;
         current_direction = flip_direction[k % 8];
 
-        //cerr << "  " << center_x << " " << center_y << " / " << dir_str[current_direction] << " -> " << set_val << endl;
+        if (debug) {
+            cerr << "  " << center_x << " " << center_y << " / " << dir_str[current_direction] << " -> " << set_val << endl;
+        }
     } while (center_x != start_x || center_y != start_y || current_direction != start_direction);
 }
 
@@ -250,7 +261,6 @@ double k_cos(const Polygon_i &poly, size_t i, size_t k) {
     return dp / (sqrt(sq_a)*sqrt(sq_b));
 }
 
-constexpr bool debug = false;
 ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback cb) {
     return [&cb](Polygon_i &poly, ContourPolarity cpol) {
         size_t sz = poly.size();
