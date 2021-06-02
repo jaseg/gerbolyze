@@ -247,6 +247,7 @@ double k_cos(const Polygon_i &poly, size_t i, size_t k) {
     return dp / (sqrt(sq_a)*sqrt(sq_b));
 }
 
+constexpr bool debug = false;
 ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback cb) {
     return [&cb](Polygon_i &poly, ContourPolarity cpol) {
         size_t sz = poly.size();
@@ -261,30 +262,32 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
             retain[i] = true;
         }
 
-        cerr << endl;
-        cerr << "Polarity: " << cpol <<endl;
-        cerr << "Coords:"<<endl;
-        cerr << "  x: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << setfill(' ') << setw(2) << poly[i][0] << " ";
+        if (debug) {
+            cerr << endl;
+            cerr << "Polarity: " << cpol <<endl;
+            cerr << "Coords:"<<endl;
+            cerr << "  x: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << setfill(' ') << setw(2) << poly[i][0] << " ";
+            }
+            cerr << endl;
+            cerr << "  y: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << setfill(' ') << setw(2) << poly[i][1] << " ";
+            }
+            cerr << endl;
+            cerr << "Metrics:"<<endl;
+            cerr << "ros: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << setfill(' ') << setw(2) << ros[i] << " ";
+            }
+            cerr << endl;
+            cerr << "sig: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << setfill(' ') << setw(2) << sig[i] << " ";
+            }
+            cerr << endl;
         }
-        cerr << endl;
-        cerr << "  y: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << setfill(' ') << setw(2) << poly[i][1] << " ";
-        }
-        cerr << endl;
-        cerr << "Metrics:"<<endl;
-        cerr << "ros: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << setfill(' ') << setw(2) << ros[i] << " ";
-        }
-        cerr << endl;
-        cerr << "sig: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << setfill(' ') << setw(2) << sig[i] << " ";
-        }
-        cerr << endl;
 
         /* Pass 0 (like opencv): Remove points with zero 1-curvature */
         for (size_t i=0; i<sz; i++) {
@@ -294,11 +297,13 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
             }
         }
 
-        cerr << "pass 0: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << (retain[i] ? "#" : ".");
+        if (debug) {
+            cerr << "pass 0: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << (retain[i] ? "#" : ".");
+            }
+            cerr << endl;
         }
-        cerr << endl;
 
         /* 3a, Pass 1: Non-maxima suppression */
         for (size_t i=0; i<sz; i++) {
@@ -310,11 +315,13 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
             }
         }
 
-        cerr << "pass 1: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << (retain[i] ? "#" : ".");
+        if (debug) {
+            cerr << "pass 1: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << (retain[i] ? "#" : ".");
+            }
+            cerr << endl;
         }
-        cerr << endl;
         
         /* 3b, Pass 2: Zero-curvature suppression */
         for (size_t i=0; i<sz; i++) {
@@ -325,11 +332,13 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
             }
         }
 
-        cerr << "pass 2: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << (retain[i] ? "#" : ".");
+        if (debug) {
+            cerr << "pass 2: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << (retain[i] ? "#" : ".");
+            }
+            cerr << endl;
         }
-        cerr << endl;
 
         /* 3c, Pass 3: Further thinning */
         for (size_t i=0; i<sz; i++) {
@@ -344,11 +353,13 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
             }
         }
 
-        cerr << "pass 3: ";
-        for (size_t i=0; i<sz; i++) {
-            cerr << (retain[i] ? "#" : ".");
+        if (debug) {
+            cerr << "pass 3: ";
+            for (size_t i=0; i<sz; i++) {
+                cerr << (retain[i] ? "#" : ".");
+            }
+            cerr << endl;
         }
-        cerr << endl;
 
         Polygon_i new_poly;
         for (size_t i=0; i<sz; i++) {
@@ -356,7 +367,10 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
                 new_poly.push_back(poly[i]);
             }
         }
-        cb(new_poly, cpol);
+        
+        if (!new_poly.empty()) {
+            cb(new_poly, cpol);
+        }
     };
 }
 
