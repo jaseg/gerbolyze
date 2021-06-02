@@ -10,7 +10,6 @@
 #include <subprocess.h>
 #include <minunit.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 using namespace gerbolyze;
@@ -180,42 +179,35 @@ int render_svg(const char *in_svg, const char *out_png) {
 }
 
 static void testdata_roundtrip(const char *fn) {
-    int x, y;
-    uint8_t *data = stbi_load(fn, &x, &y, nullptr, 1);
-    Image32 ref_img(x, y);
-    for (int cy=0; cy<y; cy++) {
-        for (int cx=0; cx<x; cx++) {
-            ref_img.at(cx, cy) = data[cy*x + cx] / 255;
-        }
-    }
-    stbi_image_free(data);
+    Image32 ref_img;
+    mu_assert(ref_img.load(fn), "Input image failed to load");
+    ref_img.binarize();
     Image32 ref_img_copy(ref_img);
 
     TempfileHack tmp_svg(".svg");
     TempfileHack tmp_png(".png");
 
-    SVGPolyRenderer ctx(tmp_svg.c_str(), x, y);
+    SVGPolyRenderer ctx(tmp_svg.c_str(), ref_img.cols(), ref_img.rows());
     gerbolyze::nopencv::find_blobs(ref_img, ctx.callback());
     ctx.close();
 
     mu_assert_int_eq(0, render_svg(tmp_svg.c_str(), tmp_png.c_str()));
 
-    int out_x, out_y;
-    uint8_t *out_data = stbi_load(tmp_png.c_str(), &out_x, &out_y, nullptr, 1);
-    mu_assert_int_eq(x, out_x);
-    mu_assert_int_eq(y, out_y);
+    Image32 out_img;
+    mu_assert(out_img.load(tmp_png.c_str()), "Output image failed to load");
+    out_img.binarize();
 
-    for (int cy=0; cy<y; cy++) {
-        for (int cx=0; cx<x; cx++) {
-            int actual = out_data[cy*x + cx];
-            int expected = ref_img_copy.at(cx, cy)*255;
-            if (actual != expected) {
-                snprintf(msg, sizeof(msg), "%s: Result does not match input @(%d, %d): %d != %d\n", fn, cx, cy, actual, expected);
+    mu_assert_int_eq(ref_img.cols(), out_img.cols());
+    mu_assert_int_eq(ref_img.rows(), out_img.rows());
+
+    for (int y=0; y<out_img.rows(); y++) {
+        for (int x=0; x<out_img.cols(); x++) {
+            if (out_img.at(x, y) != ref_img_copy.at(x, y)) {
+                snprintf(msg, sizeof(msg), "%s: Result does not match input @(%d, %d): %d != %d\n", fn, x, y, out_img.at(x, y), ref_img_copy.at(x, y));
                 mu_fail(msg);
             }
         }
     }
-    stbi_image_free(out_data);
 }
 
 MU_TEST(test_round_trip_blank)              { testdata_roundtrip("testdata/blank.png"); }
@@ -237,45 +229,39 @@ MU_TEST(test_round_trip_two_px_inv)         { testdata_roundtrip("testdata/two-p
 
 static void chain_approx_test(const char *fn) {
     //cout << endl << "Testing \"" << fn << "\"" << endl;
-    int w, h;
-    uint8_t *data = stbi_load(fn, &w, &h, nullptr, 1);
-    Image32 ref_img(w, h);
-    for (int y=0; y<h; y++) {
-        for (int x=0; x<w; x++) {
-            ref_img.at(x, y) = data[y*w + x] / 255;
-        }
-    }
+    Image32 ref_img;
+    mu_assert(ref_img.load(fn), "Input image failed to load");
+    ref_img.binarize();
+    Image32 ref_img_copy(ref_img);
 
     TempfileHack tmp_svg(".svg");
     TempfileHack tmp_png(".png");
 
-    SVGPolyRenderer ctx(tmp_svg.c_str(), w, h);
+    SVGPolyRenderer ctx(tmp_svg.c_str(), ref_img.cols(), ref_img.rows());
     gerbolyze::nopencv::find_blobs(ref_img, simplify_contours_teh_chin(ctx.callback()));
     ctx.close();
 
-    mu_assert_int_eq(0, render_svg(tmp_svg.c_str(), "/tmp/out.png"));
+    mu_assert_int_eq(0, render_svg(tmp_svg.c_str(), tmp_png.c_str()));
 
-    int out_w, out_h;
-    uint8_t *out_data = stbi_load("/tmp/out.png", &out_w, &out_h, nullptr, 1);
-    mu_assert_int_eq(w, out_w);
-    mu_assert_int_eq(h, out_h);
+    Image32 out_img;
+    mu_assert(out_img.load(tmp_png.c_str()), "Output image failed to load");
+    mu_assert_int_eq(ref_img.rows(), out_img.rows());
+    mu_assert_int_eq(ref_img.cols(), out_img.cols());
 
     double max_abs_deviation = 0;
     double rms_sum = 0; 
     double mean_sum = 0; 
-    for (int y=0; y<h; y++) {
-        for (int x=0; x<w; x++) {
-            double delta = fabs((double)out_data[y*w + x] - (double)data[y*w + x]) / 255.0;
+    for (int y=0; y<out_img.rows(); y++) {
+        for (int x=0; x<out_img.cols(); x++) {
+            double delta = fabs((double)out_img.at(x, y)/255.0 - (double)ref_img_copy.at(x, y));
             max_abs_deviation = fmax(max_abs_deviation, delta);
             rms_sum += delta*delta;
             mean_sum += delta;
         }
     }
-    stbi_image_free(data);
-    stbi_image_free(out_data);
 
-    rms_sum = sqrt(rms_sum / (w*h));
-    mean_sum /= w*h;
+    rms_sum = sqrt(rms_sum / out_img.size());
+    mean_sum /= out_img.size();
     if (rms_sum > 0.5) {
         snprintf(msg, sizeof(msg), "%s: Chain approximation RMS error is above threshold: %.3f > 0.5\n", fn, rms_sum);
         mu_fail(msg);

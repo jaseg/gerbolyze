@@ -41,23 +41,20 @@ namespace gerbolyze {
 
         class Image32 {
         public:
-            Image32(int size_x, int size_y, const int32_t *data=nullptr) {
-                assert(size_x > 0 && size_x < 100000);
-                assert(size_y > 0 && size_y < 100000);
-                m_data = new int32_t[size_x * size_y] { 0 };
-                m_rows = size_y;
-                m_cols = size_x;
-                if (data != nullptr) {
-                    memcpy(m_data, data, sizeof(int32_t) * size_x * size_y);
-                }
-            }
-
+            Image32() {}
+            Image32(int size_x, int size_y, const int32_t *data=nullptr);
             Image32(const Image32 &other) : Image32(other.cols(), other.rows(), other.ptr()) {}
 
             ~Image32() {
-                delete m_data;
+                if (m_data) {
+                    delete m_data;
+                }
             }
             
+            bool load(const char *filename);
+            bool load_memory(uint8_t *buf, size_t len);
+            void binarize();
+
             int32_t &at(int x, int y) {
                 assert(x >= 0 && y >= 0 && x < m_cols && y < m_rows);
                 assert(m_data != nullptr);
@@ -93,9 +90,12 @@ namespace gerbolyze {
 
             int rows() const { return m_rows; }
             int cols() const { return m_cols; }
+            int size() const { return m_cols*m_rows; }
             const int32_t *ptr() const { return m_data; }
 
         private:
+            bool stb_to_internal(uint8_t *data);
+
             int32_t *m_data = nullptr;
             int m_rows=0, m_cols=0;
         };

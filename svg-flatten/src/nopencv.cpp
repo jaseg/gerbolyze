@@ -2,6 +2,9 @@
 #include <iostream>
 #include <iomanip>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include "nopencv.hpp"
 
 using namespace gerbolyze;
@@ -374,3 +377,53 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
     };
 }
 
+
+gerbolyze::nopencv::Image32::Image32(int size_x, int size_y, const int32_t *data) {
+    assert(size_x > 0 && size_x < 100000);
+    assert(size_y > 0 && size_y < 100000);
+    m_data = new int32_t[size_x * size_y] { 0 };
+    m_rows = size_y;
+    m_cols = size_x;
+    if (data != nullptr) {
+        memcpy(m_data, data, sizeof(int32_t) * size_x * size_y);
+    }
+}
+
+bool gerbolyze::nopencv::Image32::load(const char *filename) {
+    return stb_to_internal(stbi_load(filename, &m_cols, &m_rows, nullptr, 1));
+}
+
+bool gerbolyze::nopencv::Image32::load_memory(uint8_t *buf, size_t len) {
+    return stb_to_internal(stbi_load_from_memory(buf, len, &m_cols, &m_rows, nullptr, 1));
+}
+
+void gerbolyze::nopencv::Image32::binarize() {
+    assert(m_data != nullptr);
+    assert(m_rows > 0 && m_cols > 0);
+
+    for (int y=0; y<m_rows; y++) {
+        for (int x=0; x<m_cols; x++) {
+            m_data[y*m_cols + x] = m_data[y*m_cols + x] > 0;
+        }
+    }
+}
+
+bool gerbolyze::nopencv::Image32::stb_to_internal(uint8_t *data) {
+    if (data == nullptr)
+        return false;
+
+    if (m_rows < 0 || m_rows > 100000)
+        return false;
+    if (m_cols < 0 || m_cols > 100000)
+        return false;
+
+    m_data = new int32_t[size()] { 0 };
+    for (int y=0; y<m_rows; y++) {
+        for (int x=0; x<m_cols; x++) {
+            m_data[y*m_cols + x] = data[y*m_cols + x];
+        }
+    }
+
+    stbi_image_free(data);
+    return true;
+}
