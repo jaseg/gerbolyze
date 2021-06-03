@@ -217,6 +217,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
     enum ClipperLib::JoinType join_type = clipper_join_type(node);
     vector<double> dasharray;
     parse_dasharray(node, dasharray);
+    double stroke_dashoffset = usvg_double_attr(node, "stroke-dashoffset", /* default */ 0.0);
     /* TODO add stroke-miterlimit */
 
     if (!fill_color && !stroke_color) { /* Ignore "transparent" paths */
@@ -320,7 +321,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                 Path poly_copy(poly);
                 poly_copy.push_back(poly[0]);
                 Paths out;
-                dash_path(poly_copy, out, dasharray);
+                dash_path(poly_copy, out, dasharray, stroke_dashoffset);
 
                 if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
                     *polygon_sink << ApertureToken(stroke_width) << out;
@@ -332,7 +333,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
 
         for (const auto &poly : open_paths) {
             Paths out;
-            dash_path(poly, out, dasharray);
+            dash_path(poly, out, dasharray, stroke_dashoffset);
 
             if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
                 *polygon_sink << ApertureToken(stroke_width) << out;
