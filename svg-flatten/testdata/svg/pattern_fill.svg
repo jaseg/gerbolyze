@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="50mm"
+   height="50mm"
+   viewBox="0 0 50 50"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="pattern_fill.svg"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15, custom)">
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs5">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#Strips2_1"
+       id="pattern3491"
+       patternTransform="matrix(1.774288,0.91540651,-2.3098808,4.4771298,0,1.6295182e-8)" />
+    <pattern
+       inkscape:collect="always"
+       patternUnits="userSpaceOnUse"
+       width="1.5"
+       height="1"
+       patternTransform="translate(0,0) scale(10,10)"
+       id="Strips2_1"
+       inkscape:stockid="Stripes 2:1">
+      <rect
+         style="fill:black;stroke:none"
+         x="0"
+         y="-0.5"
+         width="1"
+         height="2"
+         id="rect2399" />
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#Packedcircles"
+       id="pattern3461"
+       patternTransform="matrix(5.9164411,-2.7358919,2.7358917,5.9164404,9.4471894,8.2115447)" />
+    <pattern
+       inkscape:collect="always"
+       patternUnits="userSpaceOnUse"
+       width="1"
+       height="1.73205080756"
+       patternTransform="translate(0,0) scale(10,10)"
+       id="Packedcircles"
+       inkscape:stockid="Packed circles">
+      <circle
+         style="fill:black;stroke:none"
+         cx="0"
+         cy="0.5"
+         r="0.5"
+         id="circle2421" />
+      <circle
+         style="fill:black;stroke:none"
+         cx="1"
+         cy="0.5"
+         r="0.5"
+         id="circle2423" />
+      <circle
+         style="fill:black;stroke:none"
+         cx="0.5"
+         cy="1.36602540378"
+         r="0.5"
+         id="circle2425" />
+      <circle
+         style="fill:black;stroke:none"
+         cx="0.5"
+         cy="-0.366025403784"
+         r="0.5"
+         id="circle2427" />
+    </pattern>
+  </defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1019"
+     id="namedview3"
+     showgrid="false"
+     inkscape:zoom="3.440884"
+     inkscape:cx="168.05451"
+     inkscape:cy="88.906258"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg8"
+     inkscape:document-units="mm"
+     showguides="false" />
+  <circle
+     style="opacity:0.99435;fill:url(#pattern3461);fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:4.00001, 4.00001;stroke-dashoffset:2.19001;stop-color:#000000"
+     id="path1374"
+     cx="31.476124"
+     cy="30.316647"
+     r="13.079776" />
+  <rect
+     style="opacity:0.99435;fill:url(#pattern3491);fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:2.19;stop-color:#000000"
+     id="rect3463"
+     width="23.181004"
+     height="23.181004"
+     x="6.0242319"
+     y="6.351799" />
+  <rect
+     style="opacity:0.99435;fill:#ffffff;stroke:none;stroke-width:1.16072;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:4.64288, 4.64288;stroke-dashoffset:2.54198;stop-color:#000000"
+     id="rect3493"
+     width="13.836466"
+     height="59.941151"
+     x="40.70414"
+     y="5.6588583"
+     transform="matrix(1,0,-0.67013266,0.74224134,0,0)" />
+</svg>

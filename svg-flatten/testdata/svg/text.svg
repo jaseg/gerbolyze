@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="50mm"
+   height="50mm"
+   viewBox="0 0 50 50"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="text.svg"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15, custom)">
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs5">
+    <rect
+       x="3.0026957"
+       y="3.2239678"
+       width="65.46684"
+       height="67.27124"
+       id="rect3560" />
+    <rect
+       x="3.0026958"
+       y="3.2239678"
+       width="65.466843"
+       height="67.27124"
+       id="rect3560-2" />
+    <rect
+       x="3.0026958"
+       y="3.2239678"
+       width="65.466843"
+       height="67.27124"
+       id="rect3573" />
+    <rect
+       x="3.0026958"
+       y="3.2239678"
+       width="65.466843"
+       height="67.27124"
+       id="rect3560-2-4" />
+    <rect
+       x="3.0026958"
+       y="3.2239678"
+       width="65.466843"
+       height="67.27124"
+       id="rect3624" />
+  </defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1019"
+     id="namedview3"
+     showgrid="false"
+     inkscape:zoom="3.440884"
+     inkscape:cx="92.105039"
+     inkscape:cy="86.46986"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg8"
+     inkscape:document-units="mm"
+     showguides="false" />
+  <text
+     xml:space="preserve"
+     id="text3558"
+     style="font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;shape-inside:url(#rect3560);"
+     transform="translate(4.917252,17.244243)"><tspan
+       x="3.0019531"
+       y="9.5799363"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans Bold'">Gerbolyze</tspan></tspan></text>
+  <text
+     xml:space="preserve"
+     id="text3558-0"
+     style="font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;shape-inside:url(#rect3560-2);"
+     transform="matrix(1,-0.42912384,0,1,4.8672981,38.568218)"><tspan
+       x="3.0019531"
+       y="9.5799363"><tspan
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans Bold'">Gerbolyze</tspan></tspan></text>
+  <text
+     xml:space="preserve"
+     id="text3558-0-1"
+     style="font-size:7.05556px;line-height:1.25;font-family:sans-serif;white-space:pre;shape-inside:url(#rect3560-2-4);"
+     transform="matrix(1,-0.42912384,0,1,4.8672981,13.281795)"><tspan
+       x="3.0019531"
+       y="9.5799363"><tspan
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Liberation Sans';-inkscape-font-specification:'Liberation Sans Bold'">Gerbolyze</tspan></tspan></text>
+</svg>

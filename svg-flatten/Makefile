@@ -1,5 +1,5 @@
 
-CXX := clang++
+CXX ?= clang++
 LD ?= ld
 INSTALL := install
 PKG_CONFIG ?= pkg-config
@@ -45,7 +45,7 @@ SOURCES += $(CLIPPER_SOURCES)
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES) $(MINUNIT_INCLUDES) $(STB_INCLUDES)
 
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
-LDFLAGS := -lm -lc -lstdc++
+LDFLAGS := -lm
 
 PKG_CONFIG_DEPS := 
 ifdef USE_SYSTEM_PUGIXML
@@ -71,19 +71,16 @@ $(BUILDDIR)/%.o: %.cpp
 
 $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	@mkdir -p $(dir $@) 
-	if [ $$(uname -s) = "Darwin" ]; then \
-		$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^; \
-	else \
-		$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ -Wl,--start-group $^ -lstdc++fs -Wl,--end-group; \
-	fi
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
-$(BUILDDIR)/nopencv-tests: src/nopencv_test.cpp src/nopencv.cpp
+$(BUILDDIR)/nopencv-test: src/test/nopencv_test.cpp src/nopencv.cpp
 	@mkdir -p $(dir $@) 
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $@ $^
 
 
 .PHONY: tests
-tests: $(BUILDDIR)/nopencv-tests
+tests: $(BUILDDIR)/nopencv-test
+	$(BUILDDIR)/nopencv-test
 
 .PHONY: install
 install:

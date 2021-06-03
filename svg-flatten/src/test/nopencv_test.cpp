@@ -15,7 +15,7 @@
 using namespace gerbolyze;
 using namespace gerbolyze::nopencv;
 
-char msg[1024];
+char msg[512];
 
 class TempfileHack {
 public:

@@ -22,3 +22,6 @@
 [submodule "upstream/stb"]
 	path = upstream/stb
 	url = https://github.com/nothings/stb
+[submodule "upstream/filesystem"]
+	path = upstream/filesystem
+	url = https://github.com/gulrak/filesystem
