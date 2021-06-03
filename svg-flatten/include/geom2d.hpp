@@ -21,6 +21,7 @@
 #include <array>
 #include <string>
 #include <sstream>
+#include <iomanip>
 #include <cmath>
 #include <algorithm>
 
@@ -67,6 +68,7 @@ namespace gerbolyze {
                     return;
 
                 xx=a, yx=b, xy=c, yy=d, x0=e, y0=f;
+                cerr << "xform loaded " << dbg_str() << endl;
             }
 
             xform2d &translate(double x, double y) {
@@ -82,14 +84,14 @@ namespace gerbolyze {
             }
 
             xform2d &transform(const xform2d &other) {
-                double n_xx = xx * other.xx + yx * other.xy;
-                double n_yx = xx * other.yx + yx * other.yy;
+                double n_xx = other.xx * xx + other.yx * xy;
+                double n_yx = other.xx * yx + other.yx * yy;
 
-                double n_xy = xy * other.xx + yy * other.xy;
-                double n_yy = xy * other.yx + yy * other.yy;
+                double n_xy = other.xy * xx + other.yy * xy;
+                double n_yy = other.xy * yx + other.yy * yy;
 
-                double n_x0 = x0 * other.xx + y0 * other.xy + other.x0;
-                double n_y0 = x0 * other.yx + y0 * other.yy + other.y0;
+                double n_x0 = other.x0 * xx + other.y0 * xy + x0;
+                double n_y0 = other.x0 * yx + other.y0 * yy + y0;
 
                 xx = n_xx;
                 yx = n_yx;
@@ -150,6 +152,15 @@ namespace gerbolyze {
                                 };
                             });
                 }
+            }
+
+            string dbg_str() {
+                ostringstream os;
+                os << "xform2d< " << setw(5);
+                os << xx << ", " << xy << ", " << x0 << " / ";
+                os << yy << ", " << yx << ", " << y0;
+                os << " >";
+                return os.str();
             }
 
         private:
