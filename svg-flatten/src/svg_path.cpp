@@ -28,7 +28,7 @@
 
 using namespace std;
 
-static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Clipper &c_stroke, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data, double distance_tolerance_mm) {
+static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Paths &stroke_open, ClipperLib::Paths &stroke_closed, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data, double distance_tolerance_mm) {
     istringstream in(path_data);
 
     string cmd;
@@ -45,7 +45,7 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Clippe
         assert(!first || cmd == "M");
         
         if (cmd == "Z") { /* Close path */
-            c_stroke.AddPath(in_poly, ClipperLib::ptSubject, true);
+            stroke_closed.push_back(in_poly);
             c_fill.AddPath(in_poly, ClipperLib::ptSubject, true);
 
             has_closed = true;
@@ -54,7 +54,7 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Clippe
 
         } else if (cmd == "M") { /* Move to */
             if (!first && !in_poly.empty()) {
-                c_stroke.AddPath(in_poly, ClipperLib::ptSubject, false);
+                stroke_open.push_back(in_poly);
                 c_fill.AddPath(in_poly, ClipperLib::ptSubject, true);
                 num_subpaths += 1;
                 in_poly.clear();
@@ -114,7 +114,7 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Clippe
     }
 
     if (!in_poly.empty()) {
-        c_stroke.AddPath(in_poly, ClipperLib::ptSubject, false);
+        stroke_open.push_back(in_poly);
         c_fill.AddPath(in_poly, ClipperLib::ptSubject, true);
         num_subpaths += 1;
     }
@@ -122,18 +122,16 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Clippe
     return {has_closed, num_subpaths > 1};
 }
 
-void gerbolyze::load_svg_path(xform2d &mat, const pugi::xml_node &node, ClipperLib::PolyTree &ptree_stroke, ClipperLib::PolyTree &ptree_fill, double curve_tolerance) {
+void gerbolyze::load_svg_path(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &stroke_open, ClipperLib::Paths &stroke_closed, ClipperLib::PolyTree &ptree_fill, double curve_tolerance) {
     auto *path_data = node.attribute("d").value();
     auto fill_rule = clipper_fill_rule(node);
 
     /* For open paths, clipper does not correctly remove self-intersections. Thus, we pass everything into
      * clipper twice: Once with all paths set to "closed" to compute fill areas, and once with correct
      * open/closed properties for stroke offsetting. */
-    ClipperLib::Clipper c_stroke;
     ClipperLib::Clipper c_fill;
-    c_stroke.StrictlySimple(true);
     c_fill.StrictlySimple(true);
-    auto res = flatten_path(mat, c_stroke, c_fill, path_data, curve_tolerance);
+    auto res = flatten_path(mat, stroke_open, stroke_closed, c_fill, path_data, curve_tolerance);
     bool has_closed = res.first, has_multiple = res.second;
 
     if (!has_closed && !has_multiple) {
@@ -155,15 +153,11 @@ void gerbolyze::load_svg_path(xform2d &mat, const pugi::xml_node &node, ClipperL
         auto le_max = ClipperLib::hiRange;
         ClipperLib::Path p = {{le_min, le_min}, {le_max, le_min}, {le_max, le_max}, {le_min, le_max}};
 
-        c_stroke.AddPath(p, ClipperLib::ptClip, /* closed= */ true);
-        c_stroke.Execute(ClipperLib::ctIntersection, ptree_stroke, fill_rule, ClipperLib::pftNonZero);
-
         c_fill.AddPath(p, ClipperLib::ptClip, /* closed= */ true);
         c_fill.Execute(ClipperLib::ctIntersection, ptree_fill, fill_rule, ClipperLib::pftNonZero);
 
     } else {
         /* We cannot clip the polygon here since that would produce incorrect results for our stroke. */
-        c_stroke.Execute(ClipperLib::ctUnion, ptree_stroke, fill_rule, ClipperLib::pftNonZero);
         c_fill.Execute(ClipperLib::ctUnion, ptree_fill, fill_rule, ClipperLib::pftNonZero);
     }
 }
@@ -264,6 +258,11 @@ void gerbolyze::dash_path(const ClipperLib::Path &in, ClipperLib::Paths &out, co
             dash_remaining = dasharray[dash_idx] - (dist - offset);
             current_dash.push_back(p2);
         }
+    }
+
+    /* Finish last dash */
+    if (current_dash.size() > 0 && (dash_idx%2 == 0)) {
+        out.push_back(current_dash);
     }
 }
 

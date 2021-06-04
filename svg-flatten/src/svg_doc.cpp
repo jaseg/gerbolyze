@@ -218,7 +218,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
     vector<double> dasharray;
     parse_dasharray(node, dasharray);
     double stroke_dashoffset = usvg_double_attr(node, "stroke-dashoffset", /* default */ 0.0);
-    /* TODO add stroke-miterlimit */
+    double stroke_miterlimit = usvg_double_attr(node, "stroke-miterlimit", /* default */ 4.0);
 
     if (!fill_color && !stroke_color) { /* Ignore "transparent" paths */
         return;
@@ -230,14 +230,12 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
     /* FIXME transform stroke width here? */
     stroke_width = local_xf.doc2phys_dist(stroke_width);
 
-    PolyTree ptree_stroke;
+    Paths stroke_open, stroke_closed;
     PolyTree ptree_fill;
     PolyTree ptree;
-    load_svg_path(local_xf, node, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
+    load_svg_path(local_xf, node, stroke_open, stroke_closed, ptree_fill, rset.curve_tolerance_mm);
 
-    Paths open_paths, closed_paths, fill_paths;
-    OpenPathsFromPolyTree(ptree_stroke, open_paths);
-    ClosedPathsFromPolyTree(ptree_stroke, closed_paths);
+    Paths fill_paths;
     PolyTreeToPaths(ptree_fill, fill_paths);
 
     bool has_fill = fill_color;
@@ -299,9 +297,10 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
     if (has_stroke) {
         ClipperOffset offx;
         offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
+        offx.MiterLimit = stroke_miterlimit;
 
         /* For stroking we have to separately handle open and closed paths */
-        for (auto &poly : closed_paths) {
+        for (auto &poly : stroke_closed) {
             if (poly.empty())
                 continue;
 
@@ -331,7 +330,7 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             }
         }
 
-        for (const auto &poly : open_paths) {
+        for (const auto &poly : stroke_open) {
             Paths out;
             dash_path(poly, out, dasharray, stroke_dashoffset);
 
@@ -440,13 +439,13 @@ void gerbolyze::SVGDocument::load_clips(const RenderSettings &rset) {
          * rendering, and the only way a group might stay is if it affects rasterization (e.g. through mask, clipPath).
          */
         for (const auto &child : node.children("path")) {
-            PolyTree ptree_stroke; /* discarded */
+            Paths _stroke_open, _stroke_closed; /* discarded */
             PolyTree ptree_fill;
             /* TODO: we currently only support clipPathUnits="userSpaceOnUse", not "objectBoundingBox". */
             xform2d child_xf(local_xf);
             child_xf.transform(xform2d(child.attribute("transform").value()));
 
-            load_svg_path(child_xf, child, ptree_stroke, ptree_fill, rset.curve_tolerance_mm);
+            load_svg_path(child_xf, child, _stroke_open, _stroke_closed, ptree_fill, rset.curve_tolerance_mm);
 
             Paths paths;
             PolyTreeToPaths(ptree_fill, paths);

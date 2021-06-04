@@ -34,10 +34,47 @@ def run_svg_flatten(input_file, output_file, **kwargs):
 
 class SVGRoundTripTests(unittest.TestCase):
 
-    def compare_images(self, reference, output, test_name, mean=0.01):
+    # Notes on test cases:
+    # Our stroke join test shows a discrepancy in miter handling between resvg and gerbolyze. Gerbolyze's miter join is
+    # the one from Clipper, which unfortunately cannot be configured. resvg uses one looking like that from the SVG 2
+    # spec. Gerbolyze's join is legal by the 1.1 spec since this spec does not explicitly define the miter offset. It
+    # only contains a blurry picture, and that picture looks like what gerbolyze produces.
+
+    test_mean_default = 0.02
+    test_mean_overrides = {
+        # Both of these produce high errors for two reasons:
+        # * By necessity, we get some error accumulation because we are dashing the path *after* flattening, and
+        #   flattened path length is always a tiny bit smaller than actual path length for curved paths.
+        # * Since the image contains a lot of edges there are lots of small differences in anti-aliasing. 
+        # Both are expected and OK.
+        'stroke_dashes_comparison': 0.03,
+        'stroke_dashes': 0.05,
+    }
+
+    # Force use of rsvg-convert instead of resvg for these test cases
+    rsvg_override = {
+        # resvg is bad at rendering patterns. Both scale and offset are wrong, and the result is a blurry mess.
+        # See https://github.com/RazrFalcon/resvg/issues/221
+        'pattern_fill',
+        'pattern_stroke',
+        'pattern_stroke_dashed'
+    }
+
+    def compare_images(self, reference, output, test_name, mean, rsvg_workaround=False):
         ref = np.array(Image.open(reference))
         out = np.array(Image.open(output))
+        if rsvg_workaround:
+            # For some stupid reason, rsvg-convert does not actually output black as in "black" pixels when asked to.
+            # Instead, it outputs #010101. We fix this in post here.
+            ref = (ref - 1.0) * (255/254)
         delta = np.abs(out - ref).astype(float) / 255
+
+
+        #def print_stats(ref):
+        #    print('img:', ref.min(), ref.mean(), ref.max(), 'std:', ref.std(), 'channels:', *(ref[:,:,i].mean() for i in
+        #            range(ref.shape[2])))
+        #print_stats(ref)
+        #print_stats(out)
 
         #print(f'{test_name}: mean={delta.mean():.5g}')
 
@@ -51,11 +88,21 @@ class SVGRoundTripTests(unittest.TestCase):
 
             run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg')
 
-            subprocess.run(['resvg', tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
-            subprocess.run(['resvg', test_in_svg, tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
+            use_rsvg = test_in_svg.stem in SVGRoundTripTests.rsvg_override
+
+            if not use_rsvg: # default!
+                subprocess.run(['resvg', tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
+                subprocess.run(['resvg', test_in_svg, tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
+
+            else:
+                subprocess.run(['rsvg-convert', tmp_out_svg.name, '-f', 'png', '-o', tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
+                subprocess.run(['rsvg-convert', test_in_svg, '-f', 'png', '-o', tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
 
             try:
-                self.compare_images(tmp_in_png, tmp_out_png, test_in_svg.stem)
+                self.compare_images(tmp_in_png, tmp_out_png, test_in_svg.stem,
+                        SVGRoundTripTests.test_mean_overrides.get(test_in_svg.stem, SVGRoundTripTests.test_mean_default),
+                        rsvg_workaround=use_rsvg)
+
             except AssertionError as e:
                 import shutil
                 shutil.copyfile(tmp_in_png.name, f'/tmp/gerbolyze-fail-{test_in_svg.stem}-in.png')
