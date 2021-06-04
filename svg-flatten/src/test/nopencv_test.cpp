@@ -225,6 +225,7 @@ MU_TEST(test_round_trip_single_px_inv)      { testdata_roundtrip("testdata/singl
 MU_TEST(test_round_trip_two_blobs)          { testdata_roundtrip("testdata/two-blobs.png"); }
 MU_TEST(test_round_trip_two_px)             { testdata_roundtrip("testdata/two-px.png"); }
 MU_TEST(test_round_trip_two_px_inv)         { testdata_roundtrip("testdata/two-px-inv.png"); }
+MU_TEST(test_round_trip_contour_tracing_demo_input) { testdata_roundtrip("testdata/contour_tracing_demo_input.png"); }
 
 static void test_polygon_area(const char *fn) {
     //cerr << endl << "poly area test " << fn << endl;
@@ -276,6 +277,7 @@ MU_TEST(test_polygon_area_single_px_inv)      { test_polygon_area("testdata/sing
 MU_TEST(test_polygon_area_two_blobs)          { test_polygon_area("testdata/two-blobs.png"); }
 MU_TEST(test_polygon_area_two_px)             { test_polygon_area("testdata/two-px.png"); }
 MU_TEST(test_polygon_area_two_px_inv)         { test_polygon_area("testdata/two-px-inv.png"); }
+MU_TEST(test_polygon_area_contour_tracing_demo_input) { test_polygon_area("testdata/contour_tracing_demo_input.png"); }
 
 static void chain_approx_test(const char *fn) {
     //cout << endl << "Testing \"" << fn << "\"" << endl;
@@ -340,6 +342,7 @@ MU_TEST(chain_approx_test_single_px_inv)      { chain_approx_test("testdata/sing
 MU_TEST(chain_approx_test_two_blobs)          { chain_approx_test("testdata/two-blobs.png"); }
 MU_TEST(chain_approx_test_two_px)             { chain_approx_test("testdata/two-px.png"); }
 MU_TEST(chain_approx_test_two_px_inv)         { chain_approx_test("testdata/two-px-inv.png"); }
+MU_TEST(chain_approx_test_contour_tracing_demo_input) { chain_approx_test("testdata/contour_tracing_demo_input.png"); }
 
 
 MU_TEST_SUITE(nopencv_contours_suite) {
@@ -360,6 +363,24 @@ MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(test_round_trip_two_blobs);
     MU_RUN_TEST(test_round_trip_two_px);
     MU_RUN_TEST(test_round_trip_two_px_inv);
+    MU_RUN_TEST(test_round_trip_contour_tracing_demo_input);
+
+    MU_RUN_TEST(test_polygon_area_blank);
+    MU_RUN_TEST(test_polygon_area_white);
+    MU_RUN_TEST(test_polygon_area_blob_border_w);
+    MU_RUN_TEST(test_polygon_area_blobs_borders);
+    MU_RUN_TEST(test_polygon_area_blobs_corners);
+    MU_RUN_TEST(test_polygon_area_blobs_crossing);
+    MU_RUN_TEST(test_polygon_area_cross);
+    MU_RUN_TEST(test_polygon_area_letter_e);
+    MU_RUN_TEST(test_polygon_area_paper_example);
+    MU_RUN_TEST(test_polygon_area_paper_example_inv);
+    MU_RUN_TEST(test_polygon_area_single_px);
+    MU_RUN_TEST(test_polygon_area_single_px_inv);
+    MU_RUN_TEST(test_polygon_area_two_blobs);
+    MU_RUN_TEST(test_polygon_area_two_px);
+    MU_RUN_TEST(test_polygon_area_two_px_inv);
+    MU_RUN_TEST(test_polygon_area_contour_tracing_demo_input);
 
     MU_RUN_TEST(chain_approx_test_chromosome);
     MU_RUN_TEST(chain_approx_test_blank);
@@ -377,22 +398,7 @@ MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(chain_approx_test_two_blobs);
     MU_RUN_TEST(chain_approx_test_two_px);
     MU_RUN_TEST(chain_approx_test_two_px_inv);
-
-    MU_RUN_TEST(test_polygon_area_blank);
-    MU_RUN_TEST(test_polygon_area_white);
-    MU_RUN_TEST(test_polygon_area_blob_border_w);
-    MU_RUN_TEST(test_polygon_area_blobs_borders);
-    MU_RUN_TEST(test_polygon_area_blobs_corners);
-    MU_RUN_TEST(test_polygon_area_blobs_crossing);
-    MU_RUN_TEST(test_polygon_area_cross);
-    MU_RUN_TEST(test_polygon_area_letter_e);
-    MU_RUN_TEST(test_polygon_area_paper_example);
-    MU_RUN_TEST(test_polygon_area_paper_example_inv);
-    MU_RUN_TEST(test_polygon_area_single_px);
-    MU_RUN_TEST(test_polygon_area_single_px_inv);
-    MU_RUN_TEST(test_polygon_area_two_blobs);
-    MU_RUN_TEST(test_polygon_area_two_px);
-    MU_RUN_TEST(test_polygon_area_two_px_inv);
+    MU_RUN_TEST(chain_approx_test_contour_tracing_demo_input);
 };
 
 int main(int argc, char **argv) {
