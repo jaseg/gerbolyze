@@ -45,7 +45,7 @@ class SVGRoundTripTests(unittest.TestCase):
     # Our stroke join test shows a discrepancy in miter handling between resvg and gerbolyze. Gerbolyze's miter join is
     # the one from Clipper, which unfortunately cannot be configured. resvg uses one looking like that from the SVG 2
     # spec. Gerbolyze's join is legal by the 1.1 spec since this spec does not explicitly define the miter offset. It
-    # only contains a blurry picture, and that picture looks like what gerbolyze produces.
+    # only contains an unclear picture, and that picture looks approximately like what gerbolyze produces.
 
     test_mean_default = 0.02
     test_mean_overrides = {
