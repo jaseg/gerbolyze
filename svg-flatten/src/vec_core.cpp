@@ -436,7 +436,7 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
     draw_bg_rect(local_xf, width, height, clip_path, sink);
 
     img->binarize();
-    nopencv::find_contours(*img, [&sink, &local_xf, &clip_path, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
+    nopencv::find_contours(*img, nopencv::simplify_contours_teh_chin([&sink, &local_xf, &clip_path, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
 
         if (pol == nopencv::CP_HOLE) {
             std::reverse(poly.begin(), poly.end());
@@ -476,7 +476,7 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
                         });
             sink << out;
         }
-    });
+    }));
 }
 
 gerbolyze::VectorizerSelectorizer::VectorizerSelectorizer(const string default_vectorizer, const string defs)
