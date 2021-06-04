@@ -19,6 +19,7 @@
 #pragma once
 
 #include <pugixml.hpp>
+#include <gerbolyze.hpp>
 
 namespace gerbolyze {
 
@@ -42,10 +43,10 @@ public:
     HSVColor(const RGBColor &color);
 };
 
-enum gerber_color svg_color_to_gerber(std::string color, std::string opacity, enum gerber_color default_val);
+enum gerber_color svg_color_to_gerber(std::string color, std::string opacity, enum gerber_color default_val, const RenderSettings &rset);
 enum gerber_color gerber_color_invert(enum gerber_color color);
-enum gerber_color gerber_fill_color(const pugi::xml_node &node);
-enum gerber_color gerber_stroke_color(const pugi::xml_node &node);
+enum gerber_color gerber_fill_color(const pugi::xml_node &node, const RenderSettings &rset);
+enum gerber_color gerber_stroke_color(const pugi::xml_node &node, const RenderSettings &rset);
 
 } /* namespace gerbolyze */
 

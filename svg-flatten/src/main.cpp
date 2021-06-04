@@ -34,13 +34,16 @@ int main(int argc, char **argv) {
                 "Number of decimal places use for exported coordinates (gerber: 1-9, SVG: 0-*)",
                 1},
             {"svg_clear_color", {"--clear-color"},
-                "SVG color to use for \"clear\" areas (default: white)",
+                "SVG color to use for \"clear\" areas (SVG output only; default: white)",
                 1},
             {"svg_dark_color", {"--dark-color"},
-                "SVG color to use for \"dark\" areas (default: black)",
+                "SVG color to use for \"dark\" areas (SVG output only; default: black)",
                 1},
             {"flip_gerber_polarity", {"-f", "--flip-gerber-polarity"},
                 "Flip polarity of all output gerber primitives for --format gerber.",
+                0},
+            {"flip_svg_color_interpretation", {"-i", "--svg-white-is-gerber-dark"},
+                "Flip polarity of SVG color interpretation. This affects only SVG primitives like paths and NOT embedded bitmaps. With -i: white -> silk there/\"dark\" gerber primitive.",
                 0},
             {"min_feature_size", {"-d", "--trace-space"},
                 "Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.",
@@ -420,11 +423,14 @@ int main(int argc, char **argv) {
     }
 
     VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"].as<string>() : "");
+    bool flip_svg_colors = args["flip_svg_color_interpretation"];
+
     RenderSettings rset {
         min_feature_size,
         curve_tolerance,
         vec_sel,
         outline_mode,
+        flip_svg_colors,
     };
 
     SVGDocument doc;

@@ -72,14 +72,14 @@ namespace gerbolyze {
             }
 
             xform2d &translate(double x, double y) {
-                x0 += x*xx + y*xy;
-                y0 += y*yy + x*yx;
+                xform2d xf(1, 0, 0, 1, x, y);
+                transform(xf);
                 return *this;
             }
 
             xform2d &scale(double x, double y) {
-                xx *= x; yx *= y; xy *= x;
-                yy *= y; x0 *= x; y0 *= y;
+                xform2d xf(x, 0, 0, y);
+                transform(xf);
                 return *this;
             }
 

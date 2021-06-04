@@ -155,6 +155,8 @@ void gerbolyze::nopencv::find_contours(gerbolyze::nopencv::Image32 &img, gerboly
      * Written with these two resources as reference:
      *     https://theailearner.com/tag/suzuki-contour-algorithm-opencv/
      *     https://github.com/FreshJesh5/Suzuki-Algorithm/blob/master/contoursv1/contoursv1.cpp
+     *
+     * WARNING: input image MUST BE BINARIZE: All pixels must have value either 0 or 1. Otherwise, chaos ensues.
      */
     int nbd = 1;
     Polygon_i poly;

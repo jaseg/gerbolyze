@@ -30,7 +30,7 @@ using namespace std;
  * This function handles transparency: Transparent SVG colors are mapped such that no gerber output is generated for
  * them.
  */
-enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, enum gerber_color default_val) {
+enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, enum gerber_color default_val, const RenderSettings &rset) {
     float alpha = 1.0;
     if (!opacity.empty() && opacity[0] != '\0') {
         char *endptr = nullptr;
@@ -57,8 +57,10 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
 
     if (color.length() == 7 && color[0] == '#') {
         HSVColor hsv(color);
-        if (hsv.v >= 0.5) {
+        if ((hsv.v >= 0.5) != rset.flip_color_interpretation) {
             return GRB_CLEAR;
+        } else {
+            return GRB_DARK;
         }
     }
 
@@ -107,13 +109,13 @@ enum gerber_color gerbolyze::gerber_color_invert(enum gerber_color color) {
 }
 
 /* Read node's fill attribute and convert it to a gerber color */
-enum gerber_color gerbolyze::gerber_fill_color(const pugi::xml_node &node) {
-    return svg_color_to_gerber(node.attribute("fill").value(), node.attribute("fill-opacity").value(), GRB_DARK);
+enum gerber_color gerbolyze::gerber_fill_color(const pugi::xml_node &node, const RenderSettings &rset) {
+    return svg_color_to_gerber(node.attribute("fill").value(), node.attribute("fill-opacity").value(), GRB_DARK, rset);
 }
 
 /* Read node's stroke attribute and convert it to a gerber color */
-enum gerber_color gerbolyze::gerber_stroke_color(const pugi::xml_node &node) {
-    return svg_color_to_gerber(node.attribute("stroke").value(), node.attribute("stroke-opacity").value(), GRB_NONE);
+enum gerber_color gerbolyze::gerber_stroke_color(const pugi::xml_node &node, const RenderSettings &rset) {
+    return svg_color_to_gerber(node.attribute("stroke").value(), node.attribute("stroke-opacity").value(), GRB_NONE, rset);
 }
 
 

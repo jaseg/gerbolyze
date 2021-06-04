@@ -166,6 +166,7 @@ namespace gerbolyze {
         double curve_tolerance_mm;
         VectorizerSelectorizer &m_vec_sel;
         bool outline_mode = false;
+        bool flip_color_interpretation = false;
     };
 
     class SVGDocument {

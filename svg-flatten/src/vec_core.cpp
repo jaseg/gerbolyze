@@ -161,8 +161,9 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
 
     /* Set up target transform using SVG transform and x/y attributes */
     xform2d local_xf(mat);
-    local_xf.translate(x, y);
     local_xf.transform(xform2d(node.attribute("transform").value()));
+    local_xf.translate(x, y);
+    cerr << "voronoi vectorizer: local_xf = " << local_xf.dbg_str() << endl;
 
     double orig_rows = img->rows();
     double orig_cols = img->cols();
@@ -172,9 +173,11 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
     double off_y = 0;
     handle_aspect_ratio(node.attribute("preserveAspectRatio").value(),
             scale_x, scale_y, off_x, off_y, orig_cols, orig_rows);
+    cerr << "aspect " << scale_x << ", " << scale_y << " / " << off_x << ", " << off_y << endl;
 
     /* Adjust minimum feature size given in mm and translate into px document units in our local coordinate system. */
     min_feature_size_px = local_xf.doc2phys_dist(min_feature_size_px);
+    cerr << "  min_feature_size_px = " << min_feature_size_px << endl;
 
     draw_bg_rect(local_xf, width, height, clip_path, sink);
 
@@ -195,6 +198,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
     /* TODO: support for preserveAspectRatio attribute */
     double px_w = width / min_feature_size_px * scale_featuresize_factor;
     double px_h = height / min_feature_size_px * scale_featuresize_factor;
+    cerr << "  px_size = " << px_w << ", " << px_h << endl;
 
     /* Scale intermediate image (step 1.2) to have <scale_featuresize_factor> pixels per min_feature_size. */ 
     cerr << "scaled " << img->cols() << ", " << img->rows() << " -> " << ((int)round(px_w)) << ", " << ((int)round(px_h)) << endl;
@@ -235,8 +239,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
         const jcv_point center = sites[i].p;
 
         double pxd = img->at(
-                (int)round(center.y / (scale_y * orig_rows / img->rows())),
-                (int)round(center.x / (scale_x * orig_cols / img->cols()))) / 255.0; 
+                (int)round(center.x / (scale_x * orig_cols / img->cols())),
+                (int)round(center.y / (scale_y * orig_rows / img->rows()))) / 255.0; 
         /* FIXME: This is a workaround for a memory corruption bug that happens with the square-grid setting. When using
          * square-grid on a fairly small test image, sometimes sites[i].index will be out of bounds here.
          */
@@ -249,8 +253,10 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
     vector<double> adjusted_fill_factors;
     adjusted_fill_factors.reserve(32); /* Vector to hold adjusted fill factors for each edge for gap filling */
     /* now iterate over all voronoi cells again to generate each cell's scaled polygon halftone blob. */
+    cerr << "  generating cells " << diagram.numsites << endl;
     for (int i=0; i<diagram.numsites; i++) {
         const jcv_point center = sites[i].p;
+        cerr << "  site center " << center.x << ", " << center.y << endl;
         double fill_factor_ours = fill_factors[sites[i].index];
         
         /* Do not render halftone blobs that are too small */
@@ -289,6 +295,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
             e = e->next;
         }
 
+        cerr << "  blob: ";
         /* Now, generate the actual halftone blob polygon */
         ClipperLib::Path cell_path;
         double last_fill_factor = adjusted_fill_factors.back();
@@ -303,6 +310,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
                     off_x + center.x + (e->pos[0].x - center.x) * fill_factor,
                     off_y + center.y + (e->pos[0].y - center.y) * fill_factor
                 });
+                cerr << " - <" << p[0] << ", " << p[1] << ">";
                 cell_path.push_back({
                         (ClipperLib::cInt)round(p[0] * clipper_scale),
                         (ClipperLib::cInt)round(p[1] * clipper_scale)
@@ -314,6 +322,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
                 off_x + center.x + (e->pos[1].x - center.x) * fill_factor,
                 off_y + center.y + (e->pos[1].y - center.y) * fill_factor
             });
+            cerr << " - [" << p[0] << ", " << p[1] << "]";
             cell_path.push_back({
                     (ClipperLib::cInt)round(p[0] * clipper_scale),
                     (ClipperLib::cInt)round(p[1] * clipper_scale)
@@ -323,6 +332,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
             last_fill_factor = fill_factor;
             e = e->next;
         }
+        cerr << endl;
 
         /* Now, clip the halftone blob generated above against the given clip path. We do this individually for each
          * blob since this way is *much* faster than throwing a million blobs at once at poor clipper. */
@@ -376,10 +386,8 @@ void gerbolyze::handle_aspect_ratio(string spec, double &scale_x, double &scale_
         std::regex reg("x(Min|Mid|Max)Y(Min|Mid|Max)");
         std::smatch match;
 
-        cerr << "data: " <<" "<< scale_x << "/" << scale_y << ": " << scale << endl;
         off_x = (scale_x - scale) * cols;
         off_y = (scale_y - scale) * rows;
-        cerr << rows <<","<<cols<<" " << off_x << "," << off_y << endl;
         if (std::regex_match(par_align, match, reg)) {
             assert (match.size() == 3);
             if (match[1].str() == "Min") {
@@ -402,7 +410,6 @@ void gerbolyze::handle_aspect_ratio(string spec, double &scale_x, double &scale_
 
         scale_x = scale_y = scale;
     }
-    cerr << "res: "<< off_x << "," << off_y << endl;
 }
 
 
@@ -428,12 +435,16 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
 
     draw_bg_rect(local_xf, width, height, clip_path, sink);
 
+    img->binarize();
     nopencv::find_contours(*img, [&sink, &local_xf, &clip_path, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
-        sink << ((pol == nopencv::CP_CONTOUR) ? GRB_POL_DARK : GRB_POL_CLEAR);
 
-        bool is_clockwise = nopencv::polygon_area(poly) > 0;
-        if (!is_clockwise)
+        if (pol == nopencv::CP_HOLE) {
             std::reverse(poly.begin(), poly.end());
+            sink << GRB_POL_CLEAR;
+
+        } else {
+            sink << GRB_POL_DARK;
+        }
 
         ClipperLib::Path out;
         for (const auto &p : poly) {
@@ -484,21 +495,23 @@ gerbolyze::VectorizerSelectorizer::VectorizerSelectorizer(const string default_v
         m_map[parsed_id] = mapping;
     }
 
+    /*
     cerr << "parsed " << m_map.size() << " vectorizers" << endl;
     for (auto &elem : m_map) {
         cerr << "  " << elem.first << " -> " << elem.second << endl;
     }
+    */
 }
 
 ImageVectorizer *gerbolyze::VectorizerSelectorizer::select(const pugi::xml_node &img) {
     const string id = img.attribute("id").value();
-    cerr << "selecting vectorizer for image \"" << id << "\"" << endl;
+    // cerr << "selecting vectorizer for image \"" << id << "\"" << endl;
     if (m_map.count(id) > 0) {
-        cerr << "  -> found" << endl;
+        // cerr << "  -> found" << endl;
         return makeVectorizer(m_map[id]);
     }
 
-    cerr << "  -> default" << endl;
+    // cerr << "  -> default" << endl;
     return makeVectorizer(m_default);
 }
 

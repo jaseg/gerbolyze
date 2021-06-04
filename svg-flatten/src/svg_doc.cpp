@@ -208,8 +208,8 @@ void gerbolyze::SVGDocument::export_svg_group(xform2d &mat, const RenderSettings
 
 /* Export an SVG path element to gerber. Apply patterns and clip on the fly. */
 void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &node, Paths &clip_path) {
-    enum gerber_color fill_color = gerber_fill_color(node);
-    enum gerber_color stroke_color = gerber_stroke_color(node);
+    enum gerber_color fill_color = gerber_fill_color(node, rset);
+    enum gerber_color stroke_color = gerber_stroke_color(node, rset);
 
     double stroke_width = usvg_double_attr(node, "stroke-width", /* default */ 1.0);
     assert(stroke_width > 0.0);
