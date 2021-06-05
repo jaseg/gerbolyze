@@ -26,6 +26,7 @@ SOURCES := src/svg_color.cpp \
 	src/out_dilater.cpp \
 	src/lambda_sink.cpp \
 	src/flatten.cpp \
+	src/util.cpp \
 	src/nopencv.cpp \
 	$(UPSTREAM_DIR)/cpp-base64/base64.cpp \
 	$(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp \
@@ -68,7 +69,7 @@ $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	@mkdir -p $(dir $@) 
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-$(BUILDDIR)/nopencv-test: src/test/nopencv_test.cpp src/nopencv.cpp
+$(BUILDDIR)/nopencv-test: src/test/nopencv_test.cpp src/nopencv.cpp src/util.cpp
 	@mkdir -p $(dir $@) 
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 

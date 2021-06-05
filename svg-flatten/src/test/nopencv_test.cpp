@@ -5,6 +5,7 @@
 #include <cmath>
 #include <filesystem>
 
+#include "util.h"
 #include "nopencv.hpp"
 
 #include <subprocess.h>
@@ -158,24 +159,8 @@ MU_TEST(test_complex_example_from_paper) {
 }
 
 int render_svg(const char *in_svg, const char *out_png) {
-    const char *command_line[] = {"resvg", in_svg, out_png, nullptr};
-    struct subprocess_s subprocess;
-    int rc = subprocess_create(command_line, subprocess_option_inherit_environment, &subprocess);
-    if (rc)
-        return rc;
-
-    int resvg_rc = -1;
-    rc = subprocess_join(&subprocess, &resvg_rc);
-    if (rc)
-        return rc;
-    if (resvg_rc)
-        return -resvg_rc;
-
-    rc = subprocess_destroy(&subprocess);
-    if (rc)
-        return rc;
-
-    return 0;
+    const char *command_line[] = {nullptr, in_svg, out_png, nullptr};
+    return run_cargo_command("resvg", command_line, "RESVG");
 }
 
 static void testdata_roundtrip(const char *fn) {

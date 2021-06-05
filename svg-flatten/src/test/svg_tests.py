@@ -39,6 +39,16 @@ def run_svg_flatten(input_file, output_file, *args, **kwargs):
         print(proc.stderr)
         raise
 
+def run_cargo_cmd(cmd, args, **kwargs):
+    if cmd.upper() in os.environ:
+        return subprocess.run([os.environ[cmd.upper()], *args], **kwargs)
+
+    try:
+        return subprocess.run([cmd, *args], **kwargs)
+
+    except FileNotFoundError:
+        return subprocess.run([str(Path.home() / '.cargo' / 'bin' / cmd), *args], **kwargs)
+
 class SVGRoundTripTests(unittest.TestCase):
 
     # Notes on test cases:
@@ -131,8 +141,8 @@ class SVGRoundTripTests(unittest.TestCase):
                         vectorizer='binary-contours')
 
             if not use_rsvg: # default!
-                subprocess.run(['resvg', tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
-                subprocess.run(['resvg', test_in_svg, tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
+                run_cargo_cmd('resvg', [tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
+                run_cargo_cmd('resvg', [test_in_svg, tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
 
             else:
                 subprocess.run(['rsvg-convert', tmp_out_svg.name, '-f', 'png', '-o', tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
