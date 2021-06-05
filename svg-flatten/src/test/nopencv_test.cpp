@@ -181,7 +181,7 @@ int render_svg(const char *in_svg, const char *out_png) {
 static void testdata_roundtrip(const char *fn) {
     Image32 ref_img;
     mu_assert(ref_img.load(fn), "Input image failed to load");
-    ref_img.binarize();
+    ref_img.binarize(128);
     Image32 ref_img_copy(ref_img);
 
     TempfileHack tmp_svg(".svg");
@@ -195,7 +195,7 @@ static void testdata_roundtrip(const char *fn) {
 
     Image32 out_img;
     mu_assert(out_img.load(tmp_png.c_str()), "Output image failed to load");
-    out_img.binarize();
+    out_img.binarize(128);
 
     mu_assert_int_eq(ref_img.cols(), out_img.cols());
     mu_assert_int_eq(ref_img.rows(), out_img.rows());
@@ -231,7 +231,7 @@ static void test_polygon_area(const char *fn) {
     //cerr << endl << "poly area test " << fn << endl;
     Image32 ref_img;
     mu_assert(ref_img.load(fn), "Input image failed to load");
-    ref_img.binarize();
+    ref_img.binarize(128);
 
     int white_px_count = 0;
     int black_px_count = 0;
@@ -283,7 +283,7 @@ static void chain_approx_test(const char *fn) {
     //cout << endl << "Testing \"" << fn << "\"" << endl;
     Image32 ref_img;
     mu_assert(ref_img.load(fn), "Input image failed to load");
-    ref_img.binarize();
+    ref_img.binarize(128);
     Image32 ref_img_copy(ref_img);
 
     TempfileHack tmp_svg(".svg");

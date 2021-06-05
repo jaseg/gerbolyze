@@ -60,7 +60,7 @@ namespace gerbolyze {
             
             bool load(const char *filename);
             bool load_memory(const void *buf, size_t len);
-            void binarize();
+            void binarize(T threshold);
 
             T &at(int x, int y) {
                 assert(x >= 0 && y >= 0 && x < m_cols && y < m_rows);
@@ -116,6 +116,7 @@ namespace gerbolyze {
 
         void find_contours(Image32 &img, ContourCallback cb);
         ContourCallback simplify_contours_teh_chin(ContourCallback cb);
+        ContourCallback simplify_contours_douglas_peucker(ContourCallback cb);
 
         double polygon_area(Polygon_i &poly);
     }

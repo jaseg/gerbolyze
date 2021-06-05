@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <stack>
 
 #include "nopencv.hpp"
 
@@ -399,6 +400,79 @@ ContourCallback gerbolyze::nopencv::simplify_contours_teh_chin(ContourCallback c
     };
 }
 
+static double dp_eps(double dx, double dy) {
+    /* Implementation of:
+     *
+     * Prasad, Dilip K., et al. "A novel framework for making dominant point detection methods non-parametric."
+     * Image and Vision Computing 30.11 (2012): 843-859.
+     * https://core.ac.uk/download/pdf/131287229.pdf
+     *
+     * For another implementation, see:
+     * https://github.com/BobLd/RamerDouglasPeuckerNetV2/blob/master/RamerDouglasPeuckerNetV2.Test/RamerDouglasPeuckerNetV2/RamerDouglasPeucker.cs
+     */
+    double m = dy / dx;
+    double s = sqrt(pow(dx, 2) + pow(dy, 2));
+    double phi = atan(m);
+    double t_max = 1/s * (fabs(cos(phi)) + fabs(sin(phi)));
+    double t_max_polynomial = 1 - t_max + pow(t_max, 2);
+    return s * fmax(
+            atan(1/s * fabs(sin(phi) + cos(phi)) * t_max_polynomial),
+            atan(1/s * fabs(sin(phi) - cos(phi)) * t_max_polynomial));
+}
+
+/* a, b inclusive */
+static array<size_t, 3> dp_step(Polygon_i &poly, size_t a, size_t b) {
+
+    double dx = poly[b][0] - poly[a][0];
+    double dy = poly[b][1] - poly[a][1];
+    double eps = dp_eps(dx, dy);
+
+    size_t max_idx = 0;
+    double max_dist = 0;
+    /* https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line */
+    double dist_ab = sqrt(pow(poly[b][0] - poly[a][0], 2) + pow(poly[b][1] - poly[a][1], 2));
+    for (size_t i=a+1; i<b; i++) {
+        double dist_i = fabs(
+                  (poly[b][0] - poly[a][0]) * (poly[a][1] - poly[i][1])
+                - (poly[a][0] - poly[i][0]) * (poly[b][1] - poly[a][1]))
+            / dist_ab;
+        if (dist_i > max_dist && dist_i > eps) {
+            max_dist = dist_i;
+            max_idx = i;
+        }
+    }
+
+    return {a, max_idx, b};
+}
+
+ContourCallback gerbolyze::nopencv::simplify_contours_douglas_peucker(ContourCallback cb) {
+    return [&cb](Polygon_i &poly, ContourPolarity cpol) {
+
+        Polygon_i out;
+        out.push_back(poly[0]);
+
+        stack<array<size_t, 3>> indices;
+        indices.push(dp_step(poly, 0, poly.size()-1));
+
+        while (!indices.empty()) {
+            auto idx = indices.top();
+            indices.pop(); /* awesome C++ api let's goooooo */
+
+            if (idx[1] > 0) {
+                indices.push(dp_step(poly, idx[0], idx[1]));
+
+                indices.push(dp_step(poly, idx[1], idx[2]));
+
+            } else {
+                out.push_back(poly[idx[2]]);
+            }
+        }
+
+
+        cb(out, cpol);
+    };
+}
+
 double gerbolyze::nopencv::polygon_area(Polygon_i &poly) {
     double acc = 0;
     size_t prev = poly.size() - 1;
@@ -432,13 +506,13 @@ bool gerbolyze::nopencv::Image<T>::load_memory(const void *buf, size_t len) {
 }
 
 template<typename T>
-void gerbolyze::nopencv::Image<T>::binarize() {
+void gerbolyze::nopencv::Image<T>::binarize(T threshold) {
     assert(m_data != nullptr);
     assert(m_rows > 0 && m_cols > 0);
 
     for (int y=0; y<m_rows; y++) {
         for (int x=0; x<m_cols; x++) {
-            m_data[y*m_cols + x] = m_data[y*m_cols + x] > 0;
+            m_data[y*m_cols + x] = m_data[y*m_cols + x] >= threshold;
         }
     }
 }
@@ -494,20 +568,20 @@ void gerbolyze::nopencv::Image<uint8_t>::resize(int new_w, int new_h) {
 template gerbolyze::nopencv::Image<int32_t>::Image(int size_x, int size_y, const int32_t *data);
 template bool gerbolyze::nopencv::Image<int32_t>::load(const char *filename);
 template bool gerbolyze::nopencv::Image<int32_t>::load_memory(const void *buf, size_t len);
-template void gerbolyze::nopencv::Image<int32_t>::binarize();
+template void gerbolyze::nopencv::Image<int32_t>::binarize(int32_t threshold);
 template bool gerbolyze::nopencv::Image<int32_t>::stb_to_internal(uint8_t *data);
 template void gerbolyze::nopencv::Image<int32_t>::blur(int radius);
 
 template gerbolyze::nopencv::Image<uint8_t>::Image(int size_x, int size_y, const uint8_t *data);
 template bool gerbolyze::nopencv::Image<uint8_t>::load(const char *filename);
 template bool gerbolyze::nopencv::Image<uint8_t>::load_memory(const void *buf, size_t len);
-template void gerbolyze::nopencv::Image<uint8_t>::binarize();
+template void gerbolyze::nopencv::Image<uint8_t>::binarize(uint8_t threshold);
 template bool gerbolyze::nopencv::Image<uint8_t>::stb_to_internal(uint8_t *data);
 template void gerbolyze::nopencv::Image<uint8_t>::blur(int radius);
 
 template gerbolyze::nopencv::Image<float>::Image(int size_x, int size_y, const float *data);
 template bool gerbolyze::nopencv::Image<float>::load(const char *filename);
 template bool gerbolyze::nopencv::Image<float>::load_memory(const void *buf, size_t len);
-template void gerbolyze::nopencv::Image<float>::binarize();
+template void gerbolyze::nopencv::Image<float>::binarize(float threshold);
 template bool gerbolyze::nopencv::Image<float>::stb_to_internal(uint8_t *data);
 template void gerbolyze::nopencv::Image<float>::blur(int radius);

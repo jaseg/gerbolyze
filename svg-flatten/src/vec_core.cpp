@@ -435,8 +435,10 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
 
     draw_bg_rect(local_xf, width, height, clip_path, sink);
 
-    img->binarize();
-    nopencv::find_contours(*img, nopencv::simplify_contours_teh_chin([&sink, &local_xf, &clip_path, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
+    img->binarize(128);
+    nopencv::find_contours(*img,
+            nopencv::simplify_contours_douglas_peucker(
+                [&sink, &local_xf, &clip_path, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
 
         if (pol == nopencv::CP_HOLE) {
             std::reverse(poly.begin(), poly.end());
