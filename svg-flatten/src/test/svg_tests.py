@@ -100,9 +100,9 @@ class SVGRoundTripTests(unittest.TestCase):
         #print_stats(ref)
         #print_stats(out)
 
-        print(f'{test_name}: mean={delta.mean():.5g}')
+        # print(f'{test_name}: mean={delta.mean():.5g}')
 
-        self.fail('debug')
+        # self.fail('debug')
         self.assertTrue(delta.mean() < mean,
                 f'Expected mean pixel difference between images to be <{mean}, was {delta.mean():.5g}')
 

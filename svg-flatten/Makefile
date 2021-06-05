@@ -26,11 +26,11 @@ SOURCES := src/svg_color.cpp \
 	src/lambda_sink.cpp \
 	src/flatten.cpp \
 	src/nopencv.cpp \
-	$(UPSTREAM_DIR)/cpp-base64/base64.cpp
+	$(UPSTREAM_DIR)/cpp-base64/base64.cpp \
+	$(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp \
+	$(UPSTREAM_DIR)/pugixml/src/pugixml.cpp
 
-PUGIXML_SOURCES 	?= $(UPSTREAM_DIR)/pugixml/src/pugixml.cpp
 PUGIXML_INCLUDES 	?= -I$(UPSTREAM_DIR)/pugixml/src
-CLIPPER_SOURCES 	?= $(UPSTREAM_DIR)/clipper-6.4.2/cpp/clipper.cpp
 CLIPPER_INCLUDES 	?= -I$(UPSTREAM_DIR)/clipper-6.4.2/cpp
 VORONOI_INCLUDES 	?= -I$(UPSTREAM_DIR)/voronoi/src
 POISSON_INCLUDES 	?= -I$(UPSTREAM_DIR)/poisson-disk-sampling/thinks/poisson_disk_sampling/
@@ -41,10 +41,9 @@ SUBPROCESS_INCLUDES	?= -I$(UPSTREAM_DIR)/subprocess.h
 MINUNIT_INCLUDES	?= -I$(UPSTREAM_DIR)/minunit
 STB_INCLUDES		?= -isystem$(UPSTREAM_DIR)/stb
 
-SOURCES += $(CLIPPER_SOURCES)
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES) $(MINUNIT_INCLUDES) $(STB_INCLUDES)
 
-CXXFLAGS := -std=c++2a -g -Wall -Wextra -O0
+CXXFLAGS := -std=c++2a -g -Wall -Wextra -O2
 LDFLAGS := -lm
 
 PKG_CONFIG_DEPS := 

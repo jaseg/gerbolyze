@@ -16,7 +16,7 @@ ubuntu_2004:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
   script:
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
 
@@ -24,7 +24,7 @@ fedora_33:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
   script:
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
 
