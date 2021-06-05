@@ -16,7 +16,6 @@ def compile_and_install_svgflatten(target_dir):
     src_path = 'svg-flatten'
 
     try:
-        subprocess.run(['make', 'check-deps'], cwd=src_path, check=True)
         subprocess.run(['make', '-j', str(cpu_count()), 'all'], cwd=src_path, check=True)
         bin_dir = target_dir / ".."
         bin_dir.mkdir(parents=True, exist_ok=True)

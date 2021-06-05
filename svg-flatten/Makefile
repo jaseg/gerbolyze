@@ -59,11 +59,6 @@ TARGET := svg-flatten
 
 all: $(BUILDDIR)/$(TARGET)
 
-.PHONY: check-deps
-check-deps:
-	@echo
-	@$(PKG_CONFIG) --cflags --libs pugixml >/dev/null
-
 $(BUILDDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@) 
 	$(CXX) -c $(CXXFLAGS) $(CXXFLAGS) $(INCLUDES) -o $@ $^
