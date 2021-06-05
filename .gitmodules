@@ -25,3 +25,6 @@
 [submodule "upstream/filesystem"]
 	path = upstream/filesystem
 	url = https://github.com/gulrak/filesystem
+[submodule "upstream/pugixml"]
+	path = upstream/pugixml
+	url = https://github.com/zeux/pugixml
