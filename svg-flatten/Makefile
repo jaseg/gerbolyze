@@ -3,6 +3,7 @@ CXX ?= clang++
 LD ?= ld
 INSTALL := install
 PKG_CONFIG ?= pkg-config
+PYTHON3 ?= python3
 
 BUILDDIR ?= build
 PREFIX ?= /usr/local
@@ -44,7 +45,7 @@ STB_INCLUDES		?= -isystem$(UPSTREAM_DIR)/stb
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES) $(MINUNIT_INCLUDES) $(STB_INCLUDES)
 
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O2
-LDFLAGS := -lm -lstdc++ -lstdc++fs
+LDFLAGS := -lm -lstdc++ -lstdc++fs # for debian's ancient compilers
 
 PKG_CONFIG_DEPS := 
 ifdef USE_SYSTEM_PUGIXML
@@ -65,16 +66,17 @@ $(BUILDDIR)/%.o: %.cpp
 
 $(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
 	@mkdir -p $(dir $@) 
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(BUILDDIR)/nopencv-test: src/test/nopencv_test.cpp src/nopencv.cpp
 	@mkdir -p $(dir $@) 
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
 
 .PHONY: tests
 tests: $(BUILDDIR)/nopencv-test
 	$(BUILDDIR)/nopencv-test
+	$(PYTHON3) src/test/svg_tests.py
 
 .PHONY: install
 install:
