@@ -2,37 +2,41 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 stages:
-  - build
+  - test
 
-debian_10:
-  stage: build
+test_debian_10:
+  stage: test
   image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
   script:
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
+    - "make -C svg-flatten tests"
 
-ubuntu_2004:
-  stage: build
+test_ubuntu_2004:
+  stage: test
   image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
   script:
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
+    - "make -C svg-flatten tests"
 
-fedora_33:
-  stage: build
+test_fedora_33:
+  stage: test
   image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
   script:
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
+    - "make -C svg-flatten tests"
 
-archlinux:
-  stage: build
+test_archlinux:
+  stage: test
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   script:
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "python setup.py install --user"
     - "gerbolyze --help"
+    - "make -C svg-flatten tests"
 
