@@ -24,6 +24,7 @@ SOURCES := src/svg_color.cpp \
 	src/out_sexp.cpp \
 	src/out_flattener.cpp \
 	src/out_dilater.cpp \
+	src/out_scaler.cpp \
 	src/lambda_sink.cpp \
 	src/flatten.cpp \
 	src/util.cpp \

@@ -383,19 +383,23 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
 
 void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector *sel) {
     assert(_valid);
-    /* Export the actual SVG document to both SVG for debuggin and to gerber. We do this as we go, i.e. we immediately
-     * process each element to gerber as we encounter it instead of first rendering everything to a giant list of gerber
-     * primitives and then serializing those later. Exporting them on the fly saves a ton of memory and is much faster.
+    /* Export the actual SVG document. We do this as we go, i.e. we immediately process each element to gerber as we
+     * encounter it instead of first rendering everything to a giant list of gerber primitives and then serializing
+     * those later. Exporting them on the fly saves a ton of memory and is much faster.
      */
-    polygon_sink = &sink;
-    sink.header({vb_x, vb_y}, {vb_w, vb_h});
+
+    /* Scale document pixels to mm for sinks */
+    Scaler scaler(sink, doc_units_to_mm(1.0));
+
+    polygon_sink = &scaler;
+    scaler.header({vb_x, vb_y}, {vb_w, vb_h});
     ClipperLib::Clipper c;
     c.AddPaths(vb_paths, ptSubject, /* closed */ true);
     ClipperLib::IntRect bbox = c.GetBounds();
     cerr << "document viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
     xform2d xf;
     export_svg_group(xf, rset, root_elem, vb_paths, sel, false, true);
-    sink.footer();
+    scaler.footer();
 }
 
 void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel) {

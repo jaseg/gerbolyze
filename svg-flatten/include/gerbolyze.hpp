@@ -110,6 +110,20 @@ namespace gerbolyze {
             GerberPolarityToken m_current_polarity = GRB_POL_DARK;
     };
 
+    class Scaler : public PolygonSink {
+        public:
+            Scaler(PolygonSink &sink, double scale=1.0) : m_sink(sink), m_scale(scale) {}
+            virtual void header(d2p origin, d2p size);
+            virtual Scaler &operator<<(const Polygon &poly);
+            virtual Scaler &operator<<(const LayerNameToken &layer_name);
+            virtual Scaler &operator<<(GerberPolarityToken pol);
+            virtual void footer();
+
+        private:
+            PolygonSink &m_sink;
+            double m_scale;
+    };
+
     class StreamPolygonSink : public PolygonSink {
     public:
         StreamPolygonSink(std::ostream &out, bool only_polys=false) : m_only_polys(only_polys), m_out(out) {}

@@ -1,0 +1,61 @@
+/*
+ * This file is part of gerbolyze, a vector image preprocessing toolchain 
+ * Copyright (C) 2021 Jan Sebastian Götte <gerbolyze@jaseg.de>
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include <cmath>
+#include <algorithm>
+#include <string>
+#include <iostream>
+#include <iomanip>
+#include <gerbolyze.hpp>
+#include <clipper.hpp>
+#include <svg_import_defs.h>
+#include <svg_geom.h>
+
+using namespace gerbolyze;
+using namespace std;
+
+void Scaler::header(d2p origin, d2p size) {
+    m_sink.header({origin[0] * m_scale, origin[1] * m_scale}, {size[0] * m_scale, size[1] * m_scale});
+}
+
+void Scaler::footer() {
+    m_sink.footer();
+}
+
+Scaler &Scaler::operator<<(const LayerNameToken &layer_name) {
+    m_sink << layer_name;
+
+    return *this;
+}
+
+Scaler &Scaler::operator<<(GerberPolarityToken pol) {
+    m_sink << pol;
+
+    return *this;
+}
+
+Scaler &Scaler::operator<<(const Polygon &poly) {
+    Polygon new_poly;
+    for (auto &p : poly) {
+        new_poly.push_back({ p[0] * m_scale, p[1] * m_scale });
+    }
+    m_sink << new_poly;
+
+    return *this;
+}
+
