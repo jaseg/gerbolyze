@@ -400,6 +400,7 @@ void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sin
     xform2d xf;
     export_svg_group(xf, rset, root_elem, vb_paths, sel, false, true);
     scaler.footer();
+    polygon_sink = nullptr;
 }
 
 void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel) {
