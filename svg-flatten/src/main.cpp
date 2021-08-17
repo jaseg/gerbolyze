@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
                 "Passed through to usvg's --dpi, in case the input file has different ideas of DPI than usvg has.",
                 1},
             {"scale", {"--scale"},
-                "Scale input svg lengths by this factor.",
+                "Scale input svg lengths by this factor (-o gerber only).",
                 1},
             {"exclude_groups", {"-e", "--exclude-groups"},
                 "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",

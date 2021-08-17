@@ -518,7 +518,7 @@ Options:
     Passed through to usvg's --dpi, in case the input file has different ideas of DPI than usvg has.
 
 ``--scale``
-    Scale input svg lengths by this factor.
+    Scale input svg lengths by this factor (-o gerber only).
 
 ``-e, --exclude-groups``
     Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.
