@@ -143,15 +143,15 @@ namespace gerbolyze {
 
     class ElementSelector {
     public:
-        virtual bool match(const pugi::xml_node &node, bool included, bool is_root) const {
-            (void) node, (void) included, (void) is_root;
+        virtual bool match(const pugi::xml_node &node, bool is_toplevel, bool parent_include) const {
+            (void) node, (void) is_toplevel, (void) parent_include;
             return true;
         }
     };
 
     class IDElementSelector : public ElementSelector {
     public:
-        virtual bool match(const pugi::xml_node &node, bool included, bool is_root) const;
+        virtual bool match(const pugi::xml_node &node, bool is_toplevel, bool parent_include) const;
 
         std::vector<std::string> include;
         std::vector<std::string> exclude;
@@ -196,7 +196,8 @@ namespace gerbolyze {
                     xform2d transform);
             RenderContext(RenderContext &parent,
                     xform2d transform,
-                    ClipperLib::Paths &clip);
+                    ClipperLib::Paths &clip,
+                    bool included);
 
             PolygonSink &sink() { return m_sink; }
             const ElementSelector &sel() { return m_sel; }
@@ -209,7 +210,7 @@ namespace gerbolyze {
                 m_mat.transform(transform);
             }
             bool match(const pugi::xml_node &node) {
-                return m_sel.match(node, m_included, m_root);
+                return m_sel.match(node, m_root, m_included);
             }
 
         private:

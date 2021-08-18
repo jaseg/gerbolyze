@@ -82,7 +82,7 @@ class SVGRoundTripTests(unittest.TestCase):
         'pattern_stroke_dashed'
     }
 
-    def compare_images(self, reference, output, test_name, mean, vectorizer_test=False, rsvg_workaround=False):
+    def compare_images(self, reference, output, test_name, mean=test_mean_default, vectorizer_test=False, rsvg_workaround=False):
         ref, out = Image.open(reference), Image.open(output)
 
         if vectorizer_test:
@@ -116,6 +116,49 @@ class SVGRoundTripTests(unittest.TestCase):
         self.assertTrue(delta.mean() < mean,
                 f'Expected mean pixel difference between images to be <{mean}, was {delta.mean():.5g}')
 
+
+    def run_svg_group_selector_test(self, mode, groups):
+        test_in_svg = 'testdata/group_test_input.svg'
+
+        with tempfile.NamedTemporaryFile(suffix='.svg') as tmp_out_svg,\
+            tempfile.NamedTemporaryFile(suffix='.svg') as tmp_ref_svg,\
+            tempfile.NamedTemporaryFile(suffix='.png') as tmp_out_png,\
+            tempfile.NamedTemporaryFile(suffix='.png') as tmp_in_png:
+
+            if mode == 'inc':
+                group_arg = { 'only_groups': ','.join(groups) }
+            elif mode == 'exc':
+                group_arg = { 'exclude_groups': ','.join(groups) }
+            run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg', **group_arg)
+
+            with open(test_in_svg, 'r') as in_f:
+                with open(tmp_ref_svg.name, 'w') as out_f:
+                    if mode == 'inc':
+                        css = '#layer1 { fill: none; }\n'
+                        css += '\n'.join(f'#{group} {{ fill: black; }}' for group in groups)
+                    elif mode == 'exc':
+                        css = '\n'.join(f'#{group} {{ fill: none; }}' for group in groups)
+                    else:
+                        raise ValueError(f'invalid mode "{mode}"')
+                    out_f.write(in_f.read().replace('/* {CSS GOES HERE} */', css))
+
+            run_cargo_cmd('resvg', [tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
+            run_cargo_cmd('resvg', [tmp_ref_svg.name, tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
+
+            tc_id = f'group_sel_test_{mode}_{"_".join(groups)}'
+            try:
+                self.compare_images(tmp_in_png, tmp_out_png, tc_id, mean=0.001)
+
+            except AssertionError as e:
+                shutil.copyfile(tmp_in_png.name, f'/tmp/gerbolyze-fail-{tc_id}-in.png')
+                shutil.copyfile(tmp_out_png.name, f'/tmp/gerbolyze-fail-{tc_id}-out.png')
+                msg, *rest = e.args
+                msg += '\nFailing test renderings copied to:\n'
+                msg += f'  /tmp/gerbolyze-fail-{tc_id}-{{in|out}}.png\n'
+                e.args = (msg, *rest)
+                raise e
+
+
     def run_svg_round_trip_test(self, test_in_svg):
         with tempfile.NamedTemporaryFile(suffix='.svg') as tmp_out_svg,\
             tempfile.NamedTemporaryFile(suffix='.png') as tmp_out_png,\
@@ -128,17 +171,17 @@ class SVGRoundTripTests(unittest.TestCase):
             if not vectorizer_test:
                 run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg')
 
-            else:
-                run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg',
-                        svg_white_is_gerber_dark=True,
-                        clear_color='black', dark_color='white')
-
-            if contours_test:
+            elif contours_test:
                 run_svg_flatten(test_in_svg, tmp_out_svg.name, 
                         clear_color='black', dark_color='white',
                         svg_white_is_gerber_dark=True,
                         format='svg',
                         vectorizer='binary-contours')
+
+            else:
+                run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg',
+                        svg_white_is_gerber_dark=True,
+                        clear_color='black', dark_color='white')
 
             if not use_rsvg: # default!
                 run_cargo_cmd('resvg', [tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
@@ -156,16 +199,22 @@ class SVGRoundTripTests(unittest.TestCase):
             except AssertionError as e:
                 shutil.copyfile(tmp_in_png.name, f'/tmp/gerbolyze-fail-{test_in_svg.stem}-in.png')
                 shutil.copyfile(tmp_out_png.name, f'/tmp/gerbolyze-fail-{test_in_svg.stem}-out.png')
-                foo = list(e.args)
-                foo[0] += '\nFailing test renderings copied to:\n'
-                foo[0] += f'  /tmp/gerbolyze-fail-{test_in_svg.stem}-{{in|out}}.png\n'
-                e.args = tuple(foo)
+                msg, *rest = e.args
+                msg += '\nFailing test renderings copied to:\n'
+                msg += f'  /tmp/gerbolyze-fail-{test_in_svg.stem}-{{in|out}}.png\n'
+                e.args = (msg, *rest)
                 raise e
 
 for test_in_svg in Path('testdata/svg').glob('*.svg'):
     # We need to make sure we capture the loop variable's current value here.
     gen = lambda testcase: lambda self: self.run_svg_round_trip_test(testcase)
     setattr(SVGRoundTripTests, f'test_{test_in_svg.stem}', gen(test_in_svg))
+
+for group in ["g0", "g00", "g000", "g0000", "g00000", "g0001", "g001", "g0010", "g002", "g01", "g010", "g0100", "g011",
+              "g02", "g020", "g03", "path846-59", "path846-3-2", "path846-5-2", "path846-3-3-8"]:
+    gen = lambda mode, group: lambda self: self.run_svg_group_selector_test(mode, group)
+    setattr(SVGRoundTripTests, f'test_group_sel_inc_{group}', gen('inc', [group]))
+    setattr(SVGRoundTripTests, f'test_group_sel_exc_{group}', gen('exc', [group]))
 
 if __name__ == '__main__':
     unittest.main()

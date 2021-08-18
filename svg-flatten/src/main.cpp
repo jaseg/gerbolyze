@@ -377,6 +377,15 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    /*
+    cerr << "Selectors:" << endl;
+    for (auto &elem : sel.include) {
+        cerr << " + " << elem << endl;
+    }
+    for (auto &elem : sel.exclude) {
+        cerr << " - " << elem << endl;
+    }
+    */
     doc.render(rset, *top_sink, sel);
 
     remove(frob.c_str());

@@ -108,9 +108,10 @@ double gerbolyze::SVGDocument::doc_units_to_mm(double px) const {
     return px / (vb_w / page_w_mm);
 }
 
-bool IDElementSelector::match(const pugi::xml_node &node, bool included, bool is_root) const {
+bool IDElementSelector::match(const pugi::xml_node &node, bool is_toplevel, bool parent_include) const {
     string id = node.attribute("id").value();
-    if (is_root && layers) {
+    cerr << "match id=" << id << " toplevel=" << is_toplevel << " parent=" << parent_include << endl;
+    if (is_toplevel && layers) {
         bool layer_match = std::find(layers->begin(), layers->end(), id) != layers->end();
         if (!layer_match) {
             cerr << "Rejecting layer \"" << id << "\"" << endl;
@@ -123,12 +124,24 @@ bool IDElementSelector::match(const pugi::xml_node &node, bool included, bool is
 
     bool include_match = std::find(include.begin(), include.end(), id) != include.end();
     bool exclude_match = std::find(exclude.begin(), exclude.end(), id) != exclude.end();
+    cerr << "  excl=" << exclude_match << " incl=" << include_match << endl;
 
-    if (exclude_match || (!included && !include_match)) {
+    if (is_toplevel) {
+        if (!include.empty())
+            parent_include = false;
+        else
+            parent_include = true;
+    }
+
+    if (exclude_match) {
         return false;
     }
 
-    return true;
+    if (include_match) {
+        return true;
+    }
+
+    return parent_include;
 }
 
 /* Recursively export all SVG elements in the given group. */
@@ -164,11 +177,10 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
 
     /* Iterate over the group's children, exporting them one by one. */
     for (const auto &node : group.children()) {
-        if (!ctx.match(node))
-            continue;
-
         string name(node.name());
-        RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path);
+        bool match = ctx.match(node);
+        RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path, match);
+
         if (name == "g") {
             if (ctx.root()) { /* Treat top-level groups as "layers" like inkscape does. */
                 cerr << "Forwarding layer name to sink: \"" << node.attribute("id").value() << "\"" << endl;
@@ -184,9 +196,15 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
             }
 
         } else if (name == "path") {
+            if (!match)
+                continue;
+
             export_svg_path(elem_ctx, node);
 
         } else if (name == "image") {
+            if (!match)
+                continue;
+
             ImageVectorizer *vec = ctx.settings().m_vec_sel.select(node);
             if (!vec) {
                 cerr << "Cannot resolve vectorizer for node \"" << node.attribute("id").value() << "\"" << endl;
@@ -261,7 +279,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
 
             } else {
                 PolyTreeToPaths(ptree_fill, fill_paths);
-                RenderContext local_ctx(ctx, xform2d(), fill_paths);
+                RenderContext local_ctx(ctx, xform2d(), fill_paths, true);
                 pattern->tile(local_ctx);
             }
 
@@ -366,7 +384,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             } else {
                 Paths clip;
                 PolyTreeToPaths(ptree, clip);
-                RenderContext local_ctx(ctx, xform2d(), clip);
+                RenderContext local_ctx(ctx, xform2d(), clip, true);
                 pattern->tile(local_ctx);
             }
 
@@ -490,16 +508,16 @@ gerbolyze::RenderContext::RenderContext(const RenderSettings &settings,
 }
 
 gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform) :
-    RenderContext(parent, transform, parent.clip())
+    RenderContext(parent, transform, parent.clip(), parent.included())
 {
 }
 
-gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform, ClipperLib::Paths &clip) :
+gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform, ClipperLib::Paths &clip, bool included) :
     m_sink(parent.sink()),
     m_settings(parent.settings()),
     m_mat(parent.mat()),
     m_root(false),
-    m_included(parent.included()),
+    m_included(included),
     m_sel(parent.sel()),
     m_clip(clip)
 {

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="30mm"
+   height="30mm"
+   viewBox="0 0 30 30"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1 (c4e8f9ed74, 2021-05-24)"
+   sodipodi:docname="group_test_input.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     width="30mm"
+     showguides="true"
+     inkscape:lockguides="true"
+     inkscape:zoom="4.9925495"
+     inkscape:cx="46.769691"
+     inkscape:cy="33.149396"
+     inkscape:window-width="1920"
+     inkscape:window-height="1024"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs id="defs2" />
+  <style>
+  /* {CSS GOES HERE} */
+  </style>
+  <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
+    <g id="g0" transform="translate(1.5,3)">
+      <g id="g00">
+        <g id="g000">
+          <g id="g0000">
+            <g id="g00000">
+              <circle id="path846" cx="3" cy="3" r="1" />
+              <circle id="path846-3" cx="6" cy="3" r="1" />
+            </g>
+            <circle id="path846-5" cx="9" cy="3" r="1" />
+            <circle id="path846-3-3" cx="12" cy="3" r="1" />
+          </g>
+          <g id="g0001" transform="translate(12)">
+            <circle id="path846-2" cx="3" cy="3" r="1" />
+            <circle id="path846-3-9" cx="6" cy="3" r="1" />
+          </g>
+          <circle id="path846-5-1" cx="21" cy="3" r="1" />
+          <circle id="path846-3-3-2" cx="24" cy="3" r="1" />
+        </g>
+        <g id="g001" transform="translate(0,3)">
+          <g id="g0010">
+            <circle id="path846-36" cx="3" cy="3" r="1" />
+            <circle id="path846-3-0" cx="6" cy="3" r="1" />
+          </g>
+          <circle id="path846-5-6" cx="9" cy="3" r="1" />
+          <circle id="path846-3-3-26" cx="12" cy="3" r="1" />
+        </g>
+        <g id="g002" transform="translate(12,3)">
+          <circle id="path846-2-8" cx="3" cy="3" r="1" />
+          <circle id="path846-3-9-7" cx="6" cy="3" r="1" />
+        </g>
+        <circle id="path846-5-1-9" cx="21" cy="6" r="1" />
+        <circle id="path846-3-3-2-2" cx="24" cy="6" r="1" />
+      </g>
+      <g id="g01" transform="translate(0,6)">
+        <g id="g010">
+          <g id="g0100">
+            <circle id="path846-59" cx="3" cy="3" r="1" />
+            <circle id="path846-3-2" cx="6" cy="3" r="1" />
+          </g>
+          <circle id="path846-5-2" cx="9" cy="3" r="1" />
+          <circle id="path846-3-3-8" cx="12" cy="3" r="1" />
+        </g>
+        <g id="g011" transform="translate(12)">
+          <circle id="path846-2-7" cx="3" cy="3" r="1" />
+          <circle id="path846-3-9-3" cx="6" cy="3" r="1" />
+        </g>
+        <circle id="path846-5-1-6" cx="21" cy="3" r="1" />
+        <circle id="path846-3-3-2-1" cx="24" cy="3" r="1" />
+      </g>
+      <g id="g02" transform="translate(0,9)">
+        <g id="g020">
+          <circle id="path846-36-3" cx="3" cy="3" r="1" />
+          <circle id="path846-3-0-1" cx="6" cy="3" r="1" />
+        </g>
+        <circle id="path846-5-6-9" cx="9" cy="3" r="1" />
+        <circle id="path846-3-3-26-4" cx="12" cy="3" r="1" />
+      </g>
+      <g id="g03" transform="translate(12,9)">
+        <circle id="path846-2-8-8" cx="3" cy="3" r="1" />
+        <circle id="path846-3-9-7-4" cx="6" cy="3" r="1" />
+      </g>
+      <circle id="path846-5-1-9-5" cx="21" cy="12" r="1" />
+      <circle id="path846-3-3-2-2-0" cx="24" cy="12" r="1" />
+    </g>
+  </g>
+</svg>
