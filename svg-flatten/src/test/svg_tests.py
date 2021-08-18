@@ -5,6 +5,7 @@ import shutil
 import unittest
 from pathlib import Path
 import subprocess
+import itertools
 import os
 
 from PIL import Image
@@ -168,20 +169,20 @@ class SVGRoundTripTests(unittest.TestCase):
             vectorizer_test = test_in_svg.stem.startswith('vectorizer')
             contours_test = test_in_svg.stem.startswith('contours')
 
-            if not vectorizer_test:
-                run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg')
 
-            elif contours_test:
-                run_svg_flatten(test_in_svg, tmp_out_svg.name, 
-                        clear_color='black', dark_color='white',
-                        svg_white_is_gerber_dark=True,
-                        format='svg',
-                        vectorizer='binary-contours')
-
-            else:
+            if vectorizer_test:
                 run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg',
                         svg_white_is_gerber_dark=True,
                         clear_color='black', dark_color='white')
+
+            elif contours_test:
+                run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg',
+                        clear_color='black', dark_color='white',
+                        svg_white_is_gerber_dark=True,
+                        vectorizer='binary-contours')
+
+            else:
+                run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg')
 
             if not use_rsvg: # default!
                 run_cargo_cmd('resvg', [tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
@@ -215,6 +216,11 @@ for group in ["g0", "g00", "g000", "g0000", "g00000", "g0001", "g001", "g0010", 
     gen = lambda mode, group: lambda self: self.run_svg_group_selector_test(mode, group)
     setattr(SVGRoundTripTests, f'test_group_sel_inc_{group}', gen('inc', [group]))
     setattr(SVGRoundTripTests, f'test_group_sel_exc_{group}', gen('exc', [group]))
+
+for g0, g1 in itertools.product(["g0", "g0000", "g0001", "g0010", "g002","path846-59"], repeat=2):
+    gen = lambda mode, group: lambda self: self.run_svg_group_selector_test(mode, group)
+    setattr(SVGRoundTripTests, f'test_group_sel_inc_{g0}_{g1}', gen('inc', [g0, g1]))
+    setattr(SVGRoundTripTests, f'test_group_sel_exc_{g0}_{g1}', gen('exc', [g0, g1]))
 
 if __name__ == '__main__':
     unittest.main()
