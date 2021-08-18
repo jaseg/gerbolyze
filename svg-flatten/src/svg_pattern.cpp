@@ -54,17 +54,17 @@ gerbolyze::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _nod
 
 /* Tile pattern into gerber. Note that this function may be called several times in case the pattern is
  * referenced from multiple places, so we must not clobber any of the object's state. */
-void gerbolyze::Pattern::tile (xform2d &mat, const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip) {
+void gerbolyze::Pattern::tile (gerbolyze::RenderContext &ctx) {
     assert(doc);
 
     /* Transform x, y, w, h from pattern coordinate space into parent coordinates by applying the inverse
      * patternTransform. This is necessary so we iterate over the correct bounds when tiling below */
-    d2p pos_xf = mat.doc2phys(d2p{x, y});
+    d2p pos_xf = ctx.mat().doc2phys(d2p{x, y});
     double inst_x = pos_xf[0], inst_y = pos_xf[1];
-    double inst_w = mat.doc2phys_dist(w);
-    double inst_h = mat.doc2phys_dist(h);
+    double inst_w = ctx.mat().doc2phys_dist(w);
+    double inst_h = ctx.mat().doc2phys_dist(h);
 
-    ClipperLib::IntRect clip_bounds = get_paths_bounds(clip);
+    ClipperLib::IntRect clip_bounds = get_paths_bounds(ctx.clip());
     double bx = clip_bounds.left / clipper_scale;
     double by = clip_bounds.top / clipper_scale;
     double bw = (clip_bounds.right - clip_bounds.left) / clipper_scale;
@@ -86,8 +86,7 @@ void gerbolyze::Pattern::tile (xform2d &mat, const gerbolyze::RenderSettings &rs
     }
 
     /* Switch to pattern coordinates */
-    xform2d local_xf(mat);
-    local_xf.transform(patternTransform);
+    RenderContext pat_ctx(ctx, patternTransform);
 
     /* Iterate over all pattern tiles in pattern coordinates */
     for (double inst_off_x = fmod(inst_x, inst_w) - 2*inst_w;
@@ -98,7 +97,7 @@ void gerbolyze::Pattern::tile (xform2d &mat, const gerbolyze::RenderSettings &rs
                 inst_off_y < bh + 2*inst_h;
                 inst_off_y += inst_h) {
 
-            xform2d elem_xf(local_xf);
+            xform2d elem_xf;
             /* Change into this individual tile's coordinate system */
             elem_xf.translate(inst_off_x, inst_off_y);
             if (has_vb) {
@@ -109,7 +108,8 @@ void gerbolyze::Pattern::tile (xform2d &mat, const gerbolyze::RenderSettings &rs
             }
 
             /* Export the pattern tile's content like a group */
-            doc->export_svg_group(elem_xf, rset, _node, clip);
+            RenderContext elem_ctx(pat_ctx, elem_xf);
+            doc->export_svg_group(elem_ctx, _node);
         }
     }
 }

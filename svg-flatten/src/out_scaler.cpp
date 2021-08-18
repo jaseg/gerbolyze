@@ -29,27 +29,27 @@
 using namespace gerbolyze;
 using namespace std;
 
-void Scaler::header(d2p origin, d2p size) {
+void PolygonScaler::header(d2p origin, d2p size) {
     m_sink.header({origin[0] * m_scale, origin[1] * m_scale}, {size[0] * m_scale, size[1] * m_scale});
 }
 
-void Scaler::footer() {
+void PolygonScaler::footer() {
     m_sink.footer();
 }
 
-Scaler &Scaler::operator<<(const LayerNameToken &layer_name) {
+PolygonScaler &PolygonScaler::operator<<(const LayerNameToken &layer_name) {
     m_sink << layer_name;
 
     return *this;
 }
 
-Scaler &Scaler::operator<<(GerberPolarityToken pol) {
+PolygonScaler &PolygonScaler::operator<<(GerberPolarityToken pol) {
     m_sink << pol;
 
     return *this;
 }
 
-Scaler &Scaler::operator<<(const Polygon &poly) {
+PolygonScaler &PolygonScaler::operator<<(const Polygon &poly) {
     Polygon new_poly;
     for (auto &p : poly) {
         new_poly.push_back({ p[0] * m_scale, p[1] * m_scale });

@@ -29,6 +29,40 @@ using namespace gerbolyze;
 using namespace std;
 
 
+/* Note: These values come from KiCAD's common/lset.cpp. KiCAD uses *multiple different names* for the same layer in
+ * different places, and not all of them are stable. Sometimes, these names change without notice. If this list isn't
+ * up-to-date, it's not my fault. Still, please file an issue. */
+const std::vector<std::string> gerbolyze::kicad_default_layers ({
+        /* Copper */
+        "F.Cu",
+        "In1.Cu", "In2.Cu", "In3.Cu", "In4.Cu", "In5.Cu", "In6.Cu", "In7.Cu", "In8.Cu",
+        "In9.Cu", "In10.Cu", "In11.Cu", "In12.Cu", "In13.Cu", "In14.Cu", "In15.Cu", "In16.Cu",
+        "In17.Cu", "In18.Cu", "In19.Cu", "In20.Cu", "In21.Cu", "In22.Cu", "In23.Cu",
+        "In24.Cu", "In25.Cu", "In26.Cu", "In27.Cu", "In28.Cu", "In29.Cu", "In30.Cu",
+        "B.Cu",
+
+        /* Technical layers */
+        "B.Adhes", "F.Adhes",
+        "B.Paste", "F.Paste",
+        "B.SilkS", "F.SilkS",
+        "B.Mask", "F.Mask",
+
+        /* User layers */
+        "Dwgs.User",
+        "Cmts.User",
+        "Eco1.User", "Eco2.User",
+        "Edge.Cuts",
+        "Margin",
+
+        /* Footprint layers */
+        "F.CrtYd", "B.CrtYd",
+        "F.Fab", "B.Fab",
+
+        /* Layers for user scripting etc. */
+        "User.1", "User.2", "User.3", "User.4", "User.5", "User.6", "User.7", "User.8", "User.9",
+    });
+
+
 KicadSexpOutput::KicadSexpOutput(ostream &out, string mod_name, string layer, bool only_polys, string ref_text, string val_text, d2p ref_pos, d2p val_pos)
     : StreamPolygonSink(out, only_polys),
     m_mod_name(mod_name),
@@ -104,5 +138,4 @@ KicadSexpOutput &KicadSexpOutput::operator<<(const Polygon &poly) {
 void KicadSexpOutput::footer_impl() {
     m_out << ")" << endl;
 }
-
 

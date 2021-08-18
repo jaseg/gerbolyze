@@ -147,14 +147,3 @@ void gerbolyze::dehole_polytree(PolyTree &ptree, Paths &out) {
     }
 }
 
-
-/* Intersect two clip paths. Both must share a coordinate system. */
-void gerbolyze::combine_clip_paths(Paths &in_a, Paths &in_b, Paths &out) {
-    Clipper c;
-    c.StrictlySimple(true);
-    c.AddPaths(in_a, ptClip, /* closed */ true);
-    c.AddPaths(in_b, ptSubject, /* closed */ true);
-    /* Nonzero fill since both input clip paths must already have been preprocessed by clipper. */
-    c.Execute(ctIntersection, out, pftNonZero);
-}
-

@@ -377,7 +377,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    doc.render(rset, *top_sink, &sel);
+    doc.render(rset, *top_sink, sel);
 
     remove(frob.c_str());
     remove(barf.c_str());

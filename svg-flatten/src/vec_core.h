@@ -29,7 +29,7 @@ namespace gerbolyze {
     public:
         VoronoiVectorizer(grid_type grid, bool relax=true) : m_relax(relax), m_grid_type(grid) {}
 
-        virtual void vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px);
+        virtual void vectorize_image(RenderContext &ctx, const pugi::xml_node &node, double min_feature_size_px);
     private:
         double m_relax;
         grid_type m_grid_type;
@@ -39,18 +39,18 @@ namespace gerbolyze {
     public:
         OpenCVContoursVectorizer() {}
 
-        virtual void vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px);
+        virtual void vectorize_image(RenderContext &ctx, const pugi::xml_node &node, double min_feature_size_px);
     };
 
     class DevNullVectorizer : public ImageVectorizer {
     public:
         DevNullVectorizer() {}
 
-        virtual void vectorize_image(xform2d &, const pugi::xml_node &, ClipperLib::Paths &, PolygonSink &, double) {}
+        virtual void vectorize_image(RenderContext &, const pugi::xml_node &, double) {}
     };
 
     void parse_img_meta(const pugi::xml_node &node, double &x, double &y, double &width, double &height);
-    void draw_bg_rect(xform2d &mat, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink);
+    void draw_bg_rect(RenderContext &ctx, double width, double height);
     void handle_aspect_ratio(std::string spec, double &scale_x, double &scale_y, double &off_x, double &off_y, double cols, double rows);
 }
 

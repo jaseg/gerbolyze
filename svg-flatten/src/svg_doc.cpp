@@ -132,14 +132,7 @@ bool IDElementSelector::match(const pugi::xml_node &node, bool included, bool is
 }
 
 /* Recursively export all SVG elements in the given group. */
-void gerbolyze::SVGDocument::export_svg_group(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &group, Paths &parent_clip_path, const ElementSelector *sel, bool included, bool is_root) {
-
-    /* Load clip paths from defs given bezier flattening tolerance from rset */
-    load_clips(rset);
-    
-    /* Enter the group's coordinate system */
-    xform2d local_xf(mat);
-    local_xf.transform(xform2d(group.attribute("transform").value()));
+void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xml_node &group) {
 
     /* Fetch clip path from global registry and transform it into document coordinates. */
     Paths clip_path;
@@ -152,50 +145,56 @@ void gerbolyze::SVGDocument::export_svg_group(xform2d &mat, const RenderSettings
 
     } else {
         clip_path = *lookup;
-        local_xf.transform_paths(clip_path);
+        ctx.mat().transform_paths(clip_path);
     }
 
     /* Clip against parent's clip path (both are now in document coordinates) */
-    if (!parent_clip_path.empty()) {
+    if (!ctx.clip().empty()) {
         if (!clip_path.empty()) {
-            combine_clip_paths(parent_clip_path, clip_path, clip_path);
+            Clipper c;
+            c.StrictlySimple(true);
+            c.AddPaths(ctx.clip(), ptClip, /* closed */ true);
+            c.AddPaths(clip_path, ptSubject, /* closed */ true);
+            /* Nonzero fill since both input clip paths must already have been preprocessed by clipper. */
+            c.Execute(ctIntersection, clip_path, pftNonZero);
         } else {
-            clip_path = parent_clip_path;
+            clip_path = ctx.clip();
         }
     }
 
     /* Iterate over the group's children, exporting them one by one. */
     for (const auto &node : group.children()) {
-        if (sel && !sel->match(node, included, is_root))
+        if (!ctx.match(node))
             continue;
 
         string name(node.name());
+        RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path);
         if (name == "g") {
-            if (is_root) { /* Treat top-level groups as "layers" like inkscape does. */
+            if (ctx.root()) { /* Treat top-level groups as "layers" like inkscape does. */
                 cerr << "Forwarding layer name to sink: \"" << node.attribute("id").value() << "\"" << endl;
                 LayerNameToken tok { node.attribute("id").value() };
-                *polygon_sink << tok;
+                elem_ctx.sink() << tok;
             }
 
-            export_svg_group(local_xf, rset, node, clip_path, sel, true);
+            export_svg_group(elem_ctx, node);
             
-            if (is_root) {
+            if (ctx.root()) {
                 LayerNameToken tok {""};
-                *polygon_sink << tok;
+                elem_ctx.sink() << tok;
             }
 
         } else if (name == "path") {
-            export_svg_path(local_xf, rset, node, clip_path);
+            export_svg_path(elem_ctx, node);
 
         } else if (name == "image") {
-            ImageVectorizer *vec = rset.m_vec_sel.select(node);
+            ImageVectorizer *vec = ctx.settings().m_vec_sel.select(node);
             if (!vec) {
                 cerr << "Cannot resolve vectorizer for node \"" << node.attribute("id").value() << "\"" << endl;
                 continue;
             }
 
-            double min_feature_size_px = mm_to_doc_units(rset.m_minimum_feature_size_mm);
-            vec->vectorize_image(local_xf, node, clip_path, *polygon_sink, min_feature_size_px);
+            double min_feature_size_px = mm_to_doc_units(ctx.settings().m_minimum_feature_size_mm);
+            vec->vectorize_image(elem_ctx, node, min_feature_size_px);
             delete vec;
 
         } else if (name == "defs") {
@@ -207,9 +206,9 @@ void gerbolyze::SVGDocument::export_svg_group(xform2d &mat, const RenderSettings
 }
 
 /* Export an SVG path element to gerber. Apply patterns and clip on the fly. */
-void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &node, Paths &clip_path) {
-    enum gerber_color fill_color = gerber_fill_color(node, rset);
-    enum gerber_color stroke_color = gerber_stroke_color(node, rset);
+void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml_node &node) {
+    enum gerber_color fill_color = gerber_fill_color(node, ctx.settings());
+    enum gerber_color stroke_color = gerber_stroke_color(node, ctx.settings());
 
     double stroke_width = usvg_double_attr(node, "stroke-width", /* default */ 1.0);
     assert(stroke_width > 0.0);
@@ -225,15 +224,13 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
     }
 
     /* Load path from SVG path data and transform into document units. */
-    xform2d local_xf(mat);
-    local_xf.transform(xform2d(node.attribute("transform").value()));
     /* FIXME transform stroke width here? */
-    stroke_width = local_xf.doc2phys_dist(stroke_width);
+    stroke_width = ctx.mat().doc2phys_dist(stroke_width);
 
     Paths stroke_open, stroke_closed;
     PolyTree ptree_fill;
     PolyTree ptree;
-    load_svg_path(local_xf, node, stroke_open, stroke_closed, ptree_fill, rset.curve_tolerance_mm);
+    load_svg_path(ctx.mat(), node, stroke_open, stroke_closed, ptree_fill, ctx.settings().curve_tolerance_mm);
 
     Paths fill_paths;
     PolyTreeToPaths(ptree_fill, fill_paths);
@@ -243,17 +240,16 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
 
     /* Skip filling for transparent fills. In outline mode, skip filling if a stroke is also set to avoid double lines.
      */
-    if (fill_color && !(rset.outline_mode && has_stroke)) {
+    if (has_fill && !(ctx.settings().outline_mode && has_stroke)) {
         /* Clip paths. Consider all paths closed for filling. */
-        if (!clip_path.empty()) {
+        if (!ctx.clip().empty()) {
             Clipper c;
             c.AddPaths(fill_paths, ptSubject, /* closed */ true);
-            c.AddPaths(clip_path, ptClip, /* closed */ true);
+            c.AddPaths(ctx.clip(), ptClip, /* closed */ true);
             c.StrictlySimple(true);
 
             /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
             c.Execute(ctIntersection, ptree_fill, pftNonZero, pftNonZero);
-            PolyTreeToPaths(ptree_fill, fill_paths);
         }
 
         /* Call out to pattern tiler for pattern fills. The path becomes the clip here. */
@@ -264,11 +260,13 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                 cerr << "Warning: Fill pattern with id \"" << fill_pattern_id << "\" not found." << endl;
 
             } else {
-                pattern->tile(local_xf, rset, fill_paths);
+                PolyTreeToPaths(ptree_fill, fill_paths);
+                RenderContext local_ctx(ctx, xform2d(), fill_paths);
+                pattern->tile(local_ctx);
             }
 
         } else { /* solid fill */
-            if (rset.outline_mode) {
+            if (ctx.settings().outline_mode) {
                 fill_color = GRB_DARK;
             }
 
@@ -286,10 +284,10 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                             });
 
                 /* In outline mode, manually close polys */
-                if (rset.outline_mode && !out.empty())
+                if (ctx.settings().outline_mode && !out.empty())
                     out.push_back(out[0]);
 
-                *polygon_sink << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
+                ctx.sink() << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
             }
         }
     }
@@ -307,10 +305,10 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             /* Special case: A closed path becomes a number of open paths when it is dashed. */
             if (dasharray.empty()) {
 
-                if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
+                if (ctx.settings().outline_mode && stroke_color != GRB_PATTERN_FILL) {
                     /* In outline mode, manually close polys */
                     poly.push_back(poly[0]);
-                    *polygon_sink << ApertureToken() << poly;
+                    ctx.sink() << ApertureToken() << poly;
 
                 } else {
                     offx.AddPath(poly, join_type, etClosedLine);
@@ -322,8 +320,8 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
                 Paths out;
                 dash_path(poly_copy, out, dasharray, stroke_dashoffset);
 
-                if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
-                    *polygon_sink << ApertureToken(stroke_width) << out;
+                if (ctx.settings().outline_mode && stroke_color != GRB_PATTERN_FILL) {
+                    ctx.sink() << ApertureToken(stroke_width) << out;
                 } else {
                     offx.AddPaths(out, join_type, end_type);
                 }
@@ -334,8 +332,8 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             Paths out;
             dash_path(poly, out, dasharray, stroke_dashoffset);
 
-            if (rset.outline_mode && stroke_color != GRB_PATTERN_FILL) {
-                *polygon_sink << ApertureToken(stroke_width) << out;
+            if (ctx.settings().outline_mode && stroke_color != GRB_PATTERN_FILL) {
+                ctx.sink() << ApertureToken(stroke_width) << out;
             } else {
                 offx.AddPaths(out, join_type, end_type);
             }
@@ -346,13 +344,13 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
 
         /* Clip. Note that after the outline, all we have is closed paths as any open path's stroke outline is itself
          * a closed path. */
-        if (!clip_path.empty()) {
+        if (!ctx.clip().empty()) {
             Clipper c;
 
             Paths outline_paths;
             PolyTreeToPaths(ptree, outline_paths);
             c.AddPaths(outline_paths, ptSubject, /* closed */ true);
-            c.AddPaths(clip_path, ptClip, /* closed */ true);
+            c.AddPaths(ctx.clip(), ptClip, /* closed */ true);
             c.StrictlySimple(true);
             /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
             c.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
@@ -368,20 +366,21 @@ void gerbolyze::SVGDocument::export_svg_path(xform2d &mat, const RenderSettings 
             } else {
                 Paths clip;
                 PolyTreeToPaths(ptree, clip);
-                pattern->tile(local_xf, rset, clip);
+                RenderContext local_ctx(ctx, xform2d(), clip);
+                pattern->tile(local_ctx);
             }
 
-        } else if (!rset.outline_mode) {
+        } else if (!ctx.settings().outline_mode) {
             Paths s_polys;
             dehole_polytree(ptree, s_polys);
 
-            *polygon_sink << ApertureToken() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
+            ctx.sink() << ApertureToken() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
         }
     }
-    *polygon_sink << ApertureToken();
+    ctx.sink() << ApertureToken();
 }
 
-void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector *sel) {
+void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector &sel) {
     assert(_valid);
     /* Export the actual SVG document. We do this as we go, i.e. we immediately process each element to gerber as we
      * encounter it instead of first rendering everything to a giant list of gerber primitives and then serializing
@@ -389,21 +388,18 @@ void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sin
      */
 
     /* Scale document pixels to mm for sinks */
-    Scaler scaler(sink, doc_units_to_mm(1.0));
+    PolygonScaler scaler(sink, doc_units_to_mm(1.0));
+    RenderContext ctx(rset, scaler, sel, vb_paths);
 
-    polygon_sink = &scaler;
+    /* Load clip paths from defs with given bezier flattening tolerance and unit scale */
+    load_clips(rset);
+
     scaler.header({vb_x, vb_y}, {vb_w, vb_h});
-    ClipperLib::Clipper c;
-    c.AddPaths(vb_paths, ptSubject, /* closed */ true);
-    ClipperLib::IntRect bbox = c.GetBounds();
-    cerr << "document viewbox clip: bbox={" << bbox.left << ", " << bbox.top << "} - {" << bbox.right << ", " << bbox.bottom << "}" << endl;
-    xform2d xf;
-    export_svg_group(xf, rset, root_elem, vb_paths, sel, false, true);
+    export_svg_group(ctx, root_elem);
     scaler.footer();
-    polygon_sink = nullptr;
 }
 
-void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel) {
+void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<pair<Polygon, GerberPolarityToken>> &out, const ElementSelector &sel) {
     LambdaPolygonSink sink([&out](const Polygon &poly, GerberPolarityToken pol) {
             out.emplace_back(pair<Polygon, GerberPolarityToken>{poly, pol});
         });
@@ -413,14 +409,14 @@ void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<p
 void gerbolyze::SVGDocument::setup_viewport_clip() {
     /* Set up view port clip path */
     Path vb_path;
-    for (auto &elem : vector<pair<double, double>> {{vb_x, vb_y}, {vb_x+vb_w, vb_y}, {vb_x+vb_w, vb_y+vb_h}, {vb_x, vb_y+vb_h}}) {
-        double x = elem.first, y = elem.second;
-        vb_path.push_back({ (cInt)round(x * clipper_scale), (cInt)round(y * clipper_scale) });
+    for (d2p &p : vector<d2p> {
+            {vb_x,      vb_y},
+            {vb_x+vb_w, vb_y},
+            {vb_x+vb_w, vb_y+vb_h},
+            {vb_x,      vb_y+vb_h}}) {
+        vb_path.push_back({ (cInt)round(p[0] * clipper_scale), (cInt)round(p[1] * clipper_scale) });
     }
     vb_paths.push_back(vb_path);
-
-    ClipperLib::Clipper c;
-    c.AddPaths(vb_paths, ptSubject, /* closed */ true);
 }
 
 void gerbolyze::SVGDocument::load_patterns() {
@@ -478,35 +474,35 @@ void gerbolyze::SVGDocument::load_clips(const RenderSettings &rset) {
     }
 }
 
-/* Note: These values come from KiCAD's common/lset.cpp. KiCAD uses *multiple different names* for the same layer in
- * different places, and not all of them are stable. Sometimes, these names change without notice. If this list isn't
- * up-to-date, it's not my fault. Still, please file an issue. */
-const std::vector<std::string> gerbolyze::kicad_default_layers ({
-        /* Copper */
-        "F.Cu",
-        "In1.Cu", "In2.Cu", "In3.Cu", "In4.Cu", "In5.Cu", "In6.Cu", "In7.Cu", "In8.Cu",
-        "In9.Cu", "In10.Cu", "In11.Cu", "In12.Cu", "In13.Cu", "In14.Cu", "In15.Cu", "In16.Cu",
-        "In17.Cu", "In18.Cu", "In19.Cu", "In20.Cu", "In21.Cu", "In22.Cu", "In23.Cu",
-        "In24.Cu", "In25.Cu", "In26.Cu", "In27.Cu", "In28.Cu", "In29.Cu", "In30.Cu",
-        "B.Cu",
 
-        /* Technical layers */
-        "B.Adhes", "F.Adhes",
-        "B.Paste", "F.Paste",
-        "B.SilkS", "F.SilkS",
-        "B.Mask", "F.Mask",
+gerbolyze::RenderContext::RenderContext(const RenderSettings &settings,
+        PolygonSink &sink,
+        const ElementSelector &sel,
+        ClipperLib::Paths &clip) :
+    m_sink(sink),
+    m_settings(settings),
+    m_mat(),
+    m_root(true),
+    m_included(false),
+    m_sel(sel),
+    m_clip(clip)
+{
+}
 
-        /* User layers */
-        "Dwgs.User",
-        "Cmts.User",
-        "Eco1.User", "Eco2.User",
-        "Edge.Cuts",
-        "Margin",
+gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform) :
+    RenderContext(parent, transform, parent.clip())
+{
+}
 
-        /* Footprint layers */
-        "F.CrtYd", "B.CrtYd",
-        "F.Fab", "B.Fab",
+gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform, ClipperLib::Paths &clip) :
+    m_sink(parent.sink()),
+    m_settings(parent.settings()),
+    m_mat(parent.mat()),
+    m_root(false),
+    m_included(parent.included()),
+    m_sel(parent.sel()),
+    m_clip(clip)
+{
+    m_mat.transform(transform);
+}
 
-        /* Layers for user scripting etc. */
-        "User.1", "User.2", "User.3", "User.4", "User.5", "User.6", "User.7", "User.8", "User.9",
-        });

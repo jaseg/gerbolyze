@@ -30,13 +30,14 @@ namespace gerbolyze {
 
 class SVGDocument;
 class RenderSettings;
+class RenderContext;
 
 class Pattern {
 public:
     Pattern() {}
     Pattern(const pugi::xml_node &node, SVGDocument &doc);
 
-    void tile (xform2d &mat, const gerbolyze::RenderSettings &rset, ClipperLib::Paths &clip);
+    void tile (RenderContext &ctx);
 
 private:
     double x, y, w, h;

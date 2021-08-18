@@ -110,13 +110,13 @@ namespace gerbolyze {
             GerberPolarityToken m_current_polarity = GRB_POL_DARK;
     };
 
-    class Scaler : public PolygonSink {
+    class PolygonScaler : public PolygonSink {
         public:
-            Scaler(PolygonSink &sink, double scale=1.0) : m_sink(sink), m_scale(scale) {}
+            PolygonScaler(PolygonSink &sink, double scale=1.0) : m_sink(sink), m_scale(scale) {}
             virtual void header(d2p origin, d2p size);
-            virtual Scaler &operator<<(const Polygon &poly);
-            virtual Scaler &operator<<(const LayerNameToken &layer_name);
-            virtual Scaler &operator<<(GerberPolarityToken pol);
+            virtual PolygonScaler &operator<<(const Polygon &poly);
+            virtual PolygonScaler &operator<<(const LayerNameToken &layer_name);
+            virtual PolygonScaler &operator<<(GerberPolarityToken pol);
             virtual void footer();
 
         private:
@@ -143,7 +143,10 @@ namespace gerbolyze {
 
     class ElementSelector {
     public:
-        virtual bool match(const pugi::xml_node &node, bool included, bool is_root) const = 0;
+        virtual bool match(const pugi::xml_node &node, bool included, bool is_root) const {
+            (void) node, (void) included, (void) is_root;
+            return true;
+        }
     };
 
     class IDElementSelector : public ElementSelector {
@@ -158,7 +161,7 @@ namespace gerbolyze {
     class ImageVectorizer {
     public:
         virtual ~ImageVectorizer() {};
-        virtual void vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px) = 0;
+        virtual void vectorize_image(RenderContext &ctx, const pugi::xml_node &node, double min_feature_size_px) = 0;
     };
     
     ImageVectorizer *makeVectorizer(const std::string &name);
@@ -183,6 +186,42 @@ namespace gerbolyze {
         bool flip_color_interpretation = false;
     };
 
+    class RenderContext {
+        public:
+            RenderContext(const RenderSettings &settings,
+                    PolygonSink &sink,
+                    const ElementSelector &sel,
+                    ClipperLib::Paths &clip);
+            RenderContext(RenderContext &parent,
+                    xform2d transform);
+            RenderContext(RenderContext &parent,
+                    xform2d transform,
+                    ClipperLib::Paths &clip);
+
+            PolygonSink &sink() { return m_sink; }
+            const ElementSelector &sel() { return m_sel; }
+            const RenderSettings &settings() { return m_settings; }
+            xform2d &mat() { return m_mat; }
+            bool root() const { return m_root; }
+            bool included() const { return m_included; }
+            ClipperLib::Paths &clip() { return m_clip; }
+            void transform(xform2d &transform) {
+                m_mat.transform(transform);
+            }
+            bool match(const pugi::xml_node &node) {
+                return m_sel.match(node, m_included, m_root);
+            }
+
+        private:
+            PolygonSink &m_sink;
+            const RenderSettings &m_settings;
+            xform2d m_mat;
+            bool m_root;
+            bool m_included; /* TODO: refactor name */
+            const ElementSelector &m_sel;
+            ClipperLib::Paths &m_clip;
+    };
+
     class SVGDocument {
         public:
             SVGDocument() : _valid(false) {}
@@ -200,8 +239,8 @@ namespace gerbolyze {
             double width() const { return page_w_mm; }
             double height() const { return page_h_mm; }
 
-            void render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector *sel=nullptr);
-            void render_to_list(const RenderSettings &rset, std::vector<std::pair<Polygon, GerberPolarityToken>> &out, const ElementSelector *sel=nullptr);
+            void render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector &sel=ElementSelector());
+            void render_to_list(const RenderSettings &rset, std::vector<std::pair<Polygon, GerberPolarityToken>> &out, const ElementSelector &sel=ElementSelector());
 
         private:
             friend class Pattern;
@@ -209,8 +248,8 @@ namespace gerbolyze {
             const ClipperLib::Paths *lookup_clip_path(const pugi::xml_node &node);
             Pattern *lookup_pattern(const std::string id);
 
-            void export_svg_group(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &group, ClipperLib::Paths &parent_clip_path, const ElementSelector *sel=nullptr, bool included=true, bool is_root=false);
-            void export_svg_path(xform2d &mat, const RenderSettings &rset, const pugi::xml_node &node, ClipperLib::Paths &clip_path);
+            void export_svg_group(RenderContext &ctx, const pugi::xml_node &group);
+            void export_svg_path(RenderContext &ctx, const pugi::xml_node &node);
             void setup_viewport_clip();
             void load_clips(const RenderSettings &rset);
             void load_patterns();
@@ -225,8 +264,6 @@ namespace gerbolyze {
             std::map<std::string, Pattern> pattern_map;
             std::map<std::string, ClipperLib::Paths> clip_path_map;
             ClipperLib::Paths vb_paths; /* viewport clip rect */
-
-            PolygonSink *polygon_sink = nullptr;
 
             static constexpr double dbg_fill_alpha = 0.8;
             static constexpr double dbg_stroke_alpha = 1.0;

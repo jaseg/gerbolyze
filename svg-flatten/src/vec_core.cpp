@@ -95,15 +95,19 @@ template<typename T> nopencv::Image<T> *img_from_node(const pugi::xml_node &node
     return img;
 }
 
-void gerbolyze::draw_bg_rect(xform2d &mat, double width, double height, ClipperLib::Paths &clip_path, PolygonSink &sink) {
+void gerbolyze::draw_bg_rect(RenderContext &ctx, double width, double height) {
     /* For our output to look correct, we have to paint the image's bounding box in black as background for our halftone
      * blobs. We cannot simply draw a rect here, though. Instead we have to first intersect the bounding box with the
      * clip path we get from the caller.
      *
      * First, setup the bounding box rectangle in our local px coordinate space. */
     ClipperLib::Path rect_path;
-    for (auto &elem : vector<pair<double, double>> {{0, 0}, {width, 0}, {width, height}, {0, height}}) {
-        d2p xf(mat.doc2phys(d2p{elem.first, elem.second}));
+    for (auto &elem : vector<pair<double, double>> {
+            {0,     0},
+            {width, 0},
+            {width, height},
+            {0,     height}}) {
+        d2p xf(ctx.mat().doc2phys(d2p{elem.first, elem.second}));
         rect_path.push_back({
                 (ClipperLib::cInt)round(xf[0] * clipper_scale),
                 (ClipperLib::cInt)round(xf[1] * clipper_scale)
@@ -113,8 +117,8 @@ void gerbolyze::draw_bg_rect(xform2d &mat, double width, double height, ClipperL
     /* Intersect the bounding box with the caller's clip path */
     ClipperLib::Clipper c;
     c.AddPath(rect_path, ClipperLib::ptSubject, /* closed */ true);
-    if (!clip_path.empty()) {
-        c.AddPaths(clip_path, ClipperLib::ptClip, /* closed */ true);
+    if (!ctx.clip().empty()) {
+        c.AddPaths(ctx.clip(), ClipperLib::ptClip, /* closed */ true);
     }
 
     ClipperLib::Paths rect_out;
@@ -128,7 +132,7 @@ void gerbolyze::draw_bg_rect(xform2d &mat, double width, double height, ClipperL
             out.push_back(std::array<double, 2>{
                     ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
                     });
-        sink << GRB_POL_CLEAR << out;
+        ctx.sink() << GRB_POL_CLEAR << out;
     }
 }
 
@@ -152,7 +156,7 @@ void gerbolyze::draw_bg_rect(xform2d &mat, double width, double height, ClipperL
  * 4. It scales each of these voronoi cell polygons to match the input images brightness at the spot covered by this
  *    cell.
  */
-void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px) {
+void gerbolyze::VoronoiVectorizer::vectorize_image(RenderContext &ctx, const pugi::xml_node &node, double min_feature_size_px) {
     double x, y, width, height;
     parse_img_meta(node, x, y, width, height);
     nopencv::Image32f *img = img_from_node<float>(node);
@@ -160,10 +164,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
         return;
 
     /* Set up target transform using SVG transform and x/y attributes */
-    xform2d local_xf(mat);
-    local_xf.transform(xform2d(node.attribute("transform").value()));
-    local_xf.translate(x, y);
-    cerr << "voronoi vectorizer: local_xf = " << local_xf.dbg_str() << endl;
+    RenderContext img_ctx(ctx, xform2d(1, 0, 0, 1, x, y));
+    cerr << "voronoi vectorizer: local_xf = " << ctx.mat().dbg_str() << endl;
 
     double orig_rows = img->rows();
     double orig_cols = img->cols();
@@ -176,10 +178,10 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
     cerr << "aspect " << scale_x << ", " << scale_y << " / " << off_x << ", " << off_y << endl;
 
     /* Adjust minimum feature size given in mm and translate into px document units in our local coordinate system. */
-    min_feature_size_px = local_xf.doc2phys_dist(min_feature_size_px);
+    min_feature_size_px = img_ctx.mat().doc2phys_dist(min_feature_size_px);
     cerr << "  min_feature_size_px = " << min_feature_size_px << endl;
 
-    draw_bg_rect(local_xf, width, height, clip_path, sink);
+    draw_bg_rect(img_ctx, width, height);
 
     /* Set up a poisson-disc sampled point "grid" covering the image. Calculate poisson disc parameters from given
      * minimum feature size. */
@@ -306,7 +308,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
             if (last_fill_factor != fill_factor) {
                 /* Fill factor was adjusted since last edge, so generate one extra point so we have a nice radial
                  * "step". */
-                d2p p = local_xf.doc2phys(d2p{
+                d2p p = img_ctx.mat().doc2phys(d2p{
                     off_x + center.x + (e->pos[0].x - center.x) * fill_factor,
                     off_y + center.y + (e->pos[0].y - center.y) * fill_factor
                 });
@@ -318,7 +320,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
             }
 
             /* Emit endpoint of current edge */
-            d2p p = local_xf.doc2phys(d2p{
+            d2p p = img_ctx.mat().doc2phys(d2p{
                 off_x + center.x + (e->pos[1].x - center.x) * fill_factor,
                 off_y + center.y + (e->pos[1].y - center.y) * fill_factor
             });
@@ -339,8 +341,8 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
         ClipperLib::Paths polys;
         ClipperLib::Clipper c;
         c.AddPath(cell_path, ClipperLib::ptSubject, /* closed */ true);
-        if (!clip_path.empty()) {
-            c.AddPaths(clip_path, ClipperLib::ptClip, /* closed */ true);
+        if (!img_ctx.clip().empty()) {
+            c.AddPaths(img_ctx.clip(), ClipperLib::ptClip, /* closed */ true);
         }
         c.StrictlySimple(true);
         c.Execute(ClipperLib::ctIntersection, polys, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
@@ -352,7 +354,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(xform2d &mat, const pugi::xml
                 out.push_back(std::array<double, 2>{
                         ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
                         });
-            sink << GRB_POL_DARK << out;
+            img_ctx.sink() << GRB_POL_DARK << out;
         }
     }
 
@@ -413,7 +415,7 @@ void gerbolyze::handle_aspect_ratio(string spec, double &scale_x, double &scale_
 }
 
 
-void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &clip_path, PolygonSink &sink, double min_feature_size_px) {
+void gerbolyze::OpenCVContoursVectorizer::vectorize_image(RenderContext &ctx, const pugi::xml_node &node, double min_feature_size_px) {
     (void) min_feature_size_px; /* unused by this vectorizer */
     double x, y, width, height;
     parse_img_meta(node, x, y, width, height);
@@ -422,9 +424,7 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
         return;
 
     /* Set up target transform using SVG transform and x/y attributes */
-    xform2d local_xf(mat);
-    local_xf.transform(xform2d(node.attribute("transform").value()));
-    local_xf.translate(x, y);
+    RenderContext img_ctx(ctx, xform2d(1, 0, 0, 1, x, y));
 
     double scale_x = (double)width / (double)img->cols();
     double scale_y = (double)height / (double)img->rows();
@@ -433,24 +433,24 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
     handle_aspect_ratio(node.attribute("preserveAspectRatio").value(),
             scale_x, scale_y, off_x, off_y, img->cols(), img->rows());
 
-    draw_bg_rect(local_xf, width, height, clip_path, sink);
+    draw_bg_rect(img_ctx, width, height);
 
     img->binarize(128);
     nopencv::find_contours(*img,
             nopencv::simplify_contours_douglas_peucker(
-                [&sink, &local_xf, &clip_path, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
+                [&img_ctx, off_x, off_y, scale_x, scale_y](Polygon_i& poly, nopencv::ContourPolarity pol) {
 
         if (pol == nopencv::CP_HOLE) {
             std::reverse(poly.begin(), poly.end());
-            sink << GRB_POL_CLEAR;
+            img_ctx.sink() << GRB_POL_CLEAR;
 
         } else {
-            sink << GRB_POL_DARK;
+            img_ctx.sink() << GRB_POL_DARK;
         }
 
         ClipperLib::Path out;
         for (const auto &p : poly) {
-            d2p q = local_xf.doc2phys(d2p{
+            d2p q = img_ctx.mat().doc2phys(d2p{
                 off_x + (double)p[0] * scale_x,
                 off_y + (double)p[1] * scale_y
             });
@@ -462,8 +462,8 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
 
         ClipperLib::Clipper c;
         c.AddPath(out, ClipperLib::ptSubject, /* closed */ true);
-        if (!clip_path.empty()) {
-            c.AddPaths(clip_path, ClipperLib::ptClip, /* closed */ true);
+        if (!img_ctx.clip().empty()) {
+            c.AddPaths(img_ctx.clip(), ClipperLib::ptClip, /* closed */ true);
         }
         c.StrictlySimple(true);
         ClipperLib::Paths polys;
@@ -476,7 +476,7 @@ void gerbolyze::OpenCVContoursVectorizer::vectorize_image(xform2d &mat, const pu
                 out.push_back(std::array<double, 2>{
                         ((double)p.X) / clipper_scale, ((double)p.Y) / clipper_scale
                         });
-            sink << out;
+            img_ctx.sink() << out;
         }
     }));
 }
