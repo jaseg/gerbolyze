@@ -242,7 +242,7 @@ protected:
   void DisposeOutRec(PolyOutList::size_type index);
   void SwapPositionsInAEL(TEdge *edge1, TEdge *edge2);
   void DeleteFromAEL(TEdge *e);
-  void UpdateEdgeIntoAEL(TEdge *&e);
+  void UpdateEdgeIntoAEL(TEdge *&e, bool *err_out);
 
   typedef std::vector<LocalMinimum> MinimaList;
   MinimaList::iterator m_CurrentLM;
@@ -317,9 +317,9 @@ private:
   void SwapPositionsInSEL(TEdge *edge1, TEdge *edge2);
   bool IsContributing(const TEdge& edge) const;
   bool IsTopHorz(const cInt XPos);
-  void DoMaxima(TEdge *e);
-  void ProcessHorizontals();
-  void ProcessHorizontal(TEdge *horzEdge);
+  void DoMaxima(TEdge *e, bool *err_out);
+  void ProcessHorizontals(bool *err_out);
+  void ProcessHorizontal(TEdge *horzEdge, bool *err_out);
   void AddLocalMaxPoly(TEdge *e1, TEdge *e2, const IntPoint &pt);
   OutPt* AddLocalMinPoly(TEdge *e1, TEdge *e2, const IntPoint &pt);
   OutRec* GetOutRec(int idx);
@@ -327,10 +327,10 @@ private:
   void IntersectEdges(TEdge *e1, TEdge *e2, IntPoint &pt);
   OutPt* AddOutPt(TEdge *e, const IntPoint &pt);
   OutPt* GetLastOutPt(TEdge *e);
-  bool ProcessIntersections(const cInt topY);
+  bool ProcessIntersections(const cInt topY, bool *err_out);
   void BuildIntersectList(const cInt topY);
   void ProcessIntersectList();
-  void ProcessEdgesAtTopOfScanbeam(const cInt topY);
+  void ProcessEdgesAtTopOfScanbeam(const cInt topY, bool *err_out);
   void BuildResult(Paths& polys);
   void BuildResult2(PolyTree& polytree);
   void SetHoleState(TEdge *e, OutRec *outrec);

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <algorithm>
 #include <string>
@@ -16,6 +17,34 @@ using argagg::parser_results;
 using argagg::parser;
 using namespace std;
 using namespace gerbolyze;
+
+string temp_file_path(const char *suffix) {
+    ifstream rnd;
+    rnd.open("/dev/urandom", ios::in | ios::binary);
+
+    char fn_buf[8];
+    rnd.read(fn_buf, sizeof(fn_buf));
+
+    if (rnd.rdstate()) {
+        cerr << "Error getting random data for temporary file name" << endl;
+        abort();
+    }
+
+    ostringstream out;
+    out << "tmp_";
+    for (size_t i=0; i<sizeof(fn_buf); i++) {
+        out << setfill('0') << setw(2) << setbase(16) << static_cast<int>(fn_buf[i] & 0xff);
+    }
+    out << suffix;
+
+    cerr << "out \"" << out.str() << "\"" << endl;
+#ifndef WASI
+    filesystem::path base = filesystem::temp_directory_path();
+    return (base / out.str()).native();
+#else
+    return "/tmp/" + out.str();
+#endif
+}
 
 int main(int argc, char **argv) {
     parser argparser {{
@@ -114,15 +143,7 @@ int main(int argc, char **argv) {
         << endl;
 
     argagg::parser_results args;
-    try {
-        args = argparser.parse(argc, argv);
-    } catch (const std::exception& e) {
-        argagg::fmt_ostream fmt(cerr);
-        fmt << usage.str() << argparser << '\n'
-            << "Encountered exception while parsing arguments: " << e.what()
-            << '\n';
-        return EXIT_FAILURE;
-    }
+    args = argparser.parse(argc, argv);
 
     if (args["help"]) {
         argagg::fmt_ostream fmt(cerr);
@@ -267,8 +288,8 @@ int main(int argc, char **argv) {
         transform(ending.begin(), ending.end(), ending.begin(), [](unsigned char c){ return std::tolower(c); }); /* c++ yeah */
     }
     
-    filesystem::path barf = { filesystem::temp_directory_path() /= (std::tmpnam(nullptr) + string(".svg")) };
-    filesystem::path frob = { filesystem::temp_directory_path() /= (std::tmpnam(nullptr) + string(".svg")) };
+    string barf =  temp_file_path(".svg");
+    string frob = temp_file_path(".svg");
 
     bool is_svg = args["force_svg"] || (ending == ".svg" && !args["force_png"]);
     if (!is_svg) {
@@ -352,10 +373,15 @@ int main(int argc, char **argv) {
         }
         string dpi_str = to_string(dpi);
         
+#ifndef NOFORK
         const char *command_line[] = {nullptr, "--keep-named-groups", "--dpi", dpi_str.c_str(), barf.c_str(), frob.c_str(), nullptr};
         if (run_cargo_command("usvg", command_line, "USVG")) {
             return EXIT_FAILURE;
         }
+#else
+        cerr << "Error: The caller of svg-flatten (you?) must use --no-usvg and run usvg externally since wasi does not yet support fork/exec." << endl;
+        return EXIT_FAILURE;
+#endif
     }
 
     VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"].as<string>() : "");

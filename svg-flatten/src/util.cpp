@@ -1,16 +1,19 @@
 
-#include <pwd.h>
 #include <sys/types.h>
 #include <string>
 #include <iostream>
 
+#ifndef NOFORK
+#include <pwd.h>
 #include <subprocess.h>
+#endif
 #include <filesystem>
 
 #include "util.h"
 
 using namespace std;
 
+#ifndef NOFORK
 int gerbolyze::run_cargo_command(const char *cmd_name, const char *cmdline[], const char *envvar) {
     const char *homedir;
     if ((homedir = getenv("HOME")) == NULL) {
@@ -81,4 +84,11 @@ int gerbolyze::run_cargo_command(const char *cmd_name, const char *cmdline[], co
 
     return 0;
 }
+#else
+int gerbolyze::run_cargo_command(const char *cmd_name, const char *cmdline[], const char *envvar) {
+    (void) cmd_name, (void) cmdline, (void) envvar;
+    cerr << "Error: Cannot spawn " << cmd_name << " subprocess since binary was built with fork/exec disabled (-DNOFORK=1)" << endl;
+    return EXIT_FAILURE;
+}
+#endif
 

@@ -61,6 +61,11 @@ string gerbolyze::parse_data_iri(const string &data_url) {
     size_t b64_begin = data_url.find_first_not_of(" ", foo + strlen("base64,"));
     assert(b64_begin != string::npos);
 
-    return base64_decode(data_url.substr(b64_begin));
+    bool err_out;
+    string out = base64_decode(data_url.substr(b64_begin), false, &err_out);
+
+    if (err_out)
+      return "";
+    return out;
 }
 

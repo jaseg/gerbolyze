@@ -39,6 +39,9 @@
 *******************************************************************************/
 
 #include "clipper.hpp"
+#ifdef NOTHROW
+#include <iostream>
+#endif
 #include <cmath>
 #include <vector>
 #include <algorithm>
@@ -131,6 +134,18 @@ struct LocMinSorter
 };
 
 //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+inline void panic(const char *msg);
+inline void panic(const char *msg) {
+#ifdef NOTHROW
+    std::cerr << "Fatal clipper exception: " << msg << std::endl;
+    abort();
+#else
+    throw clipperException(msg);
+#endif
+}
+
 //------------------------------------------------------------------------------
 
 inline cInt Round(double val)
@@ -898,7 +913,7 @@ void RangeTest(const IntPoint& Pt, bool& useFullRange)
   if (useFullRange)
   {
     if (Pt.X > hiRange || Pt.Y > hiRange || -Pt.X > hiRange || -Pt.Y > hiRange) 
-      throw clipperException("Coordinate outside allowed range");
+      panic("Coordinate outside allowed range");
   }
   else if (Pt.X > loRange|| Pt.Y > loRange || -Pt.X > loRange || -Pt.Y > loRange) 
   {
@@ -1046,10 +1061,10 @@ bool ClipperBase::AddPath(const Path &pg, PolyType PolyTyp, bool Closed)
 {
 #ifdef use_lines
   if (!Closed && PolyTyp == ptClip)
-    throw clipperException("AddPath: Open paths must be subject.");
+    panic("AddPath: Open paths must be subject.");
 #else
   if (!Closed)
-    throw clipperException("AddPath: Open paths have been disabled.");
+    panic("AddPath: Open paths have been disabled.");
 #endif
 
   int highI = (int)pg.size() -1;
@@ -1062,8 +1077,10 @@ bool ClipperBase::AddPath(const Path &pg, PolyType PolyTyp, bool Closed)
 
   bool IsFlat = true;
   //1. Basic (first) edge initialization ...
+#ifndef NOTHROW
   try
   {
+#endif
     edges[1].Curr = pg[1];
     RangeTest(pg[0], m_UseFullRange);
     RangeTest(pg[highI], m_UseFullRange);
@@ -1074,12 +1091,14 @@ bool ClipperBase::AddPath(const Path &pg, PolyType PolyTyp, bool Closed)
       RangeTest(pg[i], m_UseFullRange);
       InitEdge(&edges[i], &edges[i+1], &edges[i-1], pg[i]);
     }
+#ifndef NOTHROW
   }
   catch(...)
   {
     delete [] edges;
     throw; //range test fails
   }
+#endif
   TEdge *eStart = &edges[0];
 
   //2. Remove duplicate vertices, and (when closed) collinear edges ...
@@ -1439,10 +1458,10 @@ void ClipperBase::SwapPositionsInAEL(TEdge *Edge1, TEdge *Edge2)
 }
 //------------------------------------------------------------------------------
 
-void ClipperBase::UpdateEdgeIntoAEL(TEdge *&e)
+void ClipperBase::UpdateEdgeIntoAEL(TEdge *&e, bool *err_out)
 {
   if (!e->NextInLML) 
-    throw clipperException("UpdateEdgeIntoAEL: invalid call");
+    *err_out = true;
 
   e->NextInLML->OutIdx = e->OutIdx;
   TEdge* AelPrev = e->PrevInAEL;
@@ -1510,7 +1529,7 @@ bool Clipper::Execute(ClipType clipType, Paths &solution,
 {
   if( m_ExecuteLocked ) return false;
   if (m_HasOpenPaths)
-    throw clipperException("Error: PolyTree struct is needed for open path clipping.");
+    panic("Error: PolyTree struct is needed for open path clipping.");
   m_ExecuteLocked = true;
   solution.resize(0);
   m_SubjFillType = subjFillType;
@@ -1559,36 +1578,30 @@ void Clipper::FixHoleLinkage(OutRec &outrec)
 
 bool Clipper::ExecuteInternal()
 {
-  bool succeeded = true;
-  try {
-    Reset();
-    m_Maxima = MaximaList();
-    m_SortedEdges = 0;
+  bool error = false;
+  Reset();
+  m_Maxima = MaximaList();
+  m_SortedEdges = 0;
 
-    succeeded = true;
-    cInt botY, topY;
-    if (!PopScanbeam(botY)) return false;
-    InsertLocalMinimaIntoAEL(botY);
-    while (PopScanbeam(topY) || LocalMinimaPending())
-    {
-      ProcessHorizontals();
-	    ClearGhostJoins();
-      if (!ProcessIntersections(topY))
-      {
-        succeeded = false;
-        break;
-      }
-      ProcessEdgesAtTopOfScanbeam(topY);
-      botY = topY;
-      InsertLocalMinimaIntoAEL(botY);
-    }
-  }
-  catch(...) 
+  error = false;
+  cInt botY, topY;
+  if (!PopScanbeam(botY)) return false;
+  InsertLocalMinimaIntoAEL(botY);
+  while (PopScanbeam(topY) || LocalMinimaPending())
   {
-    succeeded = false;
+    ProcessHorizontals(&error);
+      ClearGhostJoins();
+    if (!ProcessIntersections(topY, &error))
+    {
+      error = true;
+      break;
+    }
+    ProcessEdgesAtTopOfScanbeam(topY, &error);
+    botY = topY;
+    InsertLocalMinimaIntoAEL(botY);
   }
 
-  if (succeeded)
+  if (!error)
   {
     //fix orientations ...
     for (PolyOutList::size_type i = 0; i < m_PolyOuts.size(); ++i)
@@ -1617,7 +1630,7 @@ bool Clipper::ExecuteInternal()
 
   ClearJoins();
   ClearGhostJoins();
-  return succeeded;
+  return !error;
 }
 //------------------------------------------------------------------------------
 
@@ -2509,11 +2522,11 @@ OutPt* Clipper::GetLastOutPt(TEdge *e)
 }
 //------------------------------------------------------------------------------
 
-void Clipper::ProcessHorizontals()
+void Clipper::ProcessHorizontals(bool *err_out)
 {
   TEdge* horzEdge;
   while (PopEdgeFromSEL(horzEdge))
-    ProcessHorizontal(horzEdge);
+    ProcessHorizontal(horzEdge, err_out);
 }
 //------------------------------------------------------------------------------
 
@@ -2633,7 +2646,7 @@ void GetHorzDirection(TEdge& HorzEdge, Direction& Dir, cInt& Left, cInt& Right)
 * the AEL. These 'promoted' edges may in turn intersect [%] with other HEs.    *
 *******************************************************************************/
 
-void Clipper::ProcessHorizontal(TEdge *horzEdge)
+void Clipper::ProcessHorizontal(TEdge *horzEdge, bool *err_out)
 {
   Direction dir;
   cInt horzLeft, horzRight;
@@ -2762,7 +2775,7 @@ void Clipper::ProcessHorizontal(TEdge *horzEdge)
 	//Break out of loop if HorzEdge.NextInLML is not also horizontal ...
 	if (!horzEdge->NextInLML || !IsHorizontal(*horzEdge->NextInLML)) break;
 
-	UpdateEdgeIntoAEL(horzEdge);
+	UpdateEdgeIntoAEL(horzEdge, err_out);
     if (horzEdge->OutIdx >= 0) AddOutPt(horzEdge, horzEdge->Bot);
     GetHorzDirection(*horzEdge, dir, horzLeft, horzRight);
 
@@ -2791,7 +2804,7 @@ void Clipper::ProcessHorizontal(TEdge *horzEdge)
     if(horzEdge->OutIdx >= 0)
     {
       op1 = AddOutPt( horzEdge, horzEdge->Top);
-      UpdateEdgeIntoAEL(horzEdge);
+      UpdateEdgeIntoAEL(horzEdge, err_out);
       if (horzEdge->WindDelta == 0) return;
       //nb: HorzEdge is no longer horizontal here
       TEdge* ePrev = horzEdge->PrevInAEL;
@@ -2814,7 +2827,7 @@ void Clipper::ProcessHorizontal(TEdge *horzEdge)
       }
     }
     else
-      UpdateEdgeIntoAEL(horzEdge); 
+      UpdateEdgeIntoAEL(horzEdge, err_out); 
   }
   else
   {
@@ -2824,22 +2837,25 @@ void Clipper::ProcessHorizontal(TEdge *horzEdge)
 }
 //------------------------------------------------------------------------------
 
-bool Clipper::ProcessIntersections(const cInt topY)
+bool Clipper::ProcessIntersections(const cInt topY, bool *err_out)
 {
+  (void) err_out;
   if( !m_ActiveEdges ) return true;
-  try {
+  //try {
     BuildIntersectList(topY);
     size_t IlSize = m_IntersectList.size();
     if (IlSize == 0) return true;
     if (IlSize == 1 || FixupIntersectionOrder()) ProcessIntersectList();
     else return false;
+    /*
   }
   catch(...) 
   {
     m_SortedEdges = 0;
     DisposeIntersectNodes();
-    throw clipperException("ProcessIntersections error");
+    *err_out = true;
   }
+  */
   m_SortedEdges = 0;
   return true;
 }
@@ -2954,7 +2970,7 @@ bool Clipper::FixupIntersectionOrder()
 }
 //------------------------------------------------------------------------------
 
-void Clipper::DoMaxima(TEdge *e)
+void Clipper::DoMaxima(TEdge *e, bool *err_out)
 {
   TEdge* eMaxPair = GetMaximaPairEx(e);
   if (!eMaxPair)
@@ -3002,11 +3018,11 @@ void Clipper::DoMaxima(TEdge *e)
     DeleteFromAEL(eMaxPair);
   } 
 #endif
-  else throw clipperException("DoMaxima error");
+  else *err_out = true;
 }
 //------------------------------------------------------------------------------
 
-void Clipper::ProcessEdgesAtTopOfScanbeam(const cInt topY)
+void Clipper::ProcessEdgesAtTopOfScanbeam(const cInt topY, bool *err_out)
 {
   TEdge* e = m_ActiveEdges;
   while( e )
@@ -3025,7 +3041,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const cInt topY)
     {
       if (m_StrictSimple) m_Maxima.push_back(e->Top.X);
       TEdge* ePrev = e->PrevInAEL;
-      DoMaxima(e);
+      DoMaxima(e, err_out);
       if( !ePrev ) e = m_ActiveEdges;
       else e = ePrev->NextInAEL;
     }
@@ -3034,7 +3050,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const cInt topY)
       //2. promote horizontal edges, otherwise update Curr.X and Curr.Y ...
       if (IsIntermediate(e, topY) && IsHorizontal(*e->NextInLML))
       {
-        UpdateEdgeIntoAEL(e);
+        UpdateEdgeIntoAEL(e, err_out);
         if (e->OutIdx >= 0)
           AddOutPt(e, e->Bot);
         AddEdgeToSEL(e);
@@ -3072,7 +3088,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const cInt topY)
 
   //3. Process horizontals at the Top of the scanbeam ...
   m_Maxima.sort();
-  ProcessHorizontals();
+  ProcessHorizontals(err_out);
   m_Maxima.clear();
 
   //4. Promote intermediate vertices ...
@@ -3084,7 +3100,7 @@ void Clipper::ProcessEdgesAtTopOfScanbeam(const cInt topY)
       OutPt* op = 0;
       if( e->OutIdx >= 0 ) 
         op = AddOutPt(e, e->Top);
-      UpdateEdgeIntoAEL(e);
+      UpdateEdgeIntoAEL(e, err_out);
 
       //if output polygons share an edge, they'll need joining later ...
       TEdge* ePrev = e->PrevInAEL;

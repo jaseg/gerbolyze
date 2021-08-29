@@ -6,10 +6,17 @@ PKG_CONFIG ?= pkg-config
 PYTHON3 ?= python3
 
 BUILDDIR ?= build
+CACHEDIR ?= cache
 PREFIX ?= /usr/local
-UPSTREAM_DIR ?= ../upstream
+UPSTREAM_DIR ?= upstream
 
-SOURCES := src/svg_color.cpp \
+WASI_SDK ?= wasi-sdk-11.0
+WASI_SDK_URL ?= https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sdk-11.0-linux.tar.gz
+WASI_SDK_PATH ?= $(CACHEDIR)/$(WASI_SDK)
+WASI_CXX ?= $(WASI_SDK_PATH)/bin/clang++ --sysroot=$(WASI_SDK_PATH)/share/wasi-sysroot
+
+SOURCES := \
+	src/svg_color.cpp \
 	src/svg_doc.cpp \
 	src/svg_geom.cpp \
 	src/svg_import_util.cpp \
@@ -47,28 +54,47 @@ STB_INCLUDES		?= -isystem$(UPSTREAM_DIR)/stb
 INCLUDES := -Iinclude -Isrc $(CLIPPER_INCLUDES) $(VORONOI_INCLUDES) $(POISSON_INCLUDES) $(BASE64_INCLUDES) $(ARGAGG_INCLUDES) $(CAVC_INCLUDES) $(SUBPROCESS_INCLUDES) $(MINUNIT_INCLUDES) $(STB_INCLUDES)
 
 CXXFLAGS := -std=c++2a -g -Wall -Wextra -O2
-LDFLAGS := -lm -lstdc++ -lstdc++fs # for debian's ancient compilers
+LDFLAGS := -lm -lstdc++
 
-PKG_CONFIG_DEPS := 
 ifdef USE_SYSTEM_PUGIXML
-	CXXFLAGS += $(shell $(PKG_CONFIG) --cflags pugixml)
-	LDFLAGS += $(shell $(PKG_CONFIG) --libs pugixml)
+	HOST_CXXFLAGS := $(CXXFLAGS) $(shell $(PKG_CONFIG) --cflags pugixml)
+	HOST_LDFLAGS := $(LDFLAGS) $(shell $(PKG_CONFIG) --libs pugixml)
+	HOST_SOURCES := $(SOURCES)
+	HOST_INCLUDES := $(INCLUDES)
 else
-	SOURCES += $(PUGIXML_SOURCES)
-	INCLUDES += $(PUGIXML_INCLUDES)
+	HOST_CXXFLAGS := $(CXXFLAGS)
+	HOST_LDFLAGS := $(LDFLAGS)
+	HOST_SOURCES := $(SOURCES) $(PUGIXML_SOURCES)
+	HOST_INCLUDES := $(INCLUDES) $(PUGIXML_INCLUDES)
 endif
 
-TARGET := svg-flatten
+HOST_LDFLAGS += -lstdc++fs # for debian's ancient compilers
 
-all: $(BUILDDIR)/$(TARGET)
+WASI_CXXFLAGS ?= -DNOFORK -DNOTHROW -DWASI -DPUGIXML_NO_EXCEPTIONS -fno-exceptions $(CXXFLAGS)
 
-$(BUILDDIR)/%.o: %.cpp
+BINARY := svg-flatten
+
+all: $(BUILDDIR)/$(BINARY)
+
+$(CACHEDIR)/$(WASI_SDK):
+	mkdir -p $(dir $@)
+	cd $(dir $@); curl -L ${WASI_SDK_URL} | tar xzf -
+
+$(BUILDDIR)/wasi/%.o: %.cpp $(CACHEDIR)/$(WASI_SDK) 
 	@mkdir -p $(dir $@) 
-	$(CXX) -c $(CXXFLAGS) $(CXXFLAGS) $(INCLUDES) -o $@ $^
+	$(WASI_CXX) -c $(WASI_CXXFLAGS) $(INCLUDES) $(PUGIXML_INCLUDES) -o $@ $<
 
-$(BUILDDIR)/$(TARGET): $(SOURCES:%.cpp=$(BUILDDIR)/%.o)
+$(BUILDDIR)/$(BINARY).wasm: $(patsubst %.cpp,$(BUILDDIR)/wasi/%.o,$(SOURCES) $(PUGIXML_SOURCES))
+	@mkdir -p $(dir $@)
+	$(WASI_CXX) $(WASI_CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILDDIR)/host/%.o: %.cpp
 	@mkdir -p $(dir $@) 
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CXX) -c $(HOST_CXXFLAGS) $(HOST_CXXFLAGS) $(HOST_INCLUDES) -o $@ $<
+
+$(BUILDDIR)/$(BINARY): $(HOST_SOURCES:%.cpp=$(BUILDDIR)/host/%.o)
+	@mkdir -p $(dir $@) 
+	$(CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
 $(BUILDDIR)/nopencv-test: src/test/nopencv_test.cpp src/nopencv.cpp src/util.cpp
 	@mkdir -p $(dir $@) 
@@ -82,8 +108,12 @@ tests: $(BUILDDIR)/nopencv-test
 
 .PHONY: install
 install:
-	$(INSTALL) $(BUILDDIR)/$(TARGET) $(PREFIX)/bin
+	$(INSTALL) $(BUILDDIR)/$(BINARY) $(PREFIX)/bin
 	
 .PHONY: clean
 clean:
 	rm -rf $(BUILDDIR)
+
+.PHONY: mrproper
+mrproper: clean
+	rm -rf $(CACHEDIR)
