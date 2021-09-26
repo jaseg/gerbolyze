@@ -2,41 +2,137 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 stages:
+  - build
   - test
+  - publish
 
-test_debian_10:
-  stage: test
+include:
+  - local: "/svg-flatten/svg-flatten-wasi-ci.yml"
+
+build:debian_10:
+  stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
   script:
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
+    - "export CXX=clang++"
+    - "make -C svg-flatten"
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-deb10"
+    paths:
+      - svg-flatten/build/svg-flatten
+      - svg-flatten/build/nopencv-test
+
+test:debian_10:
+  stage: test
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
+  script:
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
+  dependencies:
+    - build:debian_10
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-deb10"
+    when: on_failure
+    paths:
+      - svg-flatten/testcase-fails/*.png
+      - svg-flatten/testcase-fails/*.svg
 
-test_ubuntu_2004:
-  stage: test
+build:ubuntu_2004:
+  stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
   script:
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
+    - "export CXX=clang++"
+    - "make -C svg-flatten"
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-ubu20"
+    paths:
+      - svg-flatten/build/svg-flatten
+      - svg-flatten/build/nopencv-test
+
+test:ubuntu_2004:
+  stage: test
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
+  script:
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
+  dependencies:
+    - build:ubuntu_2004
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-ubu20"
+    when: on_failure
+    paths:
+      - svg-flatten/testcase-fails/*.png
+      - svg-flatten/testcase-fails/*.svg
 
-test_fedora_33:
-  stage: test
+build:fedora_33:
+  stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
   script:
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH CXX=clang++"
+    - "export CXX=clang++"
+    - "make -C svg-flatten"
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-fed33"
+    paths:
+      - svg-flatten/build/svg-flatten
+      - svg-flatten/build/nopencv-test
+
+test:fedora_33:
+  stage: test
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
+  script:
+    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python3 setup.py install --user"
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
+  dependencies:
+    - build:fedora_33
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-fed33"
+    when: on_failure
+    paths:
+      - svg-flatten/testcase-fails/*.png
+      - svg-flatten/testcase-fails/*.svg
 
-test_archlinux:
+build:archlinux:
+  stage: build
+  image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
+  script:
+    - "make -C svg-flatten"
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-arch"
+    paths:
+      - svg-flatten/build/svg-flatten
+      - svg-flatten/build/nopencv-test
+
+test:archlinux:
   stage: test
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   script:
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python setup.py install --user"
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
+  dependencies:
+    - build:archlinux
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-arch"
+    when: on_failure
+    paths:
+      - svg-flatten/testcase-fails/*.png
+      - svg-flatten/testcase-fails/*.svg
 

@@ -227,6 +227,7 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
 void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml_node &node) {
     enum gerber_color fill_color = gerber_fill_color(node, ctx.settings());
     enum gerber_color stroke_color = gerber_stroke_color(node, ctx.settings());
+    cerr << "path: resolved colors, stroke=" << stroke_color << ", fill=" << fill_color << endl;
 
     double stroke_width = usvg_double_attr(node, "stroke-width", /* default */ 1.0);
     assert(stroke_width > 0.0);

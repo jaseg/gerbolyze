@@ -1,0 +1,27 @@
+
+build:wasi-svg-flatten:
+  stage: build
+  image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
+  script:
+    - cd svg-flatten # we start out in the repo's root
+    - make -j 2 build/svg-flatten.wasm
+    - cp build/svg-flatten.wasm svg_flatten_wasi/
+    - python3 setup.py bdist_wheel
+    - cd ..
+  artifacts:
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-wasi"
+    paths:
+      - svg-flatten/dist/*.whl
+
+publish:wasi-svg-flatten:
+  stage: publish
+  image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
+  cache: {}
+  script:
+    - pip install -U --user twine
+    - export TWINE_USERNAME TWINE_PASSWORD
+    - ~/.local/bin/twine upload svg-flatten/dist/*
+  dependencies:
+    - build:wasi-svg-flatten
+  only:
+    - /^v.*$/

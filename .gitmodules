@@ -1,6 +1,6 @@
 [submodule "upstream/cpp-base64"]
 	path = upstream/cpp-base64
-	url = https://github.com/ReneNyffenegger/cpp-base64
+    url = https://gitlab.com/gerbolyze/gerbolyze-cpp-base64.git
 [submodule "upstream/voronoi"]
 	path = upstream/voronoi
 	url = https://github.com/JCash/voronoi
@@ -9,7 +9,7 @@
 	url = https://github.com/thinks/poisson-disk-sampling
 [submodule "upstream/argagg"]
 	path = upstream/argagg
-	url = https://github.com/vietjtnguyen/argagg
+    url = https://gitlab.com/gerbolyze/gerbolyze-argagg.git
 [submodule "upstream/CavalierContours"]
 	path = upstream/CavalierContours
 	url = https://github.com/jbuckmccready/CavalierContours

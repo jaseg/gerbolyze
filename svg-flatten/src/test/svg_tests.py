@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import itertools
 import os
+import sys
 
 from PIL import Image
 import numpy as np
@@ -14,6 +15,9 @@ import numpy as np
 def run_svg_flatten(input_file, output_file, *args, **kwargs):
     if 'SVG_FLATTEN' in os.environ:
         svg_flatten = os.environ.get('SVG_FLATTEN')
+        if not hasattr(run_svg_flatten, 'custom_svg_flatten_warned'):
+            print(f'Using svg-flatten from SVG_FLATTEN environment variable: "{svg_flatten}"', file=sys.stderr)
+            run_svg_flatten.custom_svg_flatten_warned = True
     elif (Path(__file__) / '../../build/svg-flatten').is_file():
         svg_flatten = '../../build/svg-flatten'
     elif Path('./build/svg-flatten').is_file():
@@ -34,11 +38,12 @@ def run_svg_flatten(input_file, output_file, *args, **kwargs):
     try:
         proc = subprocess.run(args, capture_output=True, check=True)
     except:
-        print('Subprocess stdout:')
-        print(proc.stdout)
-        print('Subprocess stderr:')
-        print(proc.stderr)
         raise
+    finally:
+        print('Subprocess stdout:')
+        print(proc.stdout.decode())
+        print('Subprocess stderr:')
+        print(proc.stderr.decode())
 
 def run_cargo_cmd(cmd, args, **kwargs):
     if cmd.upper() in os.environ:
@@ -84,7 +89,8 @@ class SVGRoundTripTests(unittest.TestCase):
     }
 
     def compare_images(self, reference, output, test_name, mean=test_mean_default, vectorizer_test=False, rsvg_workaround=False):
-        ref, out = Image.open(reference), Image.open(output)
+        ref = Image.open(reference)
+        out =Image.open(output)
 
         if vectorizer_test:
             target_size = (100, 100)
@@ -184,6 +190,8 @@ class SVGRoundTripTests(unittest.TestCase):
             else:
                 run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg')
 
+            shutil.copyfile(tmp_out_svg.name, f'/tmp/gerbolyze-intermediate-{test_in_svg.stem}-out.svg')
+
             if not use_rsvg: # default!
                 run_cargo_cmd('resvg', [tmp_out_svg.name, tmp_out_png.name], check=True, stdout=subprocess.DEVNULL)
                 run_cargo_cmd('resvg', [test_in_svg, tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
@@ -193,7 +201,7 @@ class SVGRoundTripTests(unittest.TestCase):
                 subprocess.run(['rsvg-convert', test_in_svg, '-f', 'png', '-o', tmp_in_png.name], check=True, stdout=subprocess.DEVNULL)
 
             try:
-                self.compare_images(tmp_in_png, tmp_out_png, test_in_svg.stem,
+                self.compare_images(tmp_in_png.name, tmp_out_png.name, test_in_svg.stem,
                         SVGRoundTripTests.test_mean_overrides.get(test_in_svg.stem, SVGRoundTripTests.test_mean_default),
                         vectorizer_test, rsvg_workaround=use_rsvg)
 

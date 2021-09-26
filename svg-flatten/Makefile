@@ -74,7 +74,7 @@ WASI_CXXFLAGS ?= -DNOFORK -DNOTHROW -DWASI -DPUGIXML_NO_EXCEPTIONS -fno-exceptio
 
 BINARY := svg-flatten
 
-all: $(BUILDDIR)/$(BINARY)
+all: $(BUILDDIR)/$(BINARY) $(BUILDDIR)/nopencv-test
 
 $(CACHEDIR)/$(WASI_SDK):
 	mkdir -p $(dir $@)
@@ -92,19 +92,20 @@ $(BUILDDIR)/host/%.o: %.cpp
 	@mkdir -p $(dir $@) 
 	$(CXX) -c $(HOST_CXXFLAGS) $(HOST_CXXFLAGS) $(HOST_INCLUDES) -o $@ $<
 
+.INTERMEDIATE: $(HOST_SOURCES:%.cpp=$(BUILDDIR)/host/%.o)
 $(BUILDDIR)/$(BINARY): $(HOST_SOURCES:%.cpp=$(BUILDDIR)/host/%.o)
 	@mkdir -p $(dir $@) 
 	$(CXX) $(HOST_CXXFLAGS) -o $@ $^ $(HOST_LDFLAGS)
 
 $(BUILDDIR)/nopencv-test: src/test/nopencv_test.cpp src/nopencv.cpp src/util.cpp
 	@mkdir -p $(dir $@) 
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $^ $(HOST_LDFLAGS)
 
 
 .PHONY: tests
 tests: $(BUILDDIR)/nopencv-test
 	$(BUILDDIR)/nopencv-test
-	$(PYTHON3) src/test/svg_tests.py
+	$(PYTHON3) src/test/svg_tests.py || ( mkdir testcase-fails && cp /tmp/gerbolyze-*.{svg,png} testcase-fails/ && false )
 
 .PHONY: install
 install:
