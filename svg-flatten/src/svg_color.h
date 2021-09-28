@@ -31,16 +31,16 @@ enum gerber_color {
     GRB_PATTERN_FILL,
 };
 
-class RGBColor {
+class RGBAColor {
 public:
-    float r, g, b;
-    RGBColor(std::string hex);
+    float r, g, b, a;
+    RGBAColor(std::string spec);
 };
 
 class HSVColor {
 public:
     float h, s, v;
-    HSVColor(const RGBColor &color);
+    HSVColor(const RGBAColor &color);
 };
 
 enum gerber_color svg_color_to_gerber(std::string color, std::string opacity, enum gerber_color default_val, const RenderSettings &rset);

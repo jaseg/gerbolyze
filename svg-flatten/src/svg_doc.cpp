@@ -110,7 +110,7 @@ double gerbolyze::SVGDocument::doc_units_to_mm(double px) const {
 
 bool IDElementSelector::match(const pugi::xml_node &node, bool is_toplevel, bool parent_include) const {
     string id = node.attribute("id").value();
-    cerr << "match id=" << id << " toplevel=" << is_toplevel << " parent=" << parent_include << endl;
+    //cerr << "match id=" << id << " toplevel=" << is_toplevel << " parent=" << parent_include << endl;
     if (is_toplevel && layers) {
         bool layer_match = std::find(layers->begin(), layers->end(), id) != layers->end();
         if (!layer_match) {
@@ -124,7 +124,7 @@ bool IDElementSelector::match(const pugi::xml_node &node, bool is_toplevel, bool
 
     bool include_match = std::find(include.begin(), include.end(), id) != include.end();
     bool exclude_match = std::find(exclude.begin(), exclude.end(), id) != exclude.end();
-    cerr << "  excl=" << exclude_match << " incl=" << include_match << endl;
+    //cerr << "  excl=" << exclude_match << " incl=" << include_match << endl;
 
     if (is_toplevel) {
         if (!include.empty())
@@ -227,7 +227,7 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
 void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml_node &node) {
     enum gerber_color fill_color = gerber_fill_color(node, ctx.settings());
     enum gerber_color stroke_color = gerber_stroke_color(node, ctx.settings());
-    cerr << "path: resolved colors, stroke=" << stroke_color << ", fill=" << fill_color << endl;
+    //cerr << "path: resolved colors, stroke=" << stroke_color << ", fill=" << fill_color << endl;
 
     double stroke_width = usvg_double_attr(node, "stroke-width", /* default */ 1.0);
     assert(stroke_width > 0.0);

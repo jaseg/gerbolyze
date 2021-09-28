@@ -92,6 +92,7 @@ $(BUILDDIR)/host/%.o: %.cpp
 	@mkdir -p $(dir $@) 
 	$(CXX) -c $(HOST_CXXFLAGS) $(HOST_CXXFLAGS) $(HOST_INCLUDES) -o $@ $<
 
+.PRECIOUS: $(HOST_SOURCES:%.cpp=$(BUILDDIR)/host/%.o)
 .INTERMEDIATE: $(HOST_SOURCES:%.cpp=$(BUILDDIR)/host/%.o)
 $(BUILDDIR)/$(BINARY): $(HOST_SOURCES:%.cpp=$(BUILDDIR)/host/%.o)
 	@mkdir -p $(dir $@) 

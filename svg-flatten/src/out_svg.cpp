@@ -37,7 +37,7 @@ SimpleSVGOutput::SimpleSVGOutput(ostream &out, bool only_polys, int digits_frac,
 }
 
 void SimpleSVGOutput::header_impl(d2p origin, d2p size) {
-    cerr << "svg: header" << endl;
+    //cerr << "svg: header" << endl;
     m_offset[0] = origin[0];
     m_offset[1] = origin[1];
     m_out << "<svg width=\"" << size[0] << "mm\" height=\"" << size[1] << "mm\" viewBox=\"0 0 "
@@ -45,7 +45,7 @@ void SimpleSVGOutput::header_impl(d2p origin, d2p size) {
 }
 
 SimpleSVGOutput &SimpleSVGOutput::operator<<(GerberPolarityToken pol) {
-    cerr << "svg: got polarity " << pol << endl;
+    //cerr << "svg: got polarity " << pol << endl;
     if (pol == GRB_POL_DARK) {
         m_current_color = m_dark_color;
     } else if (pol == GRB_POL_CLEAR) {
@@ -58,7 +58,7 @@ SimpleSVGOutput &SimpleSVGOutput::operator<<(GerberPolarityToken pol) {
 }
 
 SimpleSVGOutput &SimpleSVGOutput::operator<<(const Polygon &poly) {
-    cerr << "svg: got poly of size " << poly.size() << endl;
+    //cerr << "svg: got poly of size " << poly.size() << endl;
     if (poly.size() < 3) {
         cerr << "Warning: " << poly.size() << "-element polygon passed to SimpleGerberOutput" << endl;
         return *this;
@@ -78,7 +78,7 @@ SimpleSVGOutput &SimpleSVGOutput::operator<<(const Polygon &poly) {
 }
 
 void SimpleSVGOutput::footer_impl() {
-    cerr << "svg: footer" << endl;
+    //cerr << "svg: footer" << endl;
     m_out << "</svg>" << endl;
 }
 

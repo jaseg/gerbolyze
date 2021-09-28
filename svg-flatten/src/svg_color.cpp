@@ -40,10 +40,6 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
         assert(*endptr == '\0');
     }
 
-    if (alpha < 0.5f) {
-        return GRB_NONE;
-    }
-
     if (color.empty()) {
         return default_val;
     }
@@ -56,8 +52,17 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
         return GRB_PATTERN_FILL;
     }
 
-    if (color.length() == 7 && color[0] == '#') {
-        HSVColor hsv(color);
+    if ((color.length() == 7 && color[0] == '#') || color.rfind("rgba", 0) != string::npos) {
+        RGBAColor rgba(color);
+        HSVColor hsv(rgba);
+
+        if (alpha == 1.0)
+            alpha = rgba.a;
+
+        if (alpha < 0.5f) {
+            return GRB_NONE;
+        }
+
         if ((hsv.v >= 0.5) != rset.flip_color_interpretation) {
             return GRB_CLEAR;
         } else {
@@ -68,20 +73,52 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
     return GRB_DARK;
 }
 
-gerbolyze::RGBColor::RGBColor(string hex) {
-    assert(hex[0] == '#');
-    char *endptr = nullptr;
-    const char *c = hex.data();
-    int rgb = strtol(c + 1, &endptr, 16);
-    assert(endptr);
-    assert(endptr == c + 7);
-    assert(*endptr == '\0');
-    r = ((rgb >> 16) & 0xff) / 255.0f;
-    g = ((rgb >>  8) & 0xff) / 255.0f;
-    b = ((rgb >>  0) & 0xff) / 255.0f;
+gerbolyze::RGBAColor::RGBAColor(string spec) {
+    /* resvg/usvg v0.18.0 added support for rgba(...) color specs */
+    if (spec.rfind("rgba(", 0) != string::npos) {
+        /* "rgba(127, 127, 200, 255)" */
+        std::regex reg("rgba\\(([0-9]+),([0-9]+),([0-9]+),([0-9]+)\\)");
+        std::smatch match;
+
+        assert(std::regex_match(spec, match, reg));
+
+        int c[4];
+        for (size_t i=0; i<4; i++) {
+            assert (match.size() == 5);
+            char *endptr = nullptr;
+            string span = match[i+1].str();
+            c[i] = strtoul(span.data(), &endptr, 10);
+            assert(endptr && endptr != span.data());
+            assert(*endptr == '\0');
+        }
+
+        assert (0 <= c[0] && c[0] <= 255);
+        assert (0 <= c[1] && c[1] <= 255);
+        assert (0 <= c[2] && c[2] <= 255);
+        assert (0 <= c[3] && c[3] <= 255);
+
+        r = c[0]/255.0f;
+        g = c[1]/255.0f;
+        b = c[2]/255.0f;
+        a = c[3]/255.0f;
+
+    } else {
+        /* "#FF00E3" */
+        assert(spec[0] == '#');
+        char *endptr = nullptr;
+        const char *c = spec.data();
+        int rgb = strtol(c + 1, &endptr, 16);
+        assert(endptr);
+        assert(endptr == c + 7);
+        assert(*endptr == '\0');
+        r = ((rgb >> 16) & 0xff) / 255.0f;
+        g = ((rgb >>  8) & 0xff) / 255.0f;
+        b = ((rgb >>  0) & 0xff) / 255.0f;
+        a = 1.0;
+    }
 };
 
-gerbolyze::HSVColor::HSVColor(const RGBColor &color) {
+gerbolyze::HSVColor::HSVColor(const RGBAColor &color) {
     float xmax = fmax(color.r, fmax(color.g, color.b));
     float xmin = fmin(color.r, fmin(color.g, color.b));
     float c = xmax - xmin;
