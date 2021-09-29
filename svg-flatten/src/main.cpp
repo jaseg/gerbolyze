@@ -37,7 +37,7 @@ string temp_file_path(const char *suffix) {
     }
     out << suffix;
 
-    cerr << "out \"" << out.str() << "\"" << endl;
+    //cerr << "out \"" << out.str() << "\"" << endl;
 #ifndef WASI
     filesystem::path base = filesystem::temp_directory_path();
     return (base / out.str()).native();
@@ -217,7 +217,7 @@ int main(int argc, char **argv) {
 
         double scale = args["scale"].as<double>(1.0);
         if (scale != 1.0) {
-            cerr << "loading @scale=" << scale << endl;
+            cerr << "Info: Loading scaled input @scale=" << scale << endl;
         }
 
         sink = new SimpleGerberOutput(
@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
 
     bool is_svg = args["force_svg"] || (ending == ".svg" && !args["force_png"]);
     if (!is_svg) {
-        cerr << "writing bitmap into svg" << endl; 
+        //cerr << "writing bitmap into svg" << endl; 
         if (!args["size"]) {
             cerr << "Error: --size must be given when using bitmap input." << endl;
             return EXIT_FAILURE;
@@ -349,7 +349,7 @@ int main(int argc, char **argv) {
         svg.close();
 
     } else { /* svg file */
-        cerr << "copying svg input into temp svg" << endl; 
+        //cerr << "copying svg input into temp svg" << endl; 
 
         /* c++ has the best hacks */
         std::ostringstream sstr;
@@ -362,11 +362,11 @@ int main(int argc, char **argv) {
     }
 
     if (args["skip_usvg"]) {
-        cerr << "skipping usvg" << endl; 
+        cerr << "Info: Skipping usvg" << endl; 
         frob = barf;
 
     } else {
-        cerr << "calling usvg on " << barf << " and " << frob << endl; 
+        //cerr << "calling usvg on " << barf << " and " << frob << endl; 
         int dpi = 96;
         if (args["usvg_dpi"]) {
             dpi = args["usvg_dpi"].as<int>();
@@ -396,7 +396,7 @@ int main(int argc, char **argv) {
     };
 
     SVGDocument doc;
-    cerr << "Loading temporary file " << frob << endl;
+    //cerr << "Loading temporary file " << frob << endl;
     ifstream load_f(frob);
     if (!doc.load(load_f)) {
         cerr <<  "Error loading input file \"" << in_f_name << "\", exiting." << endl;
