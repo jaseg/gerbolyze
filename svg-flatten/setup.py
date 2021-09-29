@@ -6,7 +6,8 @@ import shutil
 
 def version():
     res = subprocess.run(['git', 'describe', '--tags', '--match', 'v*'], capture_output=True, check=True, text=True)
-    version, _, _rest = res.stdout.strip()[1:].rpartition('-')
+    version, _, _rest = res.stdout.strip()[1:].partition('-')
+    return version
 
 def long_description():
     with open("README.rst") as f:
