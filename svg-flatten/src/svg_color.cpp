@@ -31,7 +31,7 @@ using namespace std;
  * them.
  */
 enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, enum gerber_color default_val, const RenderSettings &rset) {
-    cerr << "resolving svg color spec color=\"" << color << "\", opacity=\"" << opacity << "\", default=" << default_val << endl;
+    //cerr << "resolving svg color spec color=\"" << color << "\", opacity=\"" << opacity << "\", default=" << default_val << endl;
     float alpha = 1.0;
     if (!opacity.empty() && opacity[0] != '\0') {
         char *endptr = nullptr;
