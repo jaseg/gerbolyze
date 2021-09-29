@@ -38,12 +38,11 @@ def run_svg_flatten(input_file, output_file, *args, **kwargs):
     try:
         proc = subprocess.run(args, capture_output=True, check=True)
     except:
-        raise
-    finally:
         print('Subprocess stdout:')
         print(proc.stdout.decode())
         print('Subprocess stderr:')
         print(proc.stderr.decode())
+        raise
 
 def run_cargo_cmd(cmd, args, **kwargs):
     if cmd.upper() in os.environ:
