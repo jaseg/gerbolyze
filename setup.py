@@ -8,32 +8,18 @@ import subprocess
 from multiprocessing import cpu_count
 from pathlib import Path
 
+def version():
+    res = subprocess.run(['git', 'describe', '--tags', '--match', 'v*'], capture_output=True, check=True, text=True)
+    version, _, _rest = res.stdout.strip()[1:].partition('-')
+    return version
+
 def readme():
     with open('README.rst') as f:
         return f.read()
 
-def compile_and_install_svgflatten(target_dir):
-    src_path = 'svg-flatten'
-
-    try:
-        subprocess.run(['make', '-j', str(cpu_count()), 'all'], cwd=src_path, check=True)
-        bin_dir = target_dir / ".."
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run(['make', 'install', f'PREFIX={bin_dir.resolve()}'], cwd=src_path, check=True)
-    except subprocess.CalledProcessError:
-        print('Error building svg-flatten C++ binary. Please see log above for details.', file=sys.stderr)
-        sys.exit(1)
-
-class CustomInstall(install):
-    """Custom handler for the 'install' command."""
-    def run(self):
-        compile_and_install_svgflatten(Path(self.install_scripts))
-        super().run()
-
 setup(
-    cmdclass={'install': CustomInstall},
     name = 'gerbolyze',
-    version = '2.1.1',
+    version = version(),
     py_modules = ['gerbolyze'],
     package_dir = {'': 'gerbolyze'},
     entry_points = '''
@@ -47,10 +33,16 @@ setup(
         'conversions to raster images accurately preserving the input.'),
     long_description=readme(),
     long_description_content_type='text/x-rst',
-    url = 'https://git.jaseg.de/gerbolyze',
+    project_urls={
+        "Source Code": "https://git.jaseg.de/gerbolyze",
+        "Bug Tracker": "https://github.com/jaseg/gerbolyze/issues",
+    },
     author = 'jaseg',
     author_email = 'github@jaseg.de',
     install_requires = ['pcb-tools', 'numpy', 'python-slugify', 'lxml', 'click', 'pcb-tools-extension'],
+    extras_require = {
+        'wasi': [f'svg-flatten-wasi[resvg-wasi] >= {version()}'],
+    },
     license = 'AGPLv3',
     classifiers = [
         'Development Status :: 5 - Production/Stable',

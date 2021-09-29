@@ -47,6 +47,9 @@ setup(
         "Bug Tracker": "https://github.com/jaseg/gerbolyze/issues",
     },
     classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
         "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+        'Topic :: Utilities'
     ],
 )
