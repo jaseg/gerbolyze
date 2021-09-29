@@ -175,7 +175,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(RenderContext &ctx, const pug
     double off_y = 0;
     handle_aspect_ratio(node.attribute("preserveAspectRatio").value(),
             scale_x, scale_y, off_x, off_y, orig_cols, orig_rows);
-    cerr << "aspect " << scale_x << ", " << scale_y << " / " << off_x << ", " << off_y << endl;
+    //cerr << "aspect " << scale_x << ", " << scale_y << " / " << off_x << ", " << off_y << endl;
 
     /* Adjust minimum feature size given in mm and translate into px document units in our local coordinate system. */
     min_feature_size_px = img_ctx.mat().doc2phys_dist(min_feature_size_px);
@@ -255,10 +255,10 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(RenderContext &ctx, const pug
     vector<double> adjusted_fill_factors;
     adjusted_fill_factors.reserve(32); /* Vector to hold adjusted fill factors for each edge for gap filling */
     /* now iterate over all voronoi cells again to generate each cell's scaled polygon halftone blob. */
-    cerr << "  generating cells " << diagram.numsites << endl;
+    //cerr << "  generating cells " << diagram.numsites << endl;
     for (int i=0; i<diagram.numsites; i++) {
         const jcv_point center = sites[i].p;
-        cerr << "  site center " << center.x << ", " << center.y << endl;
+        //cerr << "  site center " << center.x << ", " << center.y << endl;
         double fill_factor_ours = fill_factors[sites[i].index];
         
         /* Do not render halftone blobs that are too small */
@@ -297,7 +297,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(RenderContext &ctx, const pug
             e = e->next;
         }
 
-        cerr << "  blob: ";
+        //cerr << "  blob: ";
         /* Now, generate the actual halftone blob polygon */
         ClipperLib::Path cell_path;
         double last_fill_factor = adjusted_fill_factors.back();
@@ -312,7 +312,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(RenderContext &ctx, const pug
                     off_x + center.x + (e->pos[0].x - center.x) * fill_factor,
                     off_y + center.y + (e->pos[0].y - center.y) * fill_factor
                 });
-                cerr << " - <" << p[0] << ", " << p[1] << ">";
+                //cerr << " - <" << p[0] << ", " << p[1] << ">";
                 cell_path.push_back({
                         (ClipperLib::cInt)round(p[0] * clipper_scale),
                         (ClipperLib::cInt)round(p[1] * clipper_scale)
@@ -324,7 +324,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(RenderContext &ctx, const pug
                 off_x + center.x + (e->pos[1].x - center.x) * fill_factor,
                 off_y + center.y + (e->pos[1].y - center.y) * fill_factor
             });
-            cerr << " - [" << p[0] << ", " << p[1] << "]";
+            //cerr << " - [" << p[0] << ", " << p[1] << "]";
             cell_path.push_back({
                     (ClipperLib::cInt)round(p[0] * clipper_scale),
                     (ClipperLib::cInt)round(p[1] * clipper_scale)
@@ -334,7 +334,7 @@ void gerbolyze::VoronoiVectorizer::vectorize_image(RenderContext &ctx, const pug
             last_fill_factor = fill_factor;
             e = e->next;
         }
-        cerr << endl;
+        //cerr << endl;
 
         /* Now, clip the halftone blob generated above against the given clip path. We do this individually for each
          * blob since this way is *much* faster than throwing a million blobs at once at poor clipper. */

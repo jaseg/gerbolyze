@@ -76,6 +76,9 @@ BINARY := svg-flatten
 
 all: $(BUILDDIR)/$(BINARY) $(BUILDDIR)/nopencv-test
 
+.PHONY: wasm
+wasm: $(BUILDDIR)/$(BINARY).wasm
+
 $(CACHEDIR)/$(WASI_SDK):
 	mkdir -p $(dir $@)
 	cd $(dir $@); curl -L ${WASI_SDK_URL} | tar xzf -

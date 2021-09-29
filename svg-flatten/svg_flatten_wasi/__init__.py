@@ -1,13 +1,14 @@
 import os
 import sys
+import subprocess
 import tempfile
 import wasmtime
 import platform
 import click
-import pathlib
+from pathlib import Path
 import hashlib
-import appdirs
 import lzma
+import appdirs
 from importlib import resources as importlib_resources
 try:
     importlib_resources.files # py3.9+ stdlib
@@ -36,7 +37,7 @@ def _run_wasm_app(wasm_filename, argv, cachedir="svg-flatten-wasi"):
 
     module_path_digest = hashlib.sha256(__file__.encode()).hexdigest()
     module_digest = hashlib.sha256(module_binary).hexdigest()
-    cache_path = pathlib.Path(os.getenv("SVG_FLATTEN_WASI_CACHE_DIR", appdirs.user_cache_dir(cachedir)))
+    cache_path = Path(os.getenv("SVG_FLATTEN_WASI_CACHE_DIR", appdirs.user_cache_dir(cachedir)))
     cache_path.mkdir(parents=True, exist_ok=True)
     cache_filename = (cache_path / f'{wasm_filename}-{module_path_digest[:8]}-{module_digest[:16]}')
     
@@ -72,11 +73,50 @@ def _run_wasm_app(wasm_filename, argv, cachedir="svg-flatten-wasi"):
         return trap.code
 
 
+def run_usvg(input_file, output_file, dpi=96):
+    args = ['--keep-named-groups', '--dpi', str(dpi), input_file, output_file]
+
+    # By default, try a number of options:
+    candidates = [
+        # somewhere in $PATH
+        'usvg',
+        'wasi-usvg',
+        # in user-local cargo installation
+        Path.home() / '.cargo' / 'bin' / 'usvg',
+        # wasi-usvg in user-local pip installation
+        Path.home() / '.local' / 'bin' / 'wasi-usvg',
+        # next to our current python interpreter (e.g. in virtualenv)
+        str(Path(sys.executable).parent / 'wasi-usvg')
+        ]
+
+    # if USVG envvar is set, try that first.
+    if 'USVG' in os.environ:
+        exec_candidates = [os.environ['USVG'], *exec_candidates]
+
+    for candidate in candidates:
+        try:
+            res = subprocess.run([candidate, *args], check=True)
+            print('used usvg:', candidate)
+            break
+        except FileNotFoundError:
+            continue
+    else:
+        raise SystemError('usvg executable not found')
+
+
 @click.command(context_settings={'ignore_unknown_options': True})
+@click.option('--no-usvg', is_flag=True)
+@click.option('--usvg-dpi', type=int, default=96)
 @click.argument('other_args', nargs=-1, type=click.UNPROCESSED)
 @click.argument('input_file',  type=click.Path(resolve_path=True, dir_okay=False))
 @click.argument('output_file', type=click.Path(resolve_path=True, dir_okay=False, writable=True))
-def run_usvg(input_file, output_file, other_args):
+def run_svg_flatten(input_file, output_file, other_args, usvg_dpi, no_usvg):
 
-    cmdline = ['svg-flatten', *other_args, input_file, output_file]
-    sys.exit(_run_wasm_app("svg-flatten.wasm", cmdline))
+    with tempfile.NamedTemporaryFile() as f:
+        if not no_usvg:
+            run_usvg(input_file, f.name, dpi=usvg_dpi)
+            input_file = f.name
+
+        cmdline = ['svg-flatten', '--force-svg', '--no-usvg', *other_args, input_file, output_file]
+        sys.exit(_run_wasm_app("svg-flatten.wasm", cmdline))
+

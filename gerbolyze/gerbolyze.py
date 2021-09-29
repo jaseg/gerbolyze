@@ -624,16 +624,23 @@ def svg_to_gerber(infile, outfile,
         candidates = [os.environ['SVG_FLATTEN']]
 
     else:
-        # By default, try three options:
+        # By default, try four options:
         candidates = [
                 # somewhere in $PATH
                 'svg-flatten',
+                'wasi-svg-flatten',
                 # in user-local pip installation
                 Path.home() / '.local' / 'bin' / 'svg-flatten',
-                # next to our current python interpreter (e.g. in virtualenv
+                Path.home() / '.local' / 'bin' / 'wasi-svg-flatten',
+                # next to our current python interpreter (e.g. in virtualenv)
                 str(Path(sys.executable).parent / 'svg-flatten'),
+                str(Path(sys.executable).parent / 'wasi-svg-flatten'),
                 # next to this python source file in the development repo
                 str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]
+
+        # if SVG_FLATTEN envvar is set, try that first.
+        if 'SVG_FLATTEN' in os.environ:
+            candidates = [os.environ['SVG_FLATTEN'], *candidates]
 
     args = [ '--format', ('gerber-outline' if outline_mode else 'gerber'),
             '--precision', '6', # intermediate file, use higher than necessary precision
