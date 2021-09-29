@@ -30,6 +30,9 @@ setup(
         "wasmtime>=0.28",
         "click >= 4.0"
     ],
+    extras_require={
+        'resvg-wasi': ['resvg-wasi'],
+    },
     packages=["svg_flatten_wasi"],
     package_data={"svg_flatten_wasi": [
         "*.wasm",
