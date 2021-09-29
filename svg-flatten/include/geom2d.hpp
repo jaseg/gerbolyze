@@ -68,7 +68,7 @@ namespace gerbolyze {
                     return;
 
                 xx=a, yx=b, xy=c, yy=d, x0=e, y0=f;
-                cerr << "xform loaded " << dbg_str() << endl;
+                //cerr << "xform loaded " << dbg_str() << endl;
             }
 
             xform2d &translate(double x, double y) {
