@@ -18,7 +18,10 @@
 
 #pragma once
 
+#include <vector>
+#include <string>
+
 namespace gerbolyze {
-int run_cargo_command(const char *cmd_name, const char *cmdline[], const char *envvar);
+int run_cargo_command(const char *cmd_name, std::vector<std::string> &cmdline, const char *envvar);
 }
 

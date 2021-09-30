@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <vector>
 #include <algorithm>
 #include <string>
 #include <argagg.hpp>
@@ -120,16 +121,26 @@ int main(int argc, char **argv) {
             {"skip_usvg", {"--no-usvg"},
                 "Do not preprocess input using usvg (do not use unless you know *exactly* what you're doing)",
                 0},
-            {"usvg_dpi", {"--usvg-dpi"},
-                "Passed through to usvg's --dpi, in case the input file has different ideas of DPI than usvg has.",
-                1},
             {"scale", {"--scale"},
                 "Scale input svg lengths by this factor (-o gerber only).",
                 1},
             {"exclude_groups", {"-e", "--exclude-groups"},
                 "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",
                 1},
-
+            /* Forwarded USVG options */
+            {"usvg-dpi", {"--usvg-dpi"},
+                "Passed through to usvg's --dpi, in case the input file has different ideas of DPI than usvg has.",
+                1},
+            {"usvg-font-family",       {"--usvg-font-family"}, "", 1},
+            {"usvg-font-size",         {"--usvg-font-size"}, "", 1},
+            {"usvg-serif-family",      {"--usvg-serif-family"}, "", 1},
+            {"usvg-sans-serif-family", {"--usvg-sans-serif-family"}, "", 1},
+            {"usvg-cursive-family",    {"--usvg-cursive-family"}, "", 1},
+            {"usvg-fantasy-family",    {"--usvg-fantasy-family"}, "", 1},
+            {"usvg-monospace-family",  {"--usvg-monospace-family"}, "", 1},
+            {"usvg-use-font-file",     {"--usvg-use-font-file"}, "", 1},
+            {"usvg-use-fonts-dir",     {"--usvg-use-fonts-dir"}, "", 1},
+            {"usvg-skip-system-fonts", {"--usvg-skip-system-fonts"}, "", 0},
     }};
 
 
@@ -366,15 +377,37 @@ int main(int argc, char **argv) {
         frob = barf;
 
     } else {
-        //cerr << "calling usvg on " << barf << " and " << frob << endl; 
-        int dpi = 96;
-        if (args["usvg_dpi"]) {
-            dpi = args["usvg_dpi"].as<int>();
-        }
-        string dpi_str = to_string(dpi);
-        
 #ifndef NOFORK
-        const char *command_line[] = {nullptr, "--keep-named-groups", "--dpi", dpi_str.c_str(), barf.c_str(), frob.c_str(), nullptr};
+        //cerr << "calling usvg on " << barf << " and " << frob << endl; 
+        vector<string> command_line = {"--keep-named-groups"};
+
+        string options[] = {
+            "usvg-dpi",
+            "usvg-font-family",
+            "usvg-font-size",
+            "usvg-serif-family",
+            "usvg-sans-serif-family",
+            "usvg-cursive-family",
+            "usvg-fantasy-family",
+            "usvg-monospace-family",
+            "usvg-use-font-file",
+            "usvg-use-fonts-dir",
+        };
+
+        for (string &opt : options) {
+            if (args[opt.c_str()]) {
+                command_line.push_back("--" + opt.substr(5));
+                command_line.push_back(args[opt.c_str()]);
+            }
+        }
+
+        if (args["usvg-skip-system-fonts"]) {
+            command_line.push_back("--skip-system-fonts");
+        }
+
+        command_line.push_back(barf);
+        command_line.push_back(frob);
+        
         if (run_cargo_command("usvg", command_line, "USVG")) {
             return EXIT_FAILURE;
         }

@@ -73,8 +73,21 @@ def _run_wasm_app(wasm_filename, argv, cachedir="svg-flatten-wasi"):
         return trap.code
 
 
-def run_usvg(input_file, output_file, dpi=96):
-    args = ['--keep-named-groups', '--dpi', str(dpi), input_file, output_file]
+def run_usvg(input_file, output_file, **usvg_args):
+
+    args = ['--keep-named-groups']
+    for key, value in usvg_args.items():
+        if value is not None:
+            if value is False:
+                continue
+
+            args.append(f'--{key.replace("_", "-")[5:]}')
+
+            if value is not True:
+                args.append(value)
+
+    args += [input_file, output_file]
+    print(args)
 
     # By default, try a number of options:
     candidates = [
@@ -106,15 +119,28 @@ def run_usvg(input_file, output_file, dpi=96):
 
 @click.command(context_settings={'ignore_unknown_options': True})
 @click.option('--no-usvg', is_flag=True)
-@click.option('--usvg-dpi', type=int, default=96)
+# Options forwarded to USVG
+@click.option('--usvg-dpi')
+@click.option('--usvg-font-family')
+@click.option('--usvg-font-size')
+@click.option('--usvg-serif-family')
+@click.option('--usvg-sans-serif-family')
+@click.option('--usvg-cursive-family')
+@click.option('--usvg-fantasy-family')
+@click.option('--usvg-monospace-family')
+@click.option('--usvg-use-font-file')
+@click.option('--usvg-use-fonts-dir')
+@click.option('--usvg-skip-system-fonts', is_flag=True)
+# Catch-all argument to forward options to svg-flatten
 @click.argument('other_args', nargs=-1, type=click.UNPROCESSED)
+# Input/output file
 @click.argument('input_file',  type=click.Path(resolve_path=True, dir_okay=False))
 @click.argument('output_file', type=click.Path(resolve_path=True, dir_okay=False, writable=True))
-def run_svg_flatten(input_file, output_file, other_args, usvg_dpi, no_usvg):
+def run_svg_flatten(input_file, output_file, other_args, no_usvg, **usvg_args):
 
     with tempfile.NamedTemporaryFile() as f:
         if not no_usvg:
-            run_usvg(input_file, f.name, dpi=usvg_dpi)
+            run_usvg(input_file, f.name, **usvg_args)
             input_file = f.name
 
         cmdline = ['svg-flatten', '--force-svg', '--no-usvg', *other_args, input_file, output_file]

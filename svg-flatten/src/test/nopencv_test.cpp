@@ -159,7 +159,7 @@ MU_TEST(test_complex_example_from_paper) {
 }
 
 int render_svg(const char *in_svg, const char *out_png) {
-    const char *command_line[] = {nullptr, in_svg, out_png, nullptr};
+    vector<string> command_line = {in_svg, out_png};
     return run_cargo_command("resvg", command_line, "RESVG");
 }
 
