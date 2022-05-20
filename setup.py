@@ -38,8 +38,8 @@ setup(
         "Bug Tracker": "https://github.com/jaseg/gerbolyze/issues",
     },
     author = 'jaseg',
-    author_email = 'github@jaseg.de',
-    install_requires = ['pcb-tools', 'numpy', 'python-slugify', 'lxml', 'click', 'pcb-tools-extension'],
+    author_email = 'gerbonara@jaseg.de',
+    install_requires = ['gerbonara', 'numpy', 'python-slugify', 'lxml', 'click'],
     extras_require = {
         'wasi': [f'svg-flatten-wasi[resvg-wasi] >= {version()}'],
     },

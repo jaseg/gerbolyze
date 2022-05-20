@@ -19,35 +19,12 @@ import gerberex
 import gerberex.rs274x
 import numpy as np
 import click
-from slugify import slugify
+
+import gerbonara as gn
 
 @click.group()
 def cli():
     pass
-
-
-@cli.command()
-@click.option('-l', '--layer', type=click.Choice(['silk', 'mask', 'copper']), default='silk')
-@click.option('-x', '--exact', flag_value=True)
-@click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
-@click.argument('side', type=click.Choice(['top', 'bottom']))
-@click.argument('source')
-@click.argument('target')
-@click.argument('image')
-@click.pass_context
-def vectorize(ctx, side, layer, exact, source, target, image, trace_space):
-    """ Compatibility command for Gerbolyze version 1.
-
-        This command is deprecated, please update your code to call "gerbolyze paste" instead.
-    """
-    ctx.invoke(paste, 
-        input_gerbers=source,
-        output_gerbers=target,
-        **{side: image, f'layer_{side}': layer},
-        no_subtract=exact,
-        trace_space=trace_space,
-        vectorizer='binary-contours',
-        preserve_aspect_ratio='meet')
 
 @cli.command()
 @click.argument('input_gerbers')
@@ -159,9 +136,9 @@ def paste(input_gerbers, output_gerbers,
                 print('rendering layer', layer)
                 overlay_file = tmpdir / f'overlay-{side}-{layer}.gbr'
                 layer_arg = layer if target_layer is None else None # slightly confusing but trust me :)
-                svg_to_gerber(in_svg_or_png, overlay_file, layer_arg,
+                svg_to_gerber(in_svg_or_png, overlay_file, only_groups=f'g-{layer_arg.lower()}',
                         trace_space, vectorizer, vectorizer_map, exclude_groups, curve_tolerance,
-                        bounds_for_png=bounds, preserve_aspect_ratio=preserve_aspect_ratio,
+                        layer_bounds=bounds, preserve_aspect_ratio=preserve_aspect_ratio,
                         outline_mode=(layer == 'outline'))
 
                 overlay_grb = gerberex.read(str(overlay_file))
@@ -502,7 +479,7 @@ def load_side(side_matches):
 DEFAULT_EXTRA_LAYERS = [ layer for layer in LAYER_RENDER_ORDER if layer != "drill" ]
 
 def template_layer(name):
-    return f'<g id="g-{slugify(name)}" inkscape:label="{name}" inkscape:groupmode="layer"></g>'
+    return f'<g id="g-{name.lower()}" inkscape:label="{name}" inkscape:groupmode="layer"></g>'
 
 def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS, current_layer='silk'):
     (x1, x2), (y1, y2) = bounds
@@ -519,7 +496,7 @@ def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS, cu
            xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
            width="{w_mm}mm" height="{h_mm}mm" viewBox="0 0 {w_mm} {h_mm}" >
           <defs/>
-          <sodipodi:namedview inkscape:current-layer="g-{slugify(current_layer)}" />
+          <sodipodi:namedview inkscape:current-layer="g-{current_layer.lower()}" />
           <g inkscape:label="Preview" inkscape:groupmode="layer" id="g-preview" sodipodi:insensitive="true" style="opacity:0.5">
             <image x="0" y="0" width="{w_mm}" height="{h_mm}"
                xlink:href="data:image/jpeg;base64,{base64.b64encode(png_data).decode()}" />
@@ -571,7 +548,7 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
     # add layers
     for layer in extra_layers:
         new_g = etree.SubElement(svg, SVG_NS+'g')
-        new_g.set('id', f'g-{slugify(layer)}')
+        new_g.set('id', f'g-{layer.lower()}')
         new_g.set(INKSCAPE_NS+'label', layer)
         new_g.set(INKSCAPE_NS+'groupmode', 'layer')
 
@@ -601,91 +578,65 @@ def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units, cu
         f'--origin={origin_x:.6f}x{origin_y:.6f}', f'--window_inch={width:.6f}x{height:.6f}',
         '--foreground=#ffffff',
         '-o', str(tmpfile), str(path)]
-    print('dilation cmd:', ' '.join(cmd))
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     # dilate & render back to gerber
     # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
-    svg_to_gerber(tmpfile, outfile, dilate=-dilation*72.0/25.4, dpi=72, scale=25.4/72.0, curve_tolerance=curve_tolerance)
+    svg_to_gerber(tmpfile, outfile, dilate=-dilation*72.0/25.4, usvg_dpi=72, scale=25.4/72.0, curve_tolerance=curve_tolerance)
 
 def svg_to_gerber(infile, outfile,
-        layer=None, trace_space:'mm'=0.1,
-        vectorizer=None, vectorizer_map=None,
-        exclude_groups=None,
-        dilate=None, curve_tolerance=None,
-        dpi=None, scale=None, bounds_for_png=None,
-        preserve_aspect_ratio=None,
-        force_png=False, force_svg=False,
-        outline_mode=False):
+        layer_bounds=None, outline_mode=False,
+        **kwargs):
+
+        trace_space:'mm'=0.1,
 
     infile = Path(infile)
 
-    if 'SVG_FLATTEN' in os.environ:
-        candidates = [os.environ['SVG_FLATTEN']]
-
-    else:
-        # By default, try four options:
-        candidates = [
-                # somewhere in $PATH
-                'svg-flatten',
-                'wasi-svg-flatten',
-                # in user-local pip installation
-                Path.home() / '.local' / 'bin' / 'svg-flatten',
-                Path.home() / '.local' / 'bin' / 'wasi-svg-flatten',
-                # next to our current python interpreter (e.g. in virtualenv)
-                str(Path(sys.executable).parent / 'svg-flatten'),
-                str(Path(sys.executable).parent / 'wasi-svg-flatten'),
-                # next to this python source file in the development repo
-                str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]
-
-        # if SVG_FLATTEN envvar is set, try that first.
-        if 'SVG_FLATTEN' in os.environ:
-            candidates = [os.environ['SVG_FLATTEN'], *candidates]
-
     args = [ '--format', ('gerber-outline' if outline_mode else 'gerber'),
             '--precision', '6', # intermediate file, use higher than necessary precision
-            '--trace-space', str(trace_space) ]
-    if layer:
-        args += ['--only-groups', f'g-{slugify(layer)}']
-    if vectorizer:
-        args += ['--vectorizer', vectorizer]
-    if vectorizer_map:
-        args += ['--vectorizer-map', vectorizer_map]
-    if exclude_groups:
-        args += ['--exclude-groups', exclude_groups]
-    if dilate:
-        args += ['--dilate', str(dilate)]
-    if curve_tolerance is not None:
-        print('applying curve tolerance', curve_tolerance)
-        args += ['--curve-tolerance', str(curve_tolerance)]
-    if dpi:
-        args += ['--usvg-dpi', str(dpi)]
-    if scale:
-        args += ['--scale', str(scale)]
-    if force_png or (infile.suffix.lower() in ['.jpg', '.png'] and not force_svg):
-        (min_x, max_x), (min_y, max_y) = bounds_for_png
-        args += ['--size', f'{max_x - min_x}x{max_y - min_y}']
-    if force_svg and force_png:
-        raise ValueError('both force_svg and force_png given')
-    if force_svg:
-        args += ['--force-svg']
-    if force_png:
-        args += ['--force-png']
-    if preserve_aspect_ratio:
-        args += ['--preserve-aspect-ratio', preserve_aspect_ratio]
+            ]
+    
+    if kwargs.get('force_png') or (infile.suffix.lower() in ['.jpg', '.png'] and not kwargs.get('force_svg')):
+        (min_x, max_x), (min_y, max_y) = layer_bounds
+        kwargs['size'] = f'{max_x - min_x}x{max_y - min_y}'
+
+    for k, v in kwargs.items():
+        if v is not None:
+            args.append('--' + k.replace('_', '-'))
+            if not isinstance(v, bool):
+                args.append(str(v))
 
     args += [str(infile), str(outfile)]
 
-    print('svg-flatten args:', ' '.join(args))
-    for candidate in candidates:
-        try:
-            res = subprocess.run([candidate, *args], check=True)
-            print('used svg-flatten:', candidate)
-            break
-        except FileNotFoundError:
-            continue
+    if 'SVG_FLATTEN' in os.environ:
+        subprocess.run([os.environ['SVG_FLATTEN'], *args], check=True)
+
     else:
-        raise SystemError('svg-flatten executable not found')
+        # By default, try four options:
+        for candidate in [
+                # somewhere in $PATH
+                'svg-flatten',
+                'wasi-svg-flatten',
+
+                # in user-local pip installation
+                Path.home() / '.local' / 'bin' / 'svg-flatten',
+                Path.home() / '.local' / 'bin' / 'wasi-svg-flatten',
+
+                # next to our current python interpreter (e.g. in virtualenv)
+                str(Path(sys.executable).parent / 'svg-flatten'),
+                str(Path(sys.executable).parent / 'wasi-svg-flatten'),
+
+                # next to this python source file in the development repo
+                str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]:
+
+            try:
+                subprocess.run([candidate, *args], check=True)
+                break
+            except FileNotFoundError:
+                continue
+
+        else:
+            raise SystemError('svg-flatten executable not found')
     
 
 if __name__ == '__main__':
