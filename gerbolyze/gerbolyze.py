@@ -23,16 +23,9 @@ def cli():
     pass
 
 @cli.command()
-@click.argument('input_gerbers')
+@click.argument('input_gerbers', type=click.Path(exists=True))
+@click.argument('input_svg', type=click.Path(exists=True, dir_okay=False, file_okay=True, allow_dash=True))
 @click.argument('output_gerbers')
-@click.option('-t', '--top', help='Top side SVG or PNG overlay') 
-@click.option('-b', '--bottom', help='Bottom side SVG or PNG overlay') 
-@click.option('-o', '--outline', help='SVG file to use for board outline. Can be the same one used for --top or --bottom.') 
-@click.option('--layer-top', help='Top side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk.') 
-@click.option('--layer-bottom', help='Bottom side SVG or PNG target layer. See --layer-top.')
-@click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
-        '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
-        'coördinates. MUST MATCH --bbox GIVEN TO PREVIEW')
 @click.option('--dilate', default=0.1, type=float, help='Default dilation for subtraction operations in mm')
 @click.option('--curve-tolerance', type=float, help='Tolerance for curve flattening in mm')
 @click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
@@ -42,9 +35,7 @@ def cli():
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
 @click.option('--preserve-aspect-ratio', help='PNG/JPG files only: passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
-def paste(input_gerbers, output_gerbers,
-        top, bottom, outline, layer_top, layer_bottom,
-        bbox,
+def paste(input_gerbers, input_svg, output_gerbers,
         dilate, curve_tolerance, no_subtract, subtract,
         preserve_aspect_ratio,
         trace_space, vectorizer, vectorizer_map, exclude_groups):
@@ -55,173 +46,113 @@ def paste(input_gerbers, output_gerbers,
     else:
         subtract_map = parse_subtract_script(subtract, dilate)
 
-    if not top and not bottom:
-        raise click.UsageError('Either --top or --bottom must be given')
+    output_gerbers = Path(output_gerbers)
+    input_gerbers = Path(input_gerbers)
+    stack = gn.LayerStack.open(input_gerbers, lazy=True)
+    (bb_min_x, bb_min_y), (bb_max_x, bb_max_y) = bounds = stack.board_bounds()
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
-        output_gerbers = Path(output_gerbers)
-        input_gerbers = Path(input_gerbers)
-        source = unpack_if_necessary(input_gerbers, tmpdir)
-        matches = match_gerbers_in_dir(source)
+    # Create output dir if it does not exist yet. Do this now so we fail early
+    if input_gerbers.is_dir():
+        output_gerbers.mkdir(exist_ok=True)
 
-        if input_gerbers.is_dir():
-            # Create output dir if it does not exist yet
-            output_gerbers.mkdir(exist_ok=True)
+        # In case output dir already existed, remove files we will overwrite
+        for in_file in input_gerbers.iterdir():
+            out_cand = output_gerbers / in_file.name
+            out_cand.unlink(missing_ok=True)
 
-            # In case output dir already existed, remove files we will overwrite
-            for in_file in source.iterdir():
-                out_cand = output_gerbers / in_file.name
-                out_cand.unlink(missing_ok=True)
+    else: # We are working on a zip file
+        tempdir = tempfile.NamedTemporaryDirectory()
 
-        for side, in_svg_or_png, target_layer in [
-                ('top', top, layer_top),
-                ('bottom', bottom, layer_bottom),
-                ('outline', outline, None)]:
-
-            if not in_svg_or_png:
-                continue
-
-            if Path(in_svg_or_png).suffix.lower() in ['.png', '.jpg'] and target_layer is None:
-                target_layer = 'silk'
-
-            print()
-            print('#########################################')
-            print('processing ', side, 'input file ', in_svg_or_png)
-            print('#########################################')
-            print()
-
-            if not matches[side]:
-                warnings.warn(f'No input gerber files found for {side} side')
-                continue
-
-            try:
-                units, layers = load_side(matches[side])
-            except SystemError as e:
-                raise click.UsageError(e.args)
-            
-            print('loaded layers:', list(layers.keys()))
-
-            bounds = get_bounds(bbox, layers)
-            print('bounds:', bounds)
-
-            @functools.lru_cache()
-            def do_dilate(layer, amount):
-                print('dilating', layer, 'by', amount)
-                outfile = tmpdir / f'dilated-{layer}-{amount}.gbr'
-                dilate_gerber(layers, layer, amount, bbox, tmpdir, outfile, units, curve_tolerance)
-                gbr = gerberex.read(str(outfile))
-                gbr.offset(bounds[0][0], bounds[1][0])
-                return gbr
-            
-            for layer, input_files in layers.items():
-                if layer == 'drill':
-                    continue
-
-                if target_layer is not None:
-                    if layer != target_layer:
-                        continue
-
-                (in_grb_path, in_grb), = input_files
-
-                print()
-                print('-----------------------------------------')
-                print('processing side', side, 'layer', layer)
-                print('-----------------------------------------')
-                print()
-                print('rendering layer', layer)
-                overlay_file = tmpdir / f'overlay-{side}-{layer}.gbr'
-                layer_arg = layer if target_layer is None else None # slightly confusing but trust me :)
-                svg_to_gerber(in_svg_or_png, overlay_file,
-                        trace_space, vectorizer, vectorizer_map, exclude_groups, curve_tolerance,
-                        layer_bounds=bounds, preserve_aspect_ratio=preserve_aspect_ratio,
-                        only_groups=f'g-{layer_arg.lower()}',
-                        outline_mode=(layer == 'outline'))
-
-                overlay_grb = gerberex.read(str(overlay_file))
-                if not overlay_grb.primitives:
-                    print(f'Overlay layer {layer} does not contain anything. Skipping.', file=sys.stderr)
-                    continue
-
-                print('compositing')
-                comp = gerberex.GerberComposition()
-                # overlay on bottom
-                overlay_grb.offset(bounds[0][0], bounds[1][0])
-                comp.merge(overlay_grb)
-                # dilated subtract layers on top of overlay
-                dilations = subtract_map.get(layer, [])
-                for d_layer, amount in dilations:
-                    print('processing dilation', d_layer, amount)
-                    dilated = do_dilate(d_layer, amount)
-                    comp.merge(dilated)
-                # input on top of everything
-                comp.merge(gerberex.rs274x.GerberFile.from_gerber_file(in_grb.cam_source))
-
-                if input_gerbers.is_dir():
-                    this_out = output_gerbers / in_grb_path.name
-                else:
-                    this_out = output_gerbers
-                print('dumping to', this_out)
-                comp.dump(this_out)
+    @functools.lru_cache()
+    def do_dilate(layer, amount):
+        return dilate_gerber(layer, amount, curve_tolerance)
     
-        if input_gerbers.is_dir():
-            for in_file in source.iterdir():
-                out_cand = output_gerbers / in_file.name
-                if not out_cand.is_file():
-                    print(f'Input file {in_file.name} remained unprocessed. Copying.', file=sys.stderr)
-                    shutil.copy(in_file, out_cand)
+    for (side, use), layer in stack.graphic_layers.items():
+        print('processing', side, use, 'layer')
+        overlay_grb = svg_to_gerber(input_svg,
+                trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
+                exclude_groups=exclude_groups, curve_tolerance=curve_tolerance,
+                preserve_aspect_ratio=preserve_aspect_ratio,
+                only_groups=f'g-{side}-{use}')
+        # FIXME outline mode, also process outline layer
+
+        if not overlay_grb:
+            print(f'Overlay {side} {use} layer is empty. Skipping.', file=sys.stderr)
+            continue
+
+        # only open lazily loaded layer if we need it. Replace lazy wrapper in stack with loaded layer.
+        stack.graphic_layers[(side, use)] = layer = layer.instance
+
+        print('compositing')
+        # dilated subtract layers on top of overlay
+        dilations = subtract_map.get(layer, [])
+        for d_layer, amount in dilations:
+            print('processing dilation', d_layer, amount)
+            dilated = do_dilate(d_layer, amount)
+            layer.merge(dilated, mode='below', keep_settings=True)
+
+        # overlay on bottom
+        overlay_grb.offset(bb_min_x, bb_min_y) # move to origin
+        layer.merge(overlay_grb, mode='below', keep_settings=True)
+
+    if input_gerbers.is_dir():
+        stack.save_to_directory(output_gerbers)
+    else:
+        stack.save_to_zipfile(output_gerbers)
 
 @cli.command()
-@click.argument('input', type=click.Path(exists=True))
-@click.argument('output', required=False)
+@click.argument('input_gerbers', type=click.Path(exists=True))
+@click.argument('output_svg', required=False)
 @click.option('-t' ,'--top', help='Render board top side.', is_flag=True)
 @click.option('-b' ,'--bottom', help='Render board bottom side.', is_flag=True)
 @click.option('-f' ,'--force', help='Overwrite existing output file when autogenerating file name.', is_flag=True)
 @click.option('--vector/--raster', help='Embed preview renders into output file as SVG vector graphics instead of rendering them to PNG bitmaps. The resulting preview may slow down your SVG editor.')
 @click.option('--raster-dpi', type=float, default=300.0, help='DPI for rastering preview')
-@click.option('--bbox', help='Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR '
-        '"x,y,w,h" to force [w] mm by [h] mm output canvas with its bottom left corner at the given input gerber '
-        'coördinates.')
-def template(input, output, top, bottom, force, bbox, vector, raster_dpi):
+def template(input_gerbers, output_svg, top, bottom, force, vector, raster_dpi):
     ''' Generate SVG template for gerbolyze paste from gerber files.
 
     INPUT may be a gerber file, directory of gerber files or zip file with gerber files
     '''
-    source = Path(input)
+    source = Path(input_gerbers)
+    ttype = 'top' if top else 'bottom'
 
     if (bool(top) + bool(bottom))  != 1:
         raise click.UsageError('Excactly one of --top or --bottom must be given.')
 
-    if output is None:
+    if output_svg is None:
         # autogenerate output file name if none is given:
         # /path/to/gerber/dir -> /path/to/gerber/dir.preview-{top|bottom}.svg
         # /path/to/gerbers.zip -> /path/to/gerbers.zip.preview-{top|bottom}.svg
         # /path/to/single/file.grb -> /path/to/single/file.grb.preview-{top|bottom}.svg
     
-        ttype = 'top' if top else 'bottom'
-        output = source.parent / f'{source.name}.template-{ttype}.svg'
-        click.echo(f'Writing output to {output}')
+        output_svg = source.parent / f'{source.name}.template-{ttype}.svg'
+        click.echo(f'Writing output to {output_svg}')
 
-        if output.exists() and not force:
+        if output_svg.exists() and not force:
             raise UsageError(f'Autogenerated output file already exists. Please remote first, or use --force, or '
                     'explicitly give an output path.')
 
     else:
-        output = Path(output)
+        output_svg = Path(output_svg)
 
     stack = gn.LayerStack.open(source, lazy=True)
-    svg = str(stack.to_pretty_svg(side=('top' if top else 'bottom')))
-    bounds = stack.outline.instance.bounding_box(default=((0, 0), (0, 0))) # returns MM by default
+    bounds = stack.board_bounds()
+    svg = str(stack.to_pretty_svg(side=('top' if top else 'bottom'), force_bounds=bounds))
+
+    template_layers = [ f'{ttype}-{use}' for use in [ 'copper', 'mask', 'silk' ] ]
+    silk = template_layers[-1]
 
     if vector:
-            output.write_text(create_template_from_svg(bounds, svg)) # All gerbonara SVG is in MM by default
+        # All gerbonara SVG is in MM by default
+        output_svg.write_text(create_template_from_svg(bounds, svg, template_layers, current_layer=silk))
 
     else:
         with tempfile.NamedTemporaryFile(suffix='.svg') as temp_svg, \
             tempfile.NamedTemporaryFile(suffix='.png') as temp_png:
             Path(temp_svg.name).write_text(svg)
             run_resvg(temp_svg.name, temp_png.name, dpi=f'{raster_dpi:.0f}')
-            output.write_text(template_svg_for_png(bounds, Path(temp_png.name).read_bytes()))
+            output_svg.write_text(template_svg_for_png(bounds, Path(temp_png.name).read_bytes(),
+                template_layers, current_layer=silk))
 
 
 # Subtraction script handling
@@ -390,12 +321,10 @@ def calculate_apertureless_bounding_box(cam):
 # SVG export
 #===========
 
-DEFAULT_EXTRA_LAYERS = [ 'copper', 'mask', 'silk' ]
-
 def template_layer(name):
     return f'<g id="g-{name.lower()}" inkscape:label="{name}" inkscape:groupmode="layer"></g>'
 
-def template_svg_for_png(bounds, png_data, extra_layers=DEFAULT_EXTRA_LAYERS, current_layer='silk'):
+def template_svg_for_png(bounds, png_data, extra_layers, current_layer):
     (x1, y1), (x2, y2) = bounds
     w_mm, h_mm = (x2 - x1), (y2 - y1)
 
@@ -430,7 +359,7 @@ def svg_pt_to_mm(pt_len, dpi=CAIRO_SVG_HARDCODED_DPI):
 
     return f'{float(pt_len) / dpi * MM_PER_INCH}mm'
 
-def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS, current_layer='silk'):
+def create_template_from_svg(bounds, svg_data, extra_layers):
     svg = etree.fromstring(svg_data)
 
     # add inkscape namespaces
@@ -471,84 +400,64 @@ def create_template_from_svg(bounds, svg_data, extra_layers=DEFAULT_EXTRA_LAYERS
 # SVG/gerber import
 #==================
 
-def dilate_gerber(layers, layer_name, dilation, bbox, tmpdir, outfile, units, curve_tolerance):
-    if layer_name not in layers:
-        raise ValueError(f'Cannot dilate layer {layer_name}: layer not found in input dir')
+def dilate_gerber(layer, dilation, curve_tolerance):
+    with tempfile.NamedTemporaryFile(suffix='.svg') as temp_svg:
+        Path(temp_svg.name).write_text(str(layer.instance.to_svg()))
 
-    bounds = get_bounds(bbox, layers)
-    (x_min_mm, x_max_mm), (y_min_mm, y_max_mm) = bounds
+        # dilate & render back to gerber
+        # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
+        return svg_to_gerber(temp_svg.name,
+                dilate=-dilation*72.0/25.4, usvg_dpi=72, scale=25.4/72.0, curve_tolerance=curve_tolerance)
 
-    origin_x = x_min_mm / MM_PER_INCH
-    origin_y = y_min_mm / MM_PER_INCH
-
-    width = (x_max_mm - x_min_mm) / MM_PER_INCH
-    height = (y_max_mm - y_min_mm) / MM_PER_INCH
-
-    tmpfile = tmpdir / 'dilate-tmp.svg'
-    path, _gbr = layers[layer_name][0]
-    # NOTE: gerbv has an undocumented maximum length of 20 chars for the arguments to --origin and --window_inch
-    cmd = ['gerbv', '-x', 'svg',
-        '--border=0',
-        f'--origin={origin_x:.6f}x{origin_y:.6f}', f'--window_inch={width:.6f}x{height:.6f}',
-        '--foreground=#ffffff',
-        '-o', str(tmpfile), str(path)]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    # dilate & render back to gerber
-    # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
-    svg_to_gerber(tmpfile, outfile, dilate=-dilation*72.0/25.4, usvg_dpi=72, scale=25.4/72.0, curve_tolerance=curve_tolerance)
-
-def svg_to_gerber(infile, outfile,
-        layer_bounds=None, outline_mode=False,
-        **kwargs):
-
+def svg_to_gerber(infile, outline_mode=False, **kwargs):
     infile = Path(infile)
 
     args = [ '--format', ('gerber-outline' if outline_mode else 'gerber'),
             '--precision', '6', # intermediate file, use higher than necessary precision
             ]
     
-    if kwargs.get('force_png') or (infile.suffix.lower() in ['.jpg', '.png'] and not kwargs.get('force_svg')):
-        (min_x, max_x), (min_y, max_y) = layer_bounds
-        kwargs['size'] = f'{max_x - min_x}x{max_y - min_y}'
-
     for k, v in kwargs.items():
         if v is not None:
             args.append('--' + k.replace('_', '-'))
             if not isinstance(v, bool):
                 args.append(str(v))
 
-    args += [str(infile), str(outfile)]
+    with tempfile.NamedTemporaryFile(suffix='.gbr') as temp_gbr:
+        args += [str(infile), str(temp_gbr.name)]
 
-    if 'SVG_FLATTEN' in os.environ:
-        subprocess.run([os.environ['SVG_FLATTEN'], *args], check=True)
-
-    else:
-        # By default, try four options:
-        for candidate in [
-                # somewhere in $PATH
-                'svg-flatten',
-                'wasi-svg-flatten',
-
-                # in user-local pip installation
-                Path.home() / '.local' / 'bin' / 'svg-flatten',
-                Path.home() / '.local' / 'bin' / 'wasi-svg-flatten',
-
-                # next to our current python interpreter (e.g. in virtualenv)
-                str(Path(sys.executable).parent / 'svg-flatten'),
-                str(Path(sys.executable).parent / 'wasi-svg-flatten'),
-
-                # next to this python source file in the development repo
-                str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]:
-
-            try:
-                subprocess.run([candidate, *args], check=True)
-                break
-            except FileNotFoundError:
-                continue
+        if 'SVG_FLATTEN' in os.environ:
+            subprocess.run([os.environ['SVG_FLATTEN'], *args], check=True)
+            print('used svg-flatten at $SVG_FLATTEN')
 
         else:
-            raise SystemError('svg-flatten executable not found')
+            # By default, try four options:
+            for candidate in [
+                    # somewhere in $PATH
+                    'svg-flatten',
+                    'wasi-svg-flatten',
+
+                    # in user-local pip installation
+                    Path.home() / '.local' / 'bin' / 'svg-flatten',
+                    Path.home() / '.local' / 'bin' / 'wasi-svg-flatten',
+
+                    # next to our current python interpreter (e.g. in virtualenv)
+                    str(Path(sys.executable).parent / 'svg-flatten'),
+                    str(Path(sys.executable).parent / 'wasi-svg-flatten'),
+
+                    # next to this python source file in the development repo
+                    str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]:
+
+                try:
+                    subprocess.run([candidate, *args], check=True)
+                    print('used svg-flatten at', candidate)
+                    break
+                except FileNotFoundError:
+                    continue
+
+            else:
+                raise SystemError('svg-flatten executable not found')
+
+        return gn.rs274x.GerberFile.open(temp_gbr.name)
     
 
 if __name__ == '__main__':
