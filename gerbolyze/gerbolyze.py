@@ -65,7 +65,7 @@ def paste(input_gerbers, input_svg, output_gerbers,
 
     @functools.lru_cache()
     def do_dilate(layer, amount):
-        return dilate_gerber(layer, amount, curve_tolerance)
+        return dilate_gerber(layer, bounds, amount, curve_tolerance)
     
     for (side, use), layer in stack.graphic_layers.items():
         print('processing', side, use, 'layer')
@@ -83,16 +83,19 @@ def paste(input_gerbers, input_svg, output_gerbers,
         # only open lazily loaded layer if we need it. Replace lazy wrapper in stack with loaded layer.
         stack.graphic_layers[(side, use)] = layer = layer.instance
 
+        # move overlay from svg origin to gerber origin
+        overlay_grb.offset(bb_min_x, bb_min_y)
+
         print('compositing')
         # dilated subtract layers on top of overlay
-        dilations = subtract_map.get(layer, [])
-        for d_layer, amount in dilations:
-            print('processing dilation', d_layer, amount)
-            dilated = do_dilate(d_layer, amount)
-            layer.merge(dilated, mode='below', keep_settings=True)
+        if side in ('top', 'bottom'): # do not process subtraction scripts for inner layers
+            dilations = subtract_map.get(use, [])
+            for d_layer, amount in dilations:
+                print('processing dilation', d_layer, amount)
+                dilated = do_dilate(stack[(side, d_layer)], amount)
+                layer.merge(dilated, mode='below', keep_settings=True)
 
         # overlay on bottom
-        overlay_grb.offset(bb_min_x, bb_min_y) # move to origin
         layer.merge(overlay_grb, mode='below', keep_settings=True)
 
     if input_gerbers.is_dir():
@@ -400,14 +403,16 @@ def create_template_from_svg(bounds, svg_data, extra_layers):
 # SVG/gerber import
 #==================
 
-def dilate_gerber(layer, dilation, curve_tolerance):
+def dilate_gerber(layer, bounds, dilation, curve_tolerance):
     with tempfile.NamedTemporaryFile(suffix='.svg') as temp_svg:
-        Path(temp_svg.name).write_text(str(layer.instance.to_svg()))
+        Path(temp_svg.name).write_text(str(layer.instance.to_svg(force_bounds=bounds, fg='white')))
 
+        (bb_min_x, bb_min_y), (bb_max_x, bb_max_y) = bounds
         # dilate & render back to gerber
-        # TODO: the scale parameter is a hack. ideally we would fix svg-flatten to handle input units correctly.
-        return svg_to_gerber(temp_svg.name,
-                dilate=-dilation*72.0/25.4, usvg_dpi=72, scale=25.4/72.0, curve_tolerance=curve_tolerance)
+        # NOTE: Maybe reconsider or nicely document dilation semantics ; It is weird that negative dilations affect
+        # clear color and positive affects dark colors
+        out = svg_to_gerber(temp_svg.name, dilate=-dilation, curve_tolerance=curve_tolerance)
+        return out
 
 def svg_to_gerber(infile, outline_mode=False, **kwargs):
     infile = Path(infile)
@@ -426,6 +431,7 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
         args += [str(infile), str(temp_gbr.name)]
 
         if 'SVG_FLATTEN' in os.environ:
+            print('svg-flatten args:', args)
             subprocess.run([os.environ['SVG_FLATTEN'], *args], check=True)
             print('used svg-flatten at $SVG_FLATTEN')
 

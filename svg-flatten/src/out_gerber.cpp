@@ -44,10 +44,10 @@ SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits
 }
 
 void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
-    m_offset[0] += origin[0] * m_scale;
-    m_offset[1] += origin[1] * m_scale;
-    m_width = (size[0] - origin[0]) * m_scale;
-    m_height = (size[1] - origin[1]) * m_scale;
+    m_offset[0] += 0;
+    m_offset[1] += 2*origin[1] * m_scale; /* FIXME why 2x ? */
+    m_width = size[0] * m_scale;
+    m_height = size[1] * m_scale;
     
     if (pow(10, m_digits_int-1) < max(m_width, m_height)) {
         cerr << "Warning: Input has bounding box too large for " << m_digits_int << "." << m_digits_frac << " gerber resolution!" << endl;
