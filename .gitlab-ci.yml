@@ -27,6 +27,7 @@ test:debian_10:
     GIT_SUBMODULE_STRATEGY: none
   image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
   script:
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python3 setup.py install --user"
@@ -59,6 +60,7 @@ test:ubuntu_2004:
     GIT_SUBMODULE_STRATEGY: none
   image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
   script:
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python3 setup.py install --user"
@@ -91,6 +93,7 @@ test:fedora_33:
     GIT_SUBMODULE_STRATEGY: none
   image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
   script:
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python3 setup.py install --user"
@@ -122,6 +125,7 @@ test:archlinux:
     GIT_SUBMODULE_STRATEGY: none
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   script:
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
     - "python setup.py install --user"
