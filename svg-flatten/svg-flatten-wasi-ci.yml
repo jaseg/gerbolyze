@@ -3,6 +3,7 @@ build:wasi-svg-flatten:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   script:
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - cd svg-flatten # we start out in the repo's root
     - make -j 2 build/svg-flatten.wasm
     - cp build/svg-flatten.wasm svg_flatten_wasi/
