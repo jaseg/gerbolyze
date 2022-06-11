@@ -93,8 +93,8 @@ class SVGRoundTripTests(unittest.TestCase):
 
         if vectorizer_test:
             target_size = (100, 100)
-            ref.thumbnail(target_size, Image.ANTIALIAS)
-            out.thumbnail(target_size, Image.ANTIALIAS)
+            ref.thumbnail(target_size, Image.Resampling.LANCZOS)
+            out.thumbnail(target_size, Image.Resampling.LANCZOS)
             ref, out = np.array(ref), np.array(out)
 
         else:
