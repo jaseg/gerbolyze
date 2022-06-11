@@ -1,5 +1,5 @@
 
-build:wasi-svg-flatten:
+build:svg-flatten-wasi:
   stage: build
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   script:
@@ -14,7 +14,7 @@ build:wasi-svg-flatten:
     paths:
       - svg-flatten/dist/*.whl
 
-publish:wasi-svg-flatten:
+publish:svg-flatten-wasi:
   stage: publish
   variables:
     GIT_SUBMODULE_STRATEGY: none
@@ -25,6 +25,6 @@ publish:wasi-svg-flatten:
     - export TWINE_USERNAME TWINE_PASSWORD
     - ~/.local/bin/twine upload svg-flatten/dist/*
   dependencies:
-    - build:wasi-svg-flatten
+    - build:svg-flatten-wasi
   only:
     - /^v.*$/
