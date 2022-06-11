@@ -91,6 +91,7 @@ test:svg-flatten-ubuntu_2204:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
+    - pip3 install --user 'pillow>=9.1.1'
     - "python3 setup.py install --user"
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
@@ -124,6 +125,7 @@ test:svg-flatten-fedora_36:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
+    - pip3 install --user 'pillow>=9.1.1'
     - "python3 setup.py install --user"
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
