@@ -37,23 +37,23 @@ publish:gerbolyze:
   only:
     - /^v.*$/
 
-build:svg-flatten-debian_10:
+build:svg-flatten-debian_11:
   stage: build
-  image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
+  image: "registry.gitlab.com/gerbolyze/build-containers/debian:11"
   script:
     - "export CXX=clang++"
     - "make -C svg-flatten"
   artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-deb10"
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-deb11"
     paths:
       - svg-flatten/build/svg-flatten
       - svg-flatten/build/nopencv-test
 
-test:svg-flatten-debian_10:
+test:svg-flatten-debian_11:
   stage: test
   variables:
     GIT_SUBMODULE_STRATEGY: none
-  image: "registry.gitlab.com/gerbolyze/build-containers/debian:10"
+  image: "registry.gitlab.com/gerbolyze/build-containers/debian:11"
   script:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -62,31 +62,31 @@ test:svg-flatten-debian_10:
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
   dependencies:
-    - build:svg-flatten-debian_10
+    - build:svg-flatten-debian_11
   artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-deb10"
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-deb11"
     when: on_failure
     paths:
       - svg-flatten/testcase-fails/*.png
       - svg-flatten/testcase-fails/*.svg
 
-build:svg-flatten-ubuntu_2004:
+build:svg-flatten-ubuntu_2204:
   stage: build
-  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
+  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:22.04"
   script:
     - "export CXX=clang++"
     - "make -C svg-flatten"
   artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-ubu20"
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-ubu22"
     paths:
       - svg-flatten/build/svg-flatten
       - svg-flatten/build/nopencv-test
 
-test:svg-flatten-ubuntu_2004:
+test:svg-flatten-ubuntu_2204:
   stage: test
   variables:
     GIT_SUBMODULE_STRATEGY: none
-  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:20.04"
+  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:22.04"
   script:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -95,31 +95,31 @@ test:svg-flatten-ubuntu_2004:
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
   dependencies:
-    - build:svg-flatten-ubuntu_2004
+    - build:svg-flatten-ubuntu_2204
   artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-ubu20"
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-ubu22"
     when: on_failure
     paths:
       - svg-flatten/testcase-fails/*.png
       - svg-flatten/testcase-fails/*.svg
 
-build:svg-flatten-fedora_33:
+build:svg-flatten-fedora_36:
   stage: build
-  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
+  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:36"
   script:
     - "export CXX=clang++"
     - "make -C svg-flatten"
   artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-fed33"
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-fed36"
     paths:
       - svg-flatten/build/svg-flatten
       - svg-flatten/build/nopencv-test
 
-test:svg-flatten-fedora_33:
+test:svg-flatten-fedora_36:
   stage: test
   variables:
     GIT_SUBMODULE_STRATEGY: none
-  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:33"
+  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:36"
   script:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -128,9 +128,9 @@ test:svg-flatten-fedora_33:
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
   dependencies:
-    - build:svg-flatten-fedora_33
+    - build:svg-flatten-fedora_36
   artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-fed33"
+    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-fed36"
     when: on_failure
     paths:
       - svg-flatten/testcase-fails/*.png
