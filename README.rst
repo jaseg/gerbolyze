@@ -54,94 +54,12 @@ Gerbolyze works in three steps.
 
         $ gerbolyze paste --top template_top_edited.svg [--bottom ...] my_gerber_dir output_gerber_dir
 
-Quick Start Installation
-------------------------
-
-This will install gerbolyze and svg-flatten into a Python virtualenv and install usvg into your ``~/.cargo``.
-
-Note:
-    Right now (2020-02-07), ``pcb-tools-extension`` must be installed manually from the fork at:
-
-    ``pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git``
-
-    This fork contains fixes for compatibility issues with KiCAD nightlies that are still in the process of being
-    upstreamed.
-
-Debian
-~~~~~~
-
-Note:
-    Right now, debian stable ships with a rust that is so stable it can't even build half of usvg's dependencies. That's
-    why we yolo-install our own rust here. Sorry about that. I guess it'll work with the packaged rust on sid.
-
-.. code-block:: shell
-    
-    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv
-
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    source $HOME/.cargo/env
-    rustup install stable
-    rustup default stable
-    cargo install usvg
-
-    pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git
-    pip3 install --user gerbolyze --no-binary gerbolyze
-
-Ubuntu
-~~~~~~
-
-.. code-block:: shell
-    
-    sudo apt install libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv cargo
-    cargo install usvg
-
-    pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git
-    pip3 install --user gerbolyze --no-binary gerbolyze
-
-
-Fedora
-~~~~~~
-
-.. code-block:: shell
-    
-    sudo dnf install python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
-    cargo install usvg
-
-    pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git
-    pip3 install --user gerbolyze --no-binary gerbolyze
-    
-Arch
-~~~~
+Quick Start Installation (Any Platform)
+---------------------------------------
 
 .. code-block:: shell
 
-    sudo pacman -S pugixml opencv pango cairo git python make clang rustup cargo pkgconf
-
-    rustup install stable
-    rustup default stable
-    cargo install usvg
-
-    pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git
-    pip3 install --user gerbolyze --no-binary gerbolyze
-
-macOS (via Homebrew)
-~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: shell
-
-    # Tested on a fresh Mac OS 10.15.7 Catalina installation
-    
-    # Requires homebrew. To install, run:
-    # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"\n
-    # --> Now, restart the terminal app to load new $PATH from /etc/paths <--
-    
-    brew install python3 rustup pugixml cairo pango opencv pkg-config
-    
-    rustup-init 
-    cargo install usvg
-    
-    pip3 install git+https://git.jaseg.de/pcb-tools-extension.git
-    pip3 install gerbolyze --no-binary gerbolyze
+    pip3 install --user gerbolyze
 
 Build from source (any distro)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
