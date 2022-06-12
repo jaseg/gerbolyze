@@ -49,26 +49,27 @@ build:svg-flatten-debian_11:
       - svg-flatten/build/svg-flatten
       - svg-flatten/build/nopencv-test
 
-test:svg-flatten-debian_11:
-  stage: test
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  image: "registry.gitlab.com/gerbolyze/build-containers/debian:11"
-  script:
-    - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
-    - "python3 setup.py install --user"
-    - "gerbolyze --help"
-    - "make -C svg-flatten tests"
-  dependencies:
-    - build:svg-flatten-debian_11
-  artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-deb11"
-    when: on_failure
-    paths:
-      - svg-flatten/testcase-fails/*.png
-      - svg-flatten/testcase-fails/*.svg
+# Tests for debian are disabled until they get python 3.10.
+# test:svg-flatten-debian_11:
+#   stage: test
+#   variables:
+#     GIT_SUBMODULE_STRATEGY: none
+#   image: "registry.gitlab.com/gerbolyze/build-containers/debian:11"
+#   script:
+#     - git config --global --add safe.directory "$CI_PROJECT_DIR"
+#     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+#     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
+#     - "python3 setup.py install --user"
+#     - "gerbolyze --help"
+#     - "make -C svg-flatten tests"
+#   dependencies:
+#     - build:svg-flatten-debian_11
+#   artifacts:
+#     name: "gerbolyze-$CI_COMMIT_REF_NAME-test-deb11"
+#     when: on_failure
+#     paths:
+#       - svg-flatten/testcase-fails/*.png
+#       - svg-flatten/testcase-fails/*.svg
 
 build:svg-flatten-ubuntu_2204:
   stage: build
