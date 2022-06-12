@@ -8,7 +8,7 @@ Gerbolyze high-fidelity SVG/PNG/JPG to PCB converter
 Gerbolyze renders SVG vector and PNG/JPG raster images into existing gerber PCB manufacturing files. 
 Vector data from SVG files is rendered losslessly *without* an intermediate rasterization/revectorization step.
 Still, gerbolyze supports (almost) the full SVG 1.1 spec including complex, self-intersecting paths with holes,
-patterns, dashes and transformations
+patterns, dashes and transformations.
 
 Raster images can either be vectorized through contour tracing (like gerbolyze v1.0 did) or they can be embedded using
 high-resolution grayscale emulation while (mostly) guaranteeing trace/space design rules.
@@ -30,6 +30,8 @@ industry-standard Altium Designer. Gerbolyze is written with performance in mind
 thousands of primitives, generating tens of megabytes of gerber code without crapping itself. With gerbolyze you can
 finally be confident that your PCB fab's toolchain will fall over before yours does if you overdo it with the high-poly
 anime silkscreen.
+
+Gerbolyze is based on gerbonara_.
 
 .. image:: pics/process-overview.png
   :width: 800px
@@ -672,3 +674,5 @@ avoid that so the default license is still AGPL.
 .. _pcb-tools: https://github.com/curtacircuitos/pcb-tools
 .. _pcb-tools-extension: https://github.com/opiopan/pcb-tools-extension
 .. _GIMP: https://gimp.org/
+.. _gerbonara: https://gitlab.com/gerbolyze/gerbonara
+
