@@ -1,6 +1,10 @@
 Gerbolyze high-fidelity SVG/PNG/JPG to PCB converter
 ====================================================
 
+.. note::
+    The command-line usage and SVG template format of gerbolyze changed between v2.0 and v3.0. You can find details on
+   the new format below under command_line_usage_
+
 Gerbolyze renders SVG vector and PNG/JPG raster images into existing gerber PCB manufacturing files. 
 Vector data from SVG files is rendered losslessly *without* an intermediate rasterization/revectorization step.
 Still, gerbolyze supports (almost) the full SVG 1.1 spec including complex, self-intersecting paths with holes,
@@ -61,17 +65,36 @@ Quick Start Installation (Any Platform)
 
     pip3 install --user gerbolyze
 
+Speeding up gerbolyze using natively-built binaries
+---------------------------------------------------
+
+This will install gerbolyze's binary dependency resvg and gerbolyze's svg-flatten utility as pre-built cross-platform
+WASM binaries. When you first run gerbolyze, it will take some time (~30s) to link these binaries for your system. The
+output is cached, so any future run is going to be fast.
+
+WASM is slower than natively-built binaries. To speed up gerbolyze, you can natively build its two binary dependencies:
+
+1. Install resvg natively using rust's cargo package manager: ``cargo install resvg``
+2. Install gerbolyze's svg-flatten utility natively. You can get pre-built binaries from gerbolyze's gitlab CI jobs `at
+   this link <https://gitlab.com/gerbolyze/gerbolyze/-/pipelines?scope=tags&page=1>`__ by clicking the three dots on the
+   right next to the version you want. These pre-built binaries should work on any x86_64 linux since they are
+   statically linked. You can also build svg-flatten yourself by running ``make`` inside the ``svg-flatten`` folder from
+   a gerbolyze checkout.
+
+Gerbolyze will pick up these binaries when installed in your ``$PATH``. resvg is also picked up when it is installed by
+cargo in your home's ``~/.cargo``, even if it's not in your ``$PATH``. You can override the resvg, usvg or svg-flatten
+binary that gerbolyze uses by giving it the absoulute path to a binary in the ``$RESVG``, ``$USVG`` and ``$SVG_FLATTEN``
+environment variables.
+
+
 Build from source (any distro)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-First, install prerequisites like shown above. Then,
 
 .. code-block:: shell
 
     git clone --recurse-submodules https://git.jaseg.de/gerbolyze.git
     cd gerbolyze
 
-    pip3 install --user git+https://git.jaseg.de/pcb-tools-extension.git
     python3 -m venv
     source venv/bin/activate
     python3 setup.py install
@@ -148,18 +171,19 @@ This is the algorithm svg-flatten uses to process an SVG.
 
 Command-line usage
 ------------------
+.. _command_line_usage:
 
 Generate SVG template from Gerber files:
 
 .. code-block:: shell
 
-    gerbolyze template [options] [-t|--top top_side_output.svg] [-b|--bottom ...] input_dir_or.zip
+    gerbolyze template [options] [--top|--bottom] input_dir_or.zip output.svg
 
 Render design from an SVG made with the template above into a set of gerber files:
 
 .. code-block:: shell
 
-    gerbolyze paste [options] [-t|--top top_side_design.svg] [-b|--bottom ...] [-o|--outline ...] input_dir_or.zip output_dir
+    gerbolyze paste [options] artwork.svg input_dir_or.zip output_dir_or.zip
 
 Use svg-flatten to convert an SVG file into Gerber or flattened SVG:
 
@@ -197,15 +221,15 @@ Usage: ``gerbolyze template [OPTIONS] INPUT``
 
 Generate SVG template for gerbolyze paste from gerber files.
 
-INPUT may be a gerber file, directory of gerber files or zip file with gerber files
+INPUT may be a gerber file, directory of gerber files or zip file with gerber files. The output file contains a preview
+image of the input gerbers to allow you to position your artwork, as well as prepared Inkscape layers corresponding to
+each gerber layer. Simply place your artwork in this SVG template using Inkscape. Starting in v3.0, gerbolyze
+automatically keeps track of which board side (top or bottom) is contained in an SVG template.
 
 Options:
 ********
-``-t, --top top_layer.svg``
-    Top layer output file.
-
-``-b, --bottom bottom_layer.svg``
-    Bottom layer output file. --top or --bottom may be given at once. If neither is given, autogenerate filenames.
+``--top | --bottom``
+    Output top or bottom side template. This affects both the preview image and the prepared Inkscape layers.
 
 ``--vector | --raster``
     Embed preview renders into output file as SVG vector graphics instead of rendering them to PNG bitmaps. The
@@ -223,31 +247,14 @@ Options:
 ~~~~~~~~~~~~~~~~~~~
 (see `below <vectorization_>`__)
 
-Usage: ``gerbolyze paste [OPTIONS] INPUT_GERBERS OUTPUT_GERBERS``
+Usage: ``gerbolyze paste [OPTIONS] INPUT_GERBERS OVERLAY_SVG OUTPUT_GERBERS``
 
-Render vector data and raster images from SVG file into gerbers. SVG input files are given with ``--top``, ``--bottom``
-and ``--outline``. Note that for board outline layers, handling slightly differs from other layers as PCB fabs do not
-support filled Gerber regions on these layers.
+Render vector data and raster images from SVG file into gerbers. The SVG input file can be generated using ``gerbolyze
+template`` and contains the name and board side of each layer. Note that for board outline layers, handling slightly
+differs from other layers as PCB fabs do not support filled Gerber regions on these layers.
 
 Options:
 ********
-
-``-t, --top TEXT``
-    Top side SVG overlay input file. At least one of this and ``--bottom`` should be given.
-
-``-b, --bottom TEXT``
-    Bottom side SVG overlay input file. At least one of this and ``--top`` should be given.
-
-``-o, --outline TEXT``
-    SVG file to be used for board outline layers. Can be the same file used for ``--top`` or ``--bottom``. Note that on
-    board outline layers, SVG handling is slightly different since fabs don't support filled regions on these layers.
-    See `below <outline_layers_>`_ for details.
-
-``--layer-top``
-    Top side SVG or PNG target layer. Default: Map SVG layers to Gerber layers, map PNG to Silk.
-
-``--layer-bottom``
-    Bottom side SVG or PNG target layer. See ``--layer-top``.
 
 ``--bbox TEXT``
     Output file bounding box. Format: "w,h" to force [w] mm by [h] mm output canvas OR "x,y,w,h" to force [w] mm by [h]
@@ -281,14 +288,8 @@ Options:
 Outline layers
 **************
 
-Outline layers require special handling since PCB fabs do not support filled G36/G37 polygons on these layers. Gerbolyze
-handles outline layers via the ``--outline [input.svg]`` option. This option tells it to add the input SVG's outline to
-the outline gerber output layer. ``--outline`` expects the same SVG format that is also used for ``--top`` and
-``--bottom``. Both templates contain an Inkscape layer for the outline, so you can use either template for the outline
-layer as well. Since ``--outline`` will ignore all other layers, you can even put your outline into the same SVG as your
-top or bottom side layers and pass that same file to both ``--top/--bottom`` and ``--outline``.
-
-The main difference between normal layers and outline layers is how strokes are handled. On outline layers, strokes are
+Outline layers require special handling since PCB fabs do not support filled G36/G37 polygons on these layers. The main
+difference between normal layers and outline layers is how strokes are handled. On outline layers, strokes are
 translated to normal Gerber draw commands (D01, D02 etc.) with an aperture set to the stroke's width instead of tracing
 them to G36/G37 filled regions. This means that on outline layers, SVG end caps and line join types do not work: All
 lines are redered with round joins and end caps.
@@ -337,12 +338,6 @@ The default subtraction script is:
     out.silk -= in.silk+0.5
     out.mask -= in.mask+0.5
     out.copper -= in.copper+0.5
-
-``gerbolyze vectorize``
-~~~~~~~~~~~~~~~~~~~~~~~
-
-``gerbolyze vectorize`` is a wrapper provided for compatibility with Gerbolyze version 1. It does nothing more than
-internally call ``gerbolyze paste`` with some default arguments set.
 
 .. _svg_flatten:
 
