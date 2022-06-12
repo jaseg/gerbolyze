@@ -28,8 +28,7 @@ def format_readme_for_pypi():
 setup(
     name = 'gerbolyze',
     version = get_version(),
-    py_modules = ['gerbolyze'],
-    package_dir = {'': 'gerbolyze'},
+    packages=['gerbolyze'],
     entry_points = '''
         [console_scripts]
         gerbolyze=gerbolyze:cli
@@ -41,9 +40,10 @@ setup(
         'conversions to raster images accurately preserving the input.'),
     long_description=format_readme_for_pypi(),
     long_description_content_type='text/x-rst',
+    url='https://github.com/jaseg/gerbolyze',
     project_urls={
-        "Source Code": "https://git.jaseg.de/gerbolyze",
-        "Bug Tracker": "https://github.com/jaseg/gerbolyze/issues",
+        'Source Code': 'https://git.jaseg.de/gerbolyze',
+        'Bug Tracker': 'https://github.com/jaseg/gerbolyze/issues',
     },
     author = 'jaseg',
     author_email = 'gerbonara@jaseg.de',

@@ -17,11 +17,11 @@ build:gerbolyze:
   script:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - pip3 install --user wheel
-    - python3 setup.py bdist_wheel
+    - python3 setup.py sdist bdist_wheel
   artifacts:
     name: "gerbolyze-$CI_COMMIT_REF_NAME-gerbolyze"
     paths:
-      - dist/*.whl
+      - dist/*
 
 publish:gerbolyze:
   stage: publish

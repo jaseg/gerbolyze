@@ -1,10 +1,8 @@
-recursive-include svg-flatten *
-recursive-include upstream *
-recursive-exclude upstream/voronoi/test *
-recursive-exclude upstream/subprocess.h/test *
-recursive-exclude upstream/poisson-disk-sampling/thinks/poisson_disk_sampling/examples *
-recursive-exclude upstream/poisson-disk-sampling/images *
-recursive-exclude upstream/clipper-6.4.2/Documentation *
-recursive-exclude upstream/CavalierContours tests/* examples/*
-recursive-exclude upstream/argagg doc/* examples/* tests/*
-recursive-exclude svg-flatten/build *
+global-exclude *
+
+include README.rst
+include LICENSE
+include MANIFEST.in
+include setup.py
+
+recursive-include gerbolyze *.py
