@@ -1,9 +1,12 @@
+# setuptools'es default strategy of packing everything into the archive that is in git is really the opposite of smart
+# here, especially because AFAICT after hours of googling there is no way to turn it off. Meh. Why is python packaging
+# like this? what is so hard about putting a few files in a zip?!
 global-exclude *
 
 include README.rst
 include LICENSE
 include MANIFEST.in
 include setup.py
-
 recursive-include gerbolyze *.py
 recursive-include bin *
+recursive-include gerbolyze.egg-info *
