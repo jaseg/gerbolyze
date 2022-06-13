@@ -2,8 +2,9 @@ Gerbolyze high-fidelity SVG/PNG/JPG to PCB converter
 ====================================================
 
 .. note::
+
     The command-line usage and SVG template format of gerbolyze changed between v2.0 and v3.0. You can find details on
-   the new format below under command_line_usage_
+    the new format below under command_line_usage_
 
 Gerbolyze renders SVG vector and PNG/JPG raster images into existing gerber PCB manufacturing files. 
 Vector data from SVG files is rendered losslessly *without* an intermediate rasterization/revectorization step.
