@@ -29,10 +29,7 @@ setup(
     name = 'gerbolyze',
     version = get_version(),
     packages=['gerbolyze'],
-    entry_points = '''
-        [console_scripts]
-        gerbolyze=gerbolyze:cli
-        ''',
+    scripts=['bin/gerbolyze'],
     description = ('A high-resolution image-to-PCB converter. Gerbolyze plots SVG, PNG and JPG onto existing gerber '
         'files. It handles almost the full SVG spec and deals with text, path outlines, patterns, arbitrary paths with '
         'self-intersections and holes, etc. fully automatically. It can vectorize raster images both by contour '

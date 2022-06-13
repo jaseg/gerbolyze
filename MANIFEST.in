@@ -6,3 +6,4 @@ include MANIFEST.in
 include setup.py
 
 recursive-include gerbolyze *.py
+recursive-include bin *
