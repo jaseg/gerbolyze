@@ -66,7 +66,19 @@ Quick Start Installation (Any Platform)
 
 .. code-block:: shell
 
-    pip3 install --user gerbolyze
+    python -m pip install --user gerbolyze
+
+To uninstall, run 
+
+.. code-block:: shell
+
+    python -m pip uninstall gerbolyze gerbonara resvg-wasi svg-flatten-wasi
+
+To update, run
+
+.. code-block:: shell
+
+    python -m pip install --user --upgrade --upgrade-strategy eager gerbolyze
 
 Speeding up gerbolyze using natively-built binaries
 ---------------------------------------------------
@@ -635,9 +647,10 @@ Gerber pass-through
 ~~~~~~~~~~~~~~~~~~~
 
 Since gerbolyze has to composite your input gerbers with its own output, it has to fully parse and re-serialize them.
-gerbolyze uses pcb-tools_ and pcb-tools-extension_ for all its gerber parsing needs. Both seem well-written, but likely
-not free of bugs. This means that in rare cases information may get lost during this round trip. Thus, *always* check
-the output files for errors before submitting them to production.
+gerbolyze gerbonara_ for all its gerber parsing needs. Thus, gerbonara will interpret your gerbers and output will be in
+gerbonara's gerber "dialect". If you find a corner case where this does not work and the output looks wrong, please file
+a bug report with an example file on the gerbonara_ bug tracker. *Always* check the output files for errors before
+submitting them to production.
 
 Gerbolyze is provided without any warranty, but still please open an issue or `send me an email
 <mailto:gerbolyze@jaseg.de>`__ if you find any errors or inconsistencies. 
