@@ -126,23 +126,159 @@ def template(input_gerbers, output_svg, top, bottom, force, vector, raster_dpi):
         output_svg = Path(output_svg)
 
     stack = gn.LayerStack.open(source, lazy=True)
-    bounds = stack.board_bounds()
-    svg = str(stack.to_pretty_svg(side=('top' if top else 'bottom'), force_bounds=bounds))
+    svg = stack.to_pretty_svg(side=('top' if top else 'bottom'), inkscape=True)
 
-    template_layers = [ f'{ttype}-{use}' for use in [ 'copper', 'mask', 'silk' ] ]
-    silk = template_layers[-1]
+    template_layers = [ f'{ttype}-{use}' for use in [ 'copper', 'mask', 'silk' ] ] + ['mechanical outline']
+    silk = template_layers[-2]
 
     if vector:
-        # All gerbonara SVG is in MM by default
-        output_svg.write_text(create_template_from_svg(bounds, svg, template_layers, current_layer=silk))
+        output_svg.write_text(create_template_from_svg(svg, template_layers, current_layer=silk))
 
     else:
         with tempfile.NamedTemporaryFile(suffix='.svg') as temp_svg, \
             tempfile.NamedTemporaryFile(suffix='.png') as temp_png:
-            Path(temp_svg.name).write_text(svg)
+            Path(temp_svg.name).write_text(str(svg))
             run_resvg(temp_svg.name, temp_png.name, dpi=f'{raster_dpi:.0f}')
-            output_svg.write_text(template_svg_for_png(bounds, Path(temp_png.name).read_bytes(),
+            output_svg.write_text(template_svg_for_png(stack.board_bounds(), Path(temp_png.name).read_bytes(),
                 template_layers, current_layer=silk))
+
+
+class ClickSizeParam(click.ParamType):
+    name = 'Size'
+
+    def convert(self, value, param, ctx):
+        if isinstance(value, tuple):
+            return value
+
+        if not (m := re.match('([0-9]+\.?[0-9]*)(mm|cm|in)?[xX*/,×]([0-9]+\.?[0-9]*)(mm|cm|in)?', value)):
+            self.fail('Size must have format [width]x[height][unit]. The unit can be mm, cm or in. The unit is optional and defaults to mm.', param=param, ctx=ctx)
+
+        w, unit1, h, unit2 = m.groups()
+        if unit1 and unit2 and unit1 != unit2:
+            self.fail('Width and height must use the same unit. Two different units given for width and height: width is in {unit1}, and height is in {unit2}.', param=param, ctx=ctx)
+
+        unit = (unit1 or unit2) or 'mm'
+        return float(w), float(h), unit
+
+@cli.command()
+@click.argument('output_svg', type=click.Path(dir_okay=False, writable=True, allow_dash=True))
+@click.option('--size', type=ClickSizeParam(), default='100x100mm', help='PCB size in [width]x[height][unit] format. Units can be cm, mm or in, when no unit is given, defaults to mm. When no size is given, defaults to 100x100mm.')
+@click.option('--force', is_flag=True, help='Overwrite output file without asking if it exists.')
+@click.option('-n', '--copper-layers', default=2, type=int, help='Number of copper layers to generate.')
+@click.option('--no-default-layers', is_flag=True, help='Do not generate default layers.')
+@click.option('-l', '--layer', multiple=True, help='Add given layer to the top of the output layer stack. Can be given multiple times.')
+def empty_template(output_svg, size, force, copper_layers, no_default_layers, layer):
+    if output_svg == '-':
+        out = sys.stdout
+    else:
+        out = Path(output_svg)
+        if out.exists():
+            if not force and not click.confirm(f'Output file "{out}" already exists. Do you want to overwrite it?'):
+                raise click.ClickException(f'Output file "{out}" already exists, exiting.')
+        out = out.open('w')
+
+    layers = layer or []
+    current_layer = None
+    if not no_default_layers:
+        layers += ['top paste', 'top silk', 'top mask']
+
+        if copper_layers > 0:
+            current_layer = 'top copper'
+            inner = [ 'inner{i} copper' for i in range(max(0, copper_layers-2)) ]
+            layers += ['top copper', *inner, 'bottom copper'][:copper_layers]
+
+        layers += ['bottom mask', 'bottom silk', 'bottom paste']
+        layers += ['outline', 'plated drill', 'nonplated drill', 'comments']
+    if layers and current_layer is None:
+        current_layer = layers[0]
+
+    out.write(empty_pcb_template(size, layers, current_layer))
+    out.flush()
+    if output_svg != '-':
+        out.close()
+
+
+@cli.command()
+@click.argument('input_svg', type=click.Path(exists=True, path_type=Path))
+@click.argument('output_gerbers', type=click.Path(path_type=Path))
+@click.option('-n', '--naming-scheme', default='kicad', type=click.Choice(['kicad', 'altium']), help='Naming scheme for gerber output file names.')
+@click.option('--zip/--no-zip', 'is_zip', default=None, help='zip output files. Default: zip if output path ends with ".zip" or when outputting to stdout.')
+@click.option('--separate-drill-file/--composite-drill-file', 'separate_drill', help='Use Altium composite Excellon drill file format (default)')
+@click.option('--dilate', default=0.1, type=float, help='Default dilation for subtraction operations in mm')
+@click.option('--curve-tolerance', type=float, help='Tolerance for curve flattening in mm')
+@click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
+@click.option('--subtract', help='Use user subtraction script from argument (see description above)')
+@click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
+@click.option('--vectorizer', help='passed through to svg-flatten')
+@click.option('--vectorizer-map', help='passed through to svg-flatten')
+@click.option('--exclude-groups', help='passed through to svg-flatten')
+def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtract, subtract, trace_space, vectorizer,
+        vectorizer_map, exclude_groups, separate_drill, naming_scheme):
+    ''' Convert SVG file directly to gerbers.
+
+    Unlike `gerbolyze paste`, this does not add the SVG's contents to existing gerbers. It allows you to directly create
+    PCBs using Inkscape similar to PCBModE.
+    '''
+
+    subtract_map = parse_subtract_script('' if no_subtract else subtract, dilate)
+    output_is_zip = output_gerbers.name.lower().endswith('.zip') if is_zip is None else is_zip
+
+    stack = gn.LayerStack({}, [], board_name=input_svg.stem, original_path=input_svg)
+
+    for group_id, label in get_layers_from_svg(input_svg.read_text()):
+        if not group_id or not label or 'no export' in label:
+            continue
+
+        if label == 'outline':
+            side, use = 'mechanical', 'outline'
+        elif label == 'comments':
+            side, use = 'other', 'comments'
+        elif len(label.split()) != 2:
+            warnings.warn('Unknown layer {label}')
+            continue
+        else:
+            side, use = label.split()
+
+        grb = svg_to_gerber(input_svg,
+                trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
+                exclude_groups=exclude_groups, curve_tolerance=curve_tolerance, only_groups=group_id,
+                outline_mode=(use == 'outline'))
+
+        if use == 'drill':
+            if side == 'plated':
+                stack.drill_pth = grb.to_excellon(plated=True)
+            elif side == 'nonplated':
+                stack.drill_npth = grb.to_excellon(plated=False)
+            else:
+                warnings.warn(f'Invalid drill layer type "{side}". Must be one of "plated" or "nonplated"')
+
+        else:
+            stack.graphic_layers[(side, use)] = grb
+
+    bounds = stack.board_bounds()
+    @functools.lru_cache()
+    def do_dilate(layer, amount):
+        return dilate_gerber(layer, bounds, amount, curve_tolerance)
+
+    for (side, use), layer in stack.graphic_layers.items():
+        # dilated subtract layers on top of overlay
+        if side in ('top', 'bottom'): # do not process subtraction scripts for inner layers
+            dilations = subtract_map.get(use, [])
+            for d_layer, amount in dilations:
+                d_layer =  stack.graphic_layers[(side, d_layer)]
+                dilated = do_dilate(d_layer, amount)
+                layer.merge(dilated, mode='below', keep_settings=True)
+
+    if not separate_drill:
+        print('merging drill layers')
+        stack.merge_drill_layers()
+
+    naming_scheme = getattr(gn.layers.NamingScheme, naming_scheme)
+    if output_is_zip:
+        stack.save_to_zipfile(output_gerbers, naming_scheme=naming_scheme)
+    else:
+        stack.save_to_directory(output_gerbers, naming_scheme=naming_scheme)
+
 
 
 # Subtraction script handling
@@ -211,36 +347,6 @@ def parse_bbox(bbox):
 
     x, y, w, h = bounds
     return ((x, x+w), (y, y+h))
-
-def bounds_from_outline(layers):
-    ''' NOTE: When the user has not set explicit bounds, we automatically extract the design's bounding box from the
-    input gerber files. If a folder is used as input, we use the outline gerber and barf if we can't find one. If only a
-    single file is given, we simply use that file's bounding box
-    
-    We have to do things this way since gerber files do not have explicit bounds listed.
-    
-    Note that the bounding box extracted from the outline layer usually will be one outline layer stroke widht larger in
-    all directions than the finished board. 
-    '''
-    if 'outline' in layers:
-        outline_files = layers['outline']
-        _path, grb = outline_files[0]
-        return calculate_apertureless_bounding_box(grb.cam_source)
-
-    elif len(layers) == 1:
-        first_layer, *rest = layers.values()
-        first_file, *rest = first_layer
-        _path, grb = first_file
-        return grb.cam_source.bounding_box
-
-    else:
-        raise click.UsageError('Cannot find an outline file and no --bbox given.')
-
-def get_bounds(bbox, layers):
-    bounds = parse_bbox(bbox)
-    if bounds:
-        return bounds
-    return bounds_from_outline(layers)
 
 # Utility foo
 # ===========
@@ -339,53 +445,39 @@ def template_svg_for_png(bounds, png_data, extra_layers, current_layer):
         '''
     return textwrap.dedent(template)
 
-# this is fixed, we cannot tell cairo-svg to use some other value. we just have to work around it.
-CAIRO_SVG_HARDCODED_DPI = 72.0
+def empty_pcb_template(size, extra_layers, current_layer):
+    w, h, unit = size
+
+    extra_layers = "\n  ".join(template_layer(name) for name in extra_layers)
+    current_layer = f'<sodipodi:namedview inkscape:current-layer="g-{current_layer.lower()}" />' if current_layer else ''
+
+    # we set up the viewport such that document dimensions = document units = [unit]
+    template = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+        <svg version="1.1"
+           xmlns="http://www.w3.org/2000/svg"
+           xmlns:xlink="http://www.w3.org/1999/xlink"
+           xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+           xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+           width="{w}{unit}" height="{h}{unit}" viewBox="0 0 {w} {h}" >
+          <defs/>
+          {current_layer}
+          {extra_layers}
+        </svg>
+        '''
+    return textwrap.dedent(template)
+
+
 MM_PER_INCH = 25.4
 
-def svg_pt_to_mm(pt_len, dpi=CAIRO_SVG_HARDCODED_DPI):
-    if pt_len.endswith('pt'):
-        pt_len = pt_len[:-2]
+def create_template_from_svg(svg, extra_layers, current_layer):
+    view, *layers = svg.children
+    view.attrs['inkscape__current_layer'] = f'g-{current_layer.lower()}'
 
-    return f'{float(pt_len) / dpi * MM_PER_INCH}mm'
+    extra_layers = [ template_layer(name) for name in extra_layers ]
+    svg.children = [ view, *extra_layers, gn.utils.Tag('g', layers, inkscape__label='Preview', sodipodi__insensitive='true',
+        inkscape__groupmode='layer', style='opacity:0.5') ]
 
-def create_template_from_svg(bounds, svg_data, extra_layers):
-    svg = etree.fromstring(svg_data)
-
-    # add inkscape namespaces
-    SVG_NS = '{http://www.w3.org/2000/svg}'
-    INKSCAPE_NS = 'http://www.inkscape.org/namespaces/inkscape'
-    SODIPODI_NS = 'http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd'
-    # glObAL stAtE YaY
-    etree.register_namespace('inkscape', INKSCAPE_NS)
-    etree.register_namespace('sodipodi', SODIPODI_NS)
-    INKSCAPE_NS = '{'+INKSCAPE_NS+'}'
-    SODIPODI_NS = '{'+SODIPODI_NS+'}'
-
-    # convert document units to mm
-    svg.set('width', svg_pt_to_mm(svg.get('width')))
-    svg.set('height', svg_pt_to_mm(svg.get('height')))
-
-    # add inkscape <namedview> elem to set currently selected layer
-    namedview_elem = etree.SubElement(svg, SODIPODI_NS+'namedview')
-    namedview_elem.set('id', "namedview23")
-    namedview_elem.set(INKSCAPE_NS+'current-layer', f'g-{current_layer}')
-
-    # make original group an inkscape layer
-    orig_g = svg.find(SVG_NS+'g')
-    orig_g.set('id', 'g-preview')
-    orig_g.set(INKSCAPE_NS+'label', 'Preview')
-    orig_g.set(SODIPODI_NS+'insensitive', 'true') # lock group
-    orig_g.set('style', 'opacity:0.5')
-
-    # add layers
-    for layer in extra_layers:
-        new_g = etree.SubElement(svg, SVG_NS+'g')
-        new_g.set('id', f'g-{layer.lower()}')
-        new_g.set(INKSCAPE_NS+'label', layer)
-        new_g.set(INKSCAPE_NS+'groupmode', 'layer')
-
-    return etree.tostring(svg)
+    return str(svg)
 
 # SVG/gerber import
 #==================
@@ -394,7 +486,6 @@ def dilate_gerber(layer, bounds, dilation, curve_tolerance):
     with tempfile.NamedTemporaryFile(suffix='.svg') as temp_svg:
         Path(temp_svg.name).write_text(str(layer.instance.to_svg(force_bounds=bounds, fg='white')))
 
-        (bb_min_x, bb_min_y), (bb_max_x, bb_max_y) = bounds
         # dilate & render back to gerber
         # NOTE: Maybe reconsider or nicely document dilation semantics ; It is weird that negative dilations affect
         # clear color and positive affects dark colors
@@ -418,7 +509,6 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
         args += [str(infile), str(temp_gbr.name)]
 
         if 'SVG_FLATTEN' in os.environ:
-            print('svg-flatten args:', args)
             subprocess.run([os.environ['SVG_FLATTEN'], *args], check=True)
             print('used svg-flatten at $SVG_FLATTEN')
 
@@ -427,6 +517,7 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
             for candidate in [
                     # somewhere in $PATH
                     'svg-flatten',
+                    None, # direct WASI import
                     'wasi-svg-flatten',
 
                     # in user-local pip installation
@@ -441,17 +532,33 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
                     str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]:
 
                 try:
-                    subprocess.run([candidate, *args], check=True)
-                    print('used svg-flatten at', candidate)
+                    if candidate is None:
+                        import svg_flatten_wasi
+                        svg_flatten_wasi.run_svg_flatten.callback(args[-2], args[-1], args[:-2], no_usvg=False)
+                        print('used svg_flatten_wasi python package') 
+
+                    else:
+                        subprocess.run([candidate, *args], check=True)
+                        print('used svg-flatten at', candidate)
+
                     break
-                except FileNotFoundError:
+                except (FileNotFoundError, ModuleNotFoundError):
                     continue
 
             else:
                 raise SystemError('svg-flatten executable not found')
 
         return gn.rs274x.GerberFile.open(temp_gbr.name)
-    
+
+def get_layers_from_svg(svg_data):
+    svg = etree.fromstring(svg_data.encode('utf-8'))
+    SVG_NS = '{http://www.w3.org/2000/svg}'
+    INKSCAPE_NS = '{http://www.inkscape.org/namespaces/inkscape}'
+
+    # find groups
+    for group in svg.findall(SVG_NS+'g'):
+        yield group.get('id'), group.get(INKSCAPE_NS+'label')
+   
 
 if __name__ == '__main__':
     cli()
