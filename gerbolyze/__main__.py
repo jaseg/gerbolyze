@@ -1,0 +1,2 @@
+import gerbolyze
+gerbolyze.cli()
