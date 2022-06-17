@@ -23,61 +23,50 @@ def cli():
     pass
 
 @cli.command()
-@click.argument('input_gerbers', type=click.Path(exists=True))
-@click.argument('input_svg', type=click.Path(exists=True, dir_okay=False, file_okay=True, allow_dash=True))
-@click.argument('output_gerbers')
+@click.argument('input_gerbers', type=click.Path(exists=True, path_type=Path))
+@click.argument('input_svg', type=click.Path(exists=True, dir_okay=False, file_okay=True, allow_dash=True, path_type=Path))
+@click.argument('output_gerbers', type=click.Path(allow_dash=True, path_type=Path))
 @click.option('--dilate', default=0.1, type=float, help='Default dilation for subtraction operations in mm')
+@click.option('--zip/--no-zip', 'is_zip', default=None, help='zip output files. Default: zip if output path ends with ".zip" or when outputting to stdout.')
 @click.option('--curve-tolerance', type=float, help='Tolerance for curve flattening in mm')
 @click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
-@click.option('--subtract', help='Use user subtraction script from argument (see description above)')
+@click.option('--subtract', help='Use user subtraction script from argument')
 @click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
 @click.option('--preserve-aspect-ratio', help='PNG/JPG files only: passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
-def paste(input_gerbers, input_svg, output_gerbers,
+def paste(input_gerbers, input_svg, output_gerbers, is_zip,
         dilate, curve_tolerance, no_subtract, subtract,
         preserve_aspect_ratio,
         trace_space, vectorizer, vectorizer_map, exclude_groups):
     """ Render vector data and raster images from SVG file into gerbers. """
 
-    if no_subtract:
-        subtract_map = {}
-    else:
-        subtract_map = parse_subtract_script(subtract, dilate)
+    subtract_map = parse_subtract_script('' if no_subtract else subtract, dilate)
 
-    output_gerbers = Path(output_gerbers)
-    input_gerbers = Path(input_gerbers)
     stack = gn.LayerStack.open(input_gerbers, lazy=True)
     (bb_min_x, bb_min_y), (bb_max_x, bb_max_y) = bounds = stack.board_bounds()
 
+    output_is_zip = output_gerbers.lower().endswith('.zip') if is_zip is None else is_zip
+
     # Create output dir if it does not exist yet. Do this now so we fail early
-    if input_gerbers.is_dir():
+    if not output_is_zip:
         output_gerbers.mkdir(exist_ok=True)
-
-        # In case output dir already existed, remove files we will overwrite
-        for in_file in input_gerbers.iterdir():
-            out_cand = output_gerbers / in_file.name
-            out_cand.unlink(missing_ok=True)
-
-    else: # We are working on a zip file
-        tempdir = tempfile.NamedTemporaryDirectory()
 
     @functools.lru_cache()
     def do_dilate(layer, amount):
         return dilate_gerber(layer, bounds, amount, curve_tolerance)
     
     for (side, use), layer in stack.graphic_layers.items():
-        print('processing', side, use, 'layer')
         overlay_grb = svg_to_gerber(input_svg,
                 trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
                 exclude_groups=exclude_groups, curve_tolerance=curve_tolerance,
                 preserve_aspect_ratio=preserve_aspect_ratio,
+                outline_mode=(use == 'outline'),
                 only_groups=f'g-{side}-{use}')
-        # FIXME outline mode, also process outline layer
 
         if not overlay_grb:
-            print(f'Overlay {side} {use} layer is empty. Skipping.', file=sys.stderr)
+            print(f'Overlay {side} {use} layer is empty. Skipping.')
             continue
 
         # only open lazily loaded layer if we need it. Replace lazy wrapper in stack with loaded layer.
@@ -86,22 +75,20 @@ def paste(input_gerbers, input_svg, output_gerbers,
         # move overlay from svg origin to gerber origin
         overlay_grb.offset(bb_min_x, bb_min_y)
 
-        print('compositing')
         # dilated subtract layers on top of overlay
         if side in ('top', 'bottom'): # do not process subtraction scripts for inner layers
             dilations = subtract_map.get(use, [])
             for d_layer, amount in dilations:
-                print('processing dilation', d_layer, amount)
                 dilated = do_dilate(stack[(side, d_layer)], amount)
                 layer.merge(dilated, mode='below', keep_settings=True)
 
         # overlay on bottom
         layer.merge(overlay_grb, mode='below', keep_settings=True)
 
-    if input_gerbers.is_dir():
-        stack.save_to_directory(output_gerbers)
-    else:
+    if output_is_zip:
         stack.save_to_zipfile(output_gerbers)
+    else:
+        stack.save_to_directory(output_gerbers)
 
 @cli.command()
 @click.argument('input_gerbers', type=click.Path(exists=True))
