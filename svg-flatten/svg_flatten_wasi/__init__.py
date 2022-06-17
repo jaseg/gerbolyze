@@ -104,7 +104,7 @@ def run_usvg(input_file, output_file, **usvg_args):
 
     # if USVG envvar is set, try that first.
     if 'USVG' in os.environ:
-        exec_candidates = [os.environ['USVG'], *exec_candidates]
+        candidates = [os.environ['USVG'], *candidates]
 
     for candidate in candidates:
         try:
@@ -144,5 +144,9 @@ def run_svg_flatten(input_file, output_file, other_args, no_usvg, **usvg_args):
             input_file = f.name
 
         cmdline = ['svg-flatten', '--force-svg', '--no-usvg', *other_args, input_file, output_file]
-        sys.exit(_run_wasm_app("svg-flatten.wasm", cmdline))
+        exit_code = _run_wasm_app("svg-flatten.wasm", cmdline)
+        if exit_code:
+            exc = click.ClickException(f'Process returned exit code {exit_code}')
+            exc.exit_code = exit_code
+            raise exc
 
