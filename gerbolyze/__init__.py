@@ -220,7 +220,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
     PCBs using Inkscape similar to PCBModE.
     '''
 
-    subtract_map = parse_subtract_script('' if no_subtract else subtract, dilate)
+    subtract_map = parse_subtract_script('' if no_subtract else subtract, dilate, default_script=DEFAULT_CONVERT_SUB_SCRIPT)
     output_is_zip = output_gerbers.name.lower().endswith('.zip') if is_zip is None else is_zip
 
     stack = gn.LayerStack({}, [], board_name=input_svg.stem, original_path=input_svg)
@@ -267,7 +267,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
             for d_layer, amount in dilations:
                 d_layer =  stack.graphic_layers[(side, d_layer)]
                 dilated = do_dilate(d_layer, amount)
-                layer.merge(dilated, mode='below', keep_settings=True)
+                layer.merge(dilated, mode='above', keep_settings=True)
 
     if not separate_drill:
         print('merging drill layers')
@@ -291,9 +291,13 @@ out.mask -= in.mask+0.5
 out.copper -= in.copper+0.5
 '''
 
-def parse_subtract_script(script, default_dilation=0.1):
+DEFAULT_CONVERT_SUB_SCRIPT = '''
+out.silk -= in.mask
+'''
+
+def parse_subtract_script(script, default_dilation=0.1, default_script=DEFAULT_SUB_SCRIPT):
     if script is None:
-        script = DEFAULT_SUB_SCRIPT
+        script = default_script
 
     subtract_script = {}
     lines = script.replace(';', '\n').splitlines()
@@ -381,7 +385,7 @@ def run_resvg(input_file, output_file, **resvg_args):
 
     # if RESVG envvar is set, try that first.
     if 'RESVG' in os.environ:
-        exec_candidates = [os.environ['RESVG'], *exec_candidates]
+        candidates = [os.environ['RESVG'], *candidates]
 
     for candidate in candidates:
         try:
