@@ -50,6 +50,12 @@ namespace gerbolyze {
         double m_size = 0.0;
     };
 
+    class DrillToken {
+    public:
+        DrillToken(d2p center) : m_center(center) {}
+        d2p m_center;
+    };
+
     class PolygonSink {
         public:
             virtual ~PolygonSink() {}
@@ -73,6 +79,7 @@ namespace gerbolyze {
             virtual PolygonSink &operator<<(const LayerNameToken &) { return *this; };
             virtual PolygonSink &operator<<(GerberPolarityToken pol) = 0;
             virtual PolygonSink &operator<<(const ApertureToken &) { return *this; };
+            virtual PolygonSink &operator<<(const DrillToken &) { return *this; };
             virtual void footer() {}
     };
 
@@ -85,6 +92,8 @@ namespace gerbolyze {
             virtual Flattener &operator<<(const Polygon &poly);
             virtual Flattener &operator<<(const LayerNameToken &layer_name);
             virtual Flattener &operator<<(GerberPolarityToken pol);
+            virtual Flattener &operator<<(const ApertureToken &tok);
+            virtual Flattener &operator<<(const DrillToken &tok);
             virtual void footer();
 
         private:
@@ -102,6 +111,7 @@ namespace gerbolyze {
             virtual Dilater &operator<<(const Polygon &poly);
             virtual Dilater &operator<<(const LayerNameToken &layer_name);
             virtual Dilater &operator<<(GerberPolarityToken pol);
+            virtual Dilater &operator<<(const ApertureToken &ap);
             virtual void footer();
 
         private:
@@ -117,6 +127,8 @@ namespace gerbolyze {
             virtual PolygonScaler &operator<<(const Polygon &poly);
             virtual PolygonScaler &operator<<(const LayerNameToken &layer_name);
             virtual PolygonScaler &operator<<(GerberPolarityToken pol);
+            virtual PolygonScaler &operator<<(const ApertureToken &tok);
+            virtual PolygonScaler &operator<<(const DrillToken &tok);
             virtual void footer();
 
         private:
@@ -181,6 +193,7 @@ namespace gerbolyze {
     public:
         double m_minimum_feature_size_mm = 0.1;
         double curve_tolerance_mm;
+        double drill_test_polsby_popper_tolerance = 0.01;
         VectorizerSelectorizer &m_vec_sel;
         bool outline_mode = false;
         bool flip_color_interpretation = false;
@@ -289,6 +302,7 @@ namespace gerbolyze {
         virtual ~SimpleGerberOutput() {}
         virtual SimpleGerberOutput &operator<<(const Polygon &poly);
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
+        virtual SimpleGerberOutput &operator<<(const DrillToken &tok);
         virtual SimpleGerberOutput &operator<<(const ApertureToken &ap);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
@@ -313,6 +327,7 @@ namespace gerbolyze {
         virtual ~SimpleSVGOutput() {}
         virtual SimpleSVGOutput &operator<<(const Polygon &poly);
         virtual SimpleSVGOutput &operator<<(GerberPolarityToken pol);
+        virtual SimpleSVGOutput &operator<<(const DrillToken &tok);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
 
@@ -330,6 +345,7 @@ namespace gerbolyze {
         virtual ~KicadSexpOutput() {}
         virtual KicadSexpOutput &operator<<(const Polygon &poly);
         virtual KicadSexpOutput &operator<<(const LayerNameToken &layer_name);
+        virtual KicadSexpOutput &operator<<(const DrillToken &tok);
         virtual KicadSexpOutput &operator<<(GerberPolarityToken pol);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();

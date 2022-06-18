@@ -135,6 +135,10 @@ KicadSexpOutput &KicadSexpOutput::operator<<(const Polygon &poly) {
     return *this;
 }
 
+KicadSexpOutput &KicadSexpOutput::operator<<(const DrillToken &tok) {
+    return *this;
+}
+
 void KicadSexpOutput::footer_impl() {
     m_out << ")" << endl;
 }

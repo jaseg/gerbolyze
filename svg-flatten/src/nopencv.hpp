@@ -119,6 +119,8 @@ namespace gerbolyze {
         ContourCallback simplify_contours_douglas_peucker(ContourCallback cb);
 
         double polygon_area(Polygon_i &poly);
+        double polygon_perimeter(Polygon_i &poly);
+        d2p polygon_centroid(Polygon_i &poly);
     }
 }
 

@@ -79,6 +79,9 @@ int main(int argc, char **argv) {
             {"curve_tolerance", {"-c", "--curve-tolerance"},
                 "Tolerance for curve flattening in mm. Default: 0.1mm.",
                 1},
+            {"drill_test_polsby_popper_tolerance", {"--drill-test-tolerance"},
+                "Tolerance for identifying circles as drills in outline mode",
+                1},
             {"no_header", {"--no-header"},
                 "Do not export output format header/footer, only export the primitives themselves",
                 0},
@@ -291,6 +294,7 @@ int main(int argc, char **argv) {
 
     double min_feature_size = args["min_feature_size"].as<double>(0.1); /* mm */
     double curve_tolerance = args["curve_tolerance"].as<double>(0.1); /* mm */
+    double drill_test_polsby_popper_tolerance = args["drill_test_polsby_popper_tolerance"].as<double>(0.1); /* mm */
 
     string ending = "";
     auto idx = in_f_name.rfind(".");
@@ -423,6 +427,7 @@ int main(int argc, char **argv) {
     RenderSettings rset {
         min_feature_size,
         curve_tolerance,
+        drill_test_polsby_popper_tolerance,
         vec_sel,
         outline_mode,
         flip_svg_colors,

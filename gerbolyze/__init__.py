@@ -242,7 +242,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
         grb = svg_to_gerber(input_svg,
                 trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
                 exclude_groups=exclude_groups, curve_tolerance=curve_tolerance, only_groups=group_id,
-                outline_mode=(use == 'outline'))
+                outline_mode=(use == 'outline' or use == 'drill'))
 
         if use == 'drill':
             if side == 'plated':

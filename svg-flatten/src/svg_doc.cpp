@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 #include <gerbolyze.hpp>
 #include "svg_import_defs.h"
@@ -25,6 +26,7 @@
 #include "svg_geom.h"
 #include "svg_path.h"
 #include "vec_core.h"
+#include "nopencv.hpp"
 
 using namespace gerbolyze;
 using namespace std;
@@ -243,7 +245,6 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
     }
 
     /* Load path from SVG path data and transform into document units. */
-    /* FIXME transform stroke width here? */
     stroke_width = ctx.mat().doc2phys_dist(stroke_width);
 
     Paths stroke_open, stroke_closed;
@@ -260,6 +261,31 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
     /* Skip filling for transparent fills. In outline mode, skip filling if a stroke is also set to avoid double lines.
      */
     if (has_fill && !(ctx.settings().outline_mode && has_stroke)) {
+        /* In outline mode, identify drills before applying clip */
+        if (ctx.settings().outline_mode && fill_color != GRB_PATTERN_FILL) {
+            /* Polsby-Popper test */
+            for (auto &p : fill_paths) {
+                Polygon_i geom_poly(p.size());
+                for (size_t i=0; i<p.size(); i++) {
+                    geom_poly[i] = { p[i].X, p[i].Y };
+                }
+
+                double area = nopencv::polygon_area(geom_poly);
+                double polsby_popper = 4*M_PI * area / pow(nopencv::polygon_perimeter(geom_poly), 2);
+                polsby_popper = fabs(fabs(polsby_popper) - 1.0);
+                if (polsby_popper < ctx.settings().drill_test_polsby_popper_tolerance) {
+                    d2p centroid = nopencv::polygon_centroid(geom_poly);
+                    centroid[0] /= clipper_scale;
+                    centroid[1] /= clipper_scale;
+                    double diameter = sqrt(4*fabs(area)/M_PI) / clipper_scale;
+                    diameter = ctx.mat().doc2phys_dist(diameter); /* FIXME is this correct w.r.t. PolygonScaler? */
+                    diameter = round(diameter * 1000.0) / 1000.0; /* Round to micrometer precsion; FIXME: make configurable */
+                    ctx.sink() << ApertureToken(diameter) << DrillToken(ctx.mat().doc2phys(centroid));
+                }
+            }
+            return;
+        }
+
         /* Clip paths. Consider all paths closed for filling. */
         if (!ctx.clip().empty()) {
             Clipper c;
@@ -306,7 +332,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 if (ctx.settings().outline_mode && !out.empty())
                     out.push_back(out[0]);
 
-                ctx.sink() << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
+                ctx.sink() << ApertureToken() << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
             }
         }
     }
@@ -396,7 +422,6 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             ctx.sink() << ApertureToken() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
         }
     }
-    ctx.sink() << ApertureToken();
 }
 
 void gerbolyze::SVGDocument::render(const RenderSettings &rset, PolygonSink &sink, const ElementSelector &sel) {

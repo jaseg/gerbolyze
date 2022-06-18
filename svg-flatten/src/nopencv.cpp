@@ -483,6 +483,33 @@ double gerbolyze::nopencv::polygon_area(Polygon_i &poly) {
     return acc / 2;
 }
 
+double gerbolyze::nopencv::polygon_perimeter(Polygon_i &poly) {
+    double acc = 0;
+    size_t prev = poly.size() - 1;
+    for (size_t cur=0; cur<poly.size(); cur++) {
+        double dx = poly[cur][0] - poly[prev][0];
+        double dy = poly[cur][1] - poly[prev][1];
+        acc += sqrt(dx*dx + dy*dy);
+        prev = cur;
+    }
+    return acc;
+}
+
+d2p gerbolyze::nopencv::polygon_centroid(Polygon_i &poly) {
+    double acc_x = 0, acc_y = 0;
+
+    double area = polygon_area(poly);
+    size_t prev = poly.size() - 1;
+    for (size_t cur=0; cur<poly.size(); cur++) {
+        double a = poly[prev][1]*poly[cur][0] - poly[cur][1]*poly[prev][0];
+        acc_x += (poly[prev][0] + poly[cur][0]) * a;
+        acc_y += (poly[prev][1] + poly[cur][1]) * a;
+        prev = cur;
+    }
+
+    return { acc_x / (6*area), acc_y / (6*area) };
+}
+
 template<typename T>
 gerbolyze::nopencv::Image<T>::Image(int size_x, int size_y, const T *data) {
     assert(size_x > 0 && size_x < 100000);

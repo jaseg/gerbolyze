@@ -152,6 +152,16 @@ Flattener &Flattener::operator<<(const LayerNameToken &layer_name) {
     return *this;
 }
 
+Flattener &Flattener::operator<<(const DrillToken &tok) {
+    m_sink << tok;
+    return *this;
+}
+
+Flattener &Flattener::operator<<(const ApertureToken &tok) {
+    m_sink << tok;
+    return *this;
+}
+
 Flattener &Flattener::operator<<(const Polygon &poly) {
     if (m_current_polarity == GRB_POL_DARK) {
         d->add_dark_polygon(poly);
