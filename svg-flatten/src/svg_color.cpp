@@ -41,14 +41,17 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
     }
 
     if (color.empty()) {
+        //cerr << "  -> default" << endl;
         return default_val;
     }
 
     if (color == "none") {
+        //cerr << "  -> none" << endl;
         return GRB_NONE;
     }
 
     if (color.rfind("url(#", 0) != string::npos) {
+        //cerr << "  -> pattern" << endl;
         return GRB_PATTERN_FILL;
     }
 
@@ -60,16 +63,20 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
             alpha = rgba.a;
 
         if (alpha < 0.5f) {
+            //cerr << "  -> none" << endl;
             return GRB_NONE;
         }
 
         if ((hsv.v >= 0.5) != rset.flip_color_interpretation) {
+            //cerr << "  -> clear" << endl;
             return GRB_CLEAR;
         } else {
+            //cerr << "  -> dark" << endl;
             return GRB_DARK;
         }
     }
 
+    //cerr << "  -> dark" << endl;
     return GRB_DARK;
 }
 

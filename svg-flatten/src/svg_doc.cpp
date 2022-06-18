@@ -116,7 +116,7 @@ bool IDElementSelector::match(const pugi::xml_node &node, bool is_toplevel, bool
     if (is_toplevel && layers) {
         bool layer_match = std::find(layers->begin(), layers->end(), id) != layers->end();
         if (!layer_match) {
-            cerr << "Rejecting layer \"" << id << "\"" << endl;
+            //cerr << "Rejecting layer \"" << id << "\"" << endl;
             return false;
         }
     }
@@ -185,7 +185,6 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
 
         if (name == "g") {
             if (ctx.root()) { /* Treat top-level groups as "layers" like inkscape does. */
-                cerr << "Forwarding layer name to sink: \"" << node.attribute("id").value() << "\"" << endl;
                 LayerNameToken tok { node.attribute("id").value() };
                 elem_ctx.sink() << tok;
             }
@@ -258,34 +257,34 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
     bool has_fill = fill_color;
     bool has_stroke = stroke_color && stroke_width > 0.0;
 
+    /* In outline mode, identify drills before applying clip */
+    if (ctx.settings().outline_mode && has_fill && fill_color != GRB_PATTERN_FILL) {
+        /* Polsby-Popper test */
+        for (auto &p : fill_paths) {
+            Polygon_i geom_poly(p.size());
+            for (size_t i=0; i<p.size(); i++) {
+                geom_poly[i] = { p[i].X, p[i].Y };
+            }
+
+            double area = nopencv::polygon_area(geom_poly);
+            double polsby_popper = 4*M_PI * area / pow(nopencv::polygon_perimeter(geom_poly), 2);
+            polsby_popper = fabs(fabs(polsby_popper) - 1.0);
+            if (polsby_popper < ctx.settings().drill_test_polsby_popper_tolerance) {
+                d2p centroid = nopencv::polygon_centroid(geom_poly);
+                centroid[0] /= clipper_scale;
+                centroid[1] /= clipper_scale;
+                double diameter = sqrt(4*fabs(area)/M_PI) / clipper_scale;
+                diameter = ctx.mat().doc2phys_dist(diameter); /* FIXME is this correct w.r.t. PolygonScaler? */
+                diameter = round(diameter * 1000.0) / 1000.0; /* Round to micrometer precsion; FIXME: make configurable */
+                ctx.sink() << ApertureToken(diameter) << DrillToken(ctx.mat().doc2phys(centroid));
+            }
+        }
+        return;
+    }
+
     /* Skip filling for transparent fills. In outline mode, skip filling if a stroke is also set to avoid double lines.
      */
     if (has_fill && !(ctx.settings().outline_mode && has_stroke)) {
-        /* In outline mode, identify drills before applying clip */
-        if (ctx.settings().outline_mode && fill_color != GRB_PATTERN_FILL) {
-            /* Polsby-Popper test */
-            for (auto &p : fill_paths) {
-                Polygon_i geom_poly(p.size());
-                for (size_t i=0; i<p.size(); i++) {
-                    geom_poly[i] = { p[i].X, p[i].Y };
-                }
-
-                double area = nopencv::polygon_area(geom_poly);
-                double polsby_popper = 4*M_PI * area / pow(nopencv::polygon_perimeter(geom_poly), 2);
-                polsby_popper = fabs(fabs(polsby_popper) - 1.0);
-                if (polsby_popper < ctx.settings().drill_test_polsby_popper_tolerance) {
-                    d2p centroid = nopencv::polygon_centroid(geom_poly);
-                    centroid[0] /= clipper_scale;
-                    centroid[1] /= clipper_scale;
-                    double diameter = sqrt(4*fabs(area)/M_PI) / clipper_scale;
-                    diameter = ctx.mat().doc2phys_dist(diameter); /* FIXME is this correct w.r.t. PolygonScaler? */
-                    diameter = round(diameter * 1000.0) / 1000.0; /* Round to micrometer precsion; FIXME: make configurable */
-                    ctx.sink() << ApertureToken(diameter) << DrillToken(ctx.mat().doc2phys(centroid));
-                }
-            }
-            return;
-        }
-
         /* Clip paths. Consider all paths closed for filling. */
         if (!ctx.clip().empty()) {
             Clipper c;
@@ -332,7 +331,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 if (ctx.settings().outline_mode && !out.empty())
                     out.push_back(out[0]);
 
-                ctx.sink() << ApertureToken() << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << out;
+                ctx.sink() << (fill_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << ApertureToken() << out;
             }
         }
     }
@@ -418,8 +417,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         } else if (!ctx.settings().outline_mode) {
             Paths s_polys;
             dehole_polytree(ptree, s_polys);
-
-            ctx.sink() << ApertureToken() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << s_polys;
+            ctx.sink() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << ApertureToken() << s_polys;
         }
     }
 }

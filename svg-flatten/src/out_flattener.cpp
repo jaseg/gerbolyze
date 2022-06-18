@@ -139,6 +139,8 @@ Flattener &Flattener::operator<<(GerberPolarityToken pol) {
         if (pol == GRB_POL_DARK) {
             render_out_clear_polys();
         }
+        
+        m_sink << pol;
     }
 
     return *this;
@@ -147,8 +149,6 @@ Flattener &Flattener::operator<<(GerberPolarityToken pol) {
 Flattener &Flattener::operator<<(const LayerNameToken &layer_name) {
     flush_polys_to_sink();
     m_sink << layer_name;
-    cerr << "Flattener forwarding layer name to sink: \"" << layer_name.m_name << "\"" << endl;
-
     return *this;
 }
 
