@@ -271,7 +271,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
                 layer.merge(dilated, mode='above', keep_settings=True)
 
     if not separate_drill:
-        print('merging drill layers')
+        print('Merging drill layers...')
         stack.merge_drill_layers()
 
     naming_scheme = getattr(gn.layers.NamingScheme, naming_scheme)
@@ -423,7 +423,7 @@ def calculate_apertureless_bounding_box(cam):
 #===========
 
 def template_layer(name):
-    return f'<g id="g-{name.lower()}" inkscape:label="{name}" inkscape:groupmode="layer"></g>'
+    return f'<g id="g-{name.lower().replace(" ", "-")}" inkscape:label="{name}" inkscape:groupmode="layer"></g>'
 
 def template_svg_for_png(bounds, png_data, extra_layers, current_layer):
     (x1, y1), (x2, y2) = bounds
@@ -440,7 +440,7 @@ def template_svg_for_png(bounds, png_data, extra_layers, current_layer):
            xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
            width="{w_mm}mm" height="{h_mm}mm" viewBox="0 0 {w_mm} {h_mm}" >
           <defs/>
-          <sodipodi:namedview inkscape:current-layer="g-{current_layer.lower()}" />
+          <sodipodi:namedview inkscape:current-layer="g-{current_layer.lower().replace(" ", "-")}" />
           <g inkscape:label="Preview" inkscape:groupmode="layer" id="g-preview" sodipodi:insensitive="true" style="opacity:0.5">
             <image x="0" y="0" width="{w_mm}" height="{h_mm}"
                xlink:href="data:image/jpeg;base64,{base64.b64encode(png_data).decode()}" />
@@ -454,7 +454,7 @@ def empty_pcb_template(size, extra_layers, current_layer):
     w, h, unit = size
 
     extra_layers = "\n  ".join(template_layer(name) for name in extra_layers)
-    current_layer = f'<sodipodi:namedview inkscape:current-layer="g-{current_layer.lower()}" />' if current_layer else ''
+    current_layer = f'<sodipodi:namedview inkscape:current-layer="g-{current_layer.lower().replace(" ", "-")}" />' if current_layer else ''
 
     # we set up the viewport such that document dimensions = document units = [unit]
     template = f'''<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -476,7 +476,7 @@ MM_PER_INCH = 25.4
 
 def create_template_from_svg(svg, extra_layers, current_layer):
     view, *layers = svg.children
-    view.attrs['inkscape__current_layer'] = f'g-{current_layer.lower()}'
+    view.attrs['inkscape__current_layer'] = f'g-{current_layer.lower().replace(" ", "-")}'
 
     extra_layers = [ template_layer(name) for name in extra_layers ]
     svg.children = [ view, *extra_layers, gn.utils.Tag('g', layers, inkscape__label='Preview', sodipodi__insensitive='true',
