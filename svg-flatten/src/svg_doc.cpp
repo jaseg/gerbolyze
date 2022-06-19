@@ -270,13 +270,23 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             double polsby_popper = 4*M_PI * area / pow(nopencv::polygon_perimeter(geom_poly), 2);
             polsby_popper = fabs(fabs(polsby_popper) - 1.0);
             if (polsby_popper < ctx.settings().drill_test_polsby_popper_tolerance) {
+                if (!ctx.clip().empty()) {
+                    Clipper c;
+                    c.AddPath(p, ptSubject, /* closed */ true);
+                    c.AddPaths(ctx.clip(), ptClip, /* closed */ true);
+                    c.StrictlySimple(true);
+                    c.Execute(ctDifference, ptree_fill, pftNonZero, pftNonZero);
+                    if (ptree_fill.Total() > 0)
+                        continue;
+                }
+
                 d2p centroid = nopencv::polygon_centroid(geom_poly);
                 centroid[0] /= clipper_scale;
                 centroid[1] /= clipper_scale;
                 double diameter = sqrt(4*fabs(area)/M_PI) / clipper_scale;
                 diameter = ctx.mat().doc2phys_dist(diameter); /* FIXME is this correct w.r.t. PolygonScaler? */
                 diameter = round(diameter * 1000.0) / 1000.0; /* Round to micrometer precsion; FIXME: make configurable */
-                ctx.sink() << ApertureToken(diameter) << DrillToken(ctx.mat().doc2phys(centroid));
+                ctx.sink() << ApertureToken(diameter) << DrillToken(centroid);
             }
         }
         return;
