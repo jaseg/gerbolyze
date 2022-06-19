@@ -56,7 +56,6 @@ bool gerbolyze::SVGDocument::load(istream &in) {
     /* Set up the document's viewport transform */
     istringstream vb_stream(root_elem.attribute("viewBox").value());
     vb_stream >> vb_x >> vb_y >> vb_w >> vb_h;
-    cerr << "SVG document viewbox: origin=" << vb_x << "," << vb_y << ", size=" << vb_w << "," << vb_h << endl;
 
     page_w = usvg_double_attr(root_elem, "width");
     page_h = usvg_double_attr(root_elem, "height");
@@ -315,14 +314,6 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
 
             } else {
                 PolyTreeToPaths(ptree_fill, fill_paths);
-                cerr << "clip paths" << endl;
-                for (auto &p : fill_paths) {
-                    cerr << "  ";
-                    for (auto &pt : p) {
-                        cerr << "<" << pt.X << "," << pt.Y << "> ";
-                    }
-                    cerr << endl;
-                }
                 RenderContext local_ctx(ctx, xform2d(), fill_paths, true);
                 pattern->tile(local_ctx);
             }
