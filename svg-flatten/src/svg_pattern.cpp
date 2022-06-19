@@ -69,6 +69,7 @@ void gerbolyze::Pattern::tile (gerbolyze::RenderContext &ctx) {
     double by = clip_bounds.top / clipper_scale;
     double bw = (clip_bounds.right - clip_bounds.left) / clipper_scale;
     double bh = (clip_bounds.bottom - clip_bounds.top) / clipper_scale;
+    cerr << "clip bounds " << bx << ", " << by << "w=" << bw <<" h=" << bh << endl;
 
     d2p clip_p0 = patternTransform_inv.doc2phys(d2p{bx, by});
     d2p clip_p1 = patternTransform_inv.doc2phys(d2p{bx+bw, by+bh});
@@ -90,12 +91,14 @@ void gerbolyze::Pattern::tile (gerbolyze::RenderContext &ctx) {
 
     /* Iterate over all pattern tiles in pattern coordinates */
     for (double inst_off_x = fmod(inst_x, inst_w) - 2*inst_w;
-            inst_off_x < bw + 2*inst_w;
+            inst_off_x < bx + bw + 2*inst_w;
             inst_off_x += inst_w) {
+        cerr << "inst_off_x " << inst_off_x << endl;
 
         for (double inst_off_y = fmod(inst_y, inst_h) - 2*inst_h;
-                inst_off_y < bh + 2*inst_h;
+                inst_off_y < by + bh + 2*inst_h;
                 inst_off_y += inst_h) {
+            cerr << "  inst_off_y " << inst_off_y << endl;
 
             xform2d elem_xf;
             /* Change into this individual tile's coordinate system */

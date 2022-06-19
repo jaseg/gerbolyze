@@ -315,6 +315,14 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
 
             } else {
                 PolyTreeToPaths(ptree_fill, fill_paths);
+                cerr << "clip paths" << endl;
+                for (auto &p : fill_paths) {
+                    cerr << "  ";
+                    for (auto &pt : p) {
+                        cerr << "<" << pt.X << "," << pt.Y << "> ";
+                    }
+                    cerr << endl;
+                }
                 RenderContext local_ctx(ctx, xform2d(), fill_paths, true);
                 pattern->tile(local_ctx);
             }
