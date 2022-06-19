@@ -19,11 +19,11 @@ class Pattern:
                 {svg_str(self.content)}
             </pattern>''')
 
-def make_rect(svg_id, x, y, w, h):
+def make_rect(svg_id, x, y, w, h, clip=''):
     #import random
     #c = random.randint(0, 2**24)
     #return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#{c:06x}"/>'
-    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="url(#{svg_id})"/>'
+    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {clip} fill="url(#{svg_id})"/>'
 
 class CirclePattern(Pattern):
     def __init__(self, d, w, h=None):
@@ -92,22 +92,22 @@ class THTProtoAreaCircles(PatternProtoArea):
         self.plated = plated
         self.sides = sides
     
-    def generate(self, x, y, w, h, center=True):
+    def generate(self, x, y, w, h, center=True, clip=''):
         x, y, w, h = self.fit_rect(x, y, w, h, center)
         drill = 'plated drill' if self.plated else 'nonplated drill'
 
         pad_id = str(uuid.uuid4())
         drill_id = str(uuid.uuid4())
 
-        d = { drill: make_rect(drill_id, x, y, w, h),
+        d = { drill: make_rect(drill_id, x, y, w, h, clip),
              'defs': [
                  self.pad_pattern.svg_def(pad_id, x, y),
                  self.drill_pattern.svg_def(drill_id, x, y)]}
 
         if self.sides in ('top', 'both'):
-            d['top copper'] = make_rect(pad_id, x, y, w, h)
+            d['top copper'] = make_rect(pad_id, x, y, w, h, clip)
         if self.sides in ('bottom', 'both'):
-            d['bottom copper'] = make_rect(pad_id, x, y, w, h)
+            d['bottom copper'] = make_rect(pad_id, x, y, w, h, clip)
 
         return d
 
@@ -129,19 +129,30 @@ LAYERS = [
         ]
 
 class ProtoBoard:
-    def __init__(self, defs, expr):
+    def __init__(self, defs, expr, mounting_holes=None):
         self.defs = eval_defs(defs)
         self.layout = parse_layout(expr)
+        self.mounting_holes = mounting_holes
 
     def generate(self, w, h):
         svg_defs = []
+        clip = ''
+
+        if self.mounting_holes:
+            d, o, k = self.mounting_holes # diameter, offset from edge, keepout to proto area
+            q = o + k
+            clip_d = f'M 0 {q} L {q} {q} L {q} 0 L {w-q} 0 L {w-q} {q} L {w} {q} L {w} {h-q} L {w-q} {h-q} L {w-q} {h} L {q} {h} L {q} {h-q} L 0 {h-q} Z'
+            svg_defs.append(f'<clipPath id="hole-clip"><path d="{clip_d}"/></clipPath>')
+            clip = 'clip-path="url(#hole-clip)"'
 
         out = {l: [] for l in LAYERS}
-        for layer_dict in self.layout.generate(0, 0, w, h, self.defs):
+        for layer_dict in self.layout.generate(0, 0, w, h, self.defs, clip):
             for l in LAYERS:
                 if l in layer_dict:
                     out[l].append(layer_dict[l])
             svg_defs += layer_dict.get('defs', [])
+
+        out['outline'] = f'<rect x="0" y="0" width="{w}" height="{h}" fill="none" stroke="black" stroke-width="0.1mm"/>'
 
         layers = [ make_layer(l, out[l]) for l in LAYERS ]
         return svg_template.format(w=w, h=h, defs='\n'.join(svg_defs), layers='\n'.join(layers)) 
@@ -176,13 +187,13 @@ class PropLayout:
         if len(content) != len(proportions):
             raise ValueError('proportions and content must have same length')
 
-    def generate(self, x, y, w, h, defs):
+    def generate(self, x, y, w, h, defs, clip=''):
         for (c_x, c_y, c_w, c_h), child in self.layout_2d(x, y, w, h):
             if isinstance(child, str):
-                yield defs[child].generate(c_x, c_y, c_w, c_h, defs)
+                yield defs[child].generate(c_x, c_y, c_w, c_h, defs, clip)
 
             else:
-                yield from child.generate(c_x, c_y, c_w, c_h, defs)
+                yield from child.generate(c_x, c_y, c_w, c_h, defs, clip)
 
     def layout_2d(self, x, y, w, h):
         for l, child in zip(self.layout(w if self.direction == 'h' else h), self.content):
@@ -341,5 +352,5 @@ if __name__ == '__main__':
 #        print(line, '->', eval_defs(line))
 #    print()
 #    print('===== Proto board =====')
-    b = ProtoBoard('tht = THTCircles()', 'tht@1in|(tht@2/tht@1)')
+    b = ProtoBoard('tht = THTCircles()', 'tht@1in|(tht@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0))
     print(b.generate(80, 60))
