@@ -135,6 +135,7 @@ class ProtoBoard:
         self.mounting_holes = mounting_holes
 
     def generate(self, w, h):
+        out = {l: [] for l in LAYERS}
         svg_defs = []
         clip = ''
 
@@ -145,7 +146,12 @@ class ProtoBoard:
             svg_defs.append(f'<clipPath id="hole-clip"><path d="{clip_d}"/></clipPath>')
             clip = 'clip-path="url(#hole-clip)"'
 
-        out = {l: [] for l in LAYERS}
+            out['nonplated drill'].append([
+                f'<circle cx="{o}" cy="{o}" r="{d/2}"/>',
+                f'<circle cx="{w-o}" cy="{o}" r="{d/2}"/>',
+                f'<circle cx="{w-o}" cy="{h-o}" r="{d/2}"/>',
+                f'<circle cx="{o}" cy="{h-o}" r="{d/2}"/>' ])
+
         for layer_dict in self.layout.generate(0, 0, w, h, self.defs, clip):
             for l in LAYERS:
                 if l in layer_dict:
@@ -352,5 +358,5 @@ if __name__ == '__main__':
 #        print(line, '->', eval_defs(line))
 #    print()
 #    print('===== Proto board =====')
-    b = ProtoBoard('tht = THTCircles()', 'tht@1in|(tht@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0))
+    b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)', 'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0))
     print(b.generate(80, 60))
