@@ -3,6 +3,7 @@
 import re
 import textwrap
 import ast
+import uuid
 
 svg_str = lambda content: content if isinstance(content, str) else '\n'.join(str(c) for c in content)
 
@@ -12,18 +13,17 @@ class Pattern:
         self.h = h
         self.content = content
 
-    @property
-    def svg_id(self):
-        return f'pat-{id(self):16x}'
-
-    def __str__(self):
+    def svg_def(self, svg_id, off_x, off_y):
         return textwrap.dedent(f'''
-            <pattern id="{self.svg_id}" viewBox="0,0,{self.w},{self.h}" width="{self.w}" height="{self.h}" patternUnits="userSpaceOnUse">
+            <pattern id="{svg_id}" x="{off_x}" y="{off_y}" viewBox="0,0,{self.w},{self.h}" width="{self.w}" height="{self.h}" patternUnits="userSpaceOnUse">
                 {svg_str(self.content)}
             </pattern>''')
 
-    def make_rect(x, y, w, h):
-        return f'<rect x="{x}" y="{y}" w="{w}" h="{h}" fill="url(#{self.svg_id})"/>'
+def make_rect(svg_id, x, y, w, h):
+    #import random
+    #c = random.randint(0, 2**24)
+    #return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#{c:06x}"/>'
+    return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="url(#{svg_id})"/>'
 
 class CirclePattern(Pattern):
     def __init__(self, d, w, h=None):
@@ -33,7 +33,7 @@ class CirclePattern(Pattern):
 
     @property
     def content(self):
-        return f'<circle cx={self.w/2} cy={self.h/2} r={self.d/2}/>'
+        return f'<circle cx="{self.w/2}" cy="{self.h/2}" r="{self.d/2}"/>'
 
 make_layer = lambda layer_name, content: \
   f'<g id="g-{layer_name.replace(" ", "-")}" inkscape:label="{layer_name}" inkscape:groupmode="layer">{svg_str(content)}</g>'
@@ -56,7 +56,7 @@ svg_template = textwrap.dedent('''
          inkscape:window-x="0" inkscape:window-y="0" inkscape:window-maximized="1" />
       {layers}
     </svg>
-''')
+''').strip()
 
 class PatternProtoArea:
     def __init__(self, pitch_x, pitch_y=None):
@@ -70,7 +70,8 @@ class PatternProtoArea:
         return self.pitch_x
 
     def fit_rect(self, x, y, w, h, center=True):
-        w_fit, h_fit = round(w - (w % self.pitch_x), 6), round(h - (h % self.pitch_y), 6)
+        w_mod, h_mod = round((w + 5e-7) % self.pitch_x, 6), round((h + 5e-7) % self.pitch_y, 6)
+        w_fit, h_fit = round(w - w_mod, 6), round(h - h_mod, 6)
 
         if center:
             x = x + (w-w_fit)/2
@@ -80,9 +81,9 @@ class PatternProtoArea:
         else:
             return x, y, w_fit, h_fit
 
-class THTProtoAreaCircles:
+class THTProtoAreaCircles(PatternProtoArea):
     def __init__(self, pad_dia=2.0, drill=1.0, pitch=2.54, sides='both', plated=True):
-        super(pitch)
+        super().__init__(pitch)
         self.pad_dia = pad_dia
         self.drill = drill
         self.drill_pattern = CirclePattern(self.drill, self.pitch)
@@ -94,18 +95,57 @@ class THTProtoAreaCircles:
     def generate(self, x, y, w, h, center=True):
         x, y, w, h = self.fit_rect(x, y, w, h, center)
         drill = 'plated drill' if self.plated else 'nonplated drill'
-        d = { drill: self.drill_pattern.make_rect(x, y, w, h) }
+
+        pad_id = str(uuid.uuid4())
+        drill_id = str(uuid.uuid4())
+
+        d = { drill: make_rect(drill_id, x, y, w, h),
+             'defs': [
+                 self.pad_pattern.svg_def(pad_id, x, y),
+                 self.drill_pattern.svg_def(drill_id, x, y)]}
 
         if self.sides in ('top', 'both'):
-            d['top copper'] = self.pad_pattern.make_rect(x, y, w, h)
+            d['top copper'] = make_rect(pad_id, x, y, w, h)
         if self.sides in ('bottom', 'both'):
-            d['bottom copper'] = self.pad_pattern.make_rect(x, y, w, h)
+            d['bottom copper'] = make_rect(pad_id, x, y, w, h)
 
         return d
 
+    def __repr__(self):
+        return f'THTCircles(d={self.pad_dia}, h={self.drill}, p={self.pitch}, sides={self.sides}, plated={self.plated})'
+
+LAYERS = [
+        'top paste',
+        'top silk',
+        'top mask',
+        'top copper',
+        'bottom copper',
+        'bottom mask',
+        'bottom silk',
+        'bottom paste',
+        'outline',
+        'nonplated drill',
+        'plated drill'
+        ]
+
 class ProtoBoard:
-    def __init__(self, desc_str):
-        pass
+    def __init__(self, defs, expr):
+        self.defs = eval_defs(defs)
+        self.layout = parse_layout(expr)
+
+    def generate(self, w, h):
+        svg_defs = []
+
+        out = {l: [] for l in LAYERS}
+        for layer_dict in self.layout.generate(0, 0, w, h, self.defs):
+            for l in LAYERS:
+                if l in layer_dict:
+                    out[l].append(layer_dict[l])
+            svg_defs += layer_dict.get('defs', [])
+
+        layers = [ make_layer(l, out[l]) for l in LAYERS ]
+        return svg_template.format(w=w, h=h, defs='\n'.join(svg_defs), layers='\n'.join(layers)) 
+
 
 def convert_to_mm(value, unit):
     match unit.lower():
@@ -120,7 +160,7 @@ def eval_value(value, total_length=None):
     if not isinstance(value, str):
         return None
 
-    m = value_re.match(value)
+    m = value_re.match(value.lower())
     number, unit = m.groups()
     if unit == '%':
         if total_length is None:
@@ -135,6 +175,28 @@ class PropLayout:
         self.proportions = proportions
         if len(content) != len(proportions):
             raise ValueError('proportions and content must have same length')
+
+    def generate(self, x, y, w, h, defs):
+        for (c_x, c_y, c_w, c_h), child in self.layout_2d(x, y, w, h):
+            if isinstance(child, str):
+                yield defs[child].generate(c_x, c_y, c_w, c_h, defs)
+
+            else:
+                yield from child.generate(c_x, c_y, c_w, c_h, defs)
+
+    def layout_2d(self, x, y, w, h):
+        for l, child in zip(self.layout(w if self.direction == 'h' else h), self.content):
+            this_w, this_h = w, h
+            this_x, this_y = x, y
+
+            if self.direction == 'h':
+                this_w = l
+                x += l
+            else:
+                this_h = l
+                y += l
+
+            yield (this_x, this_y, this_w, this_h), child
 
     def layout(self, length):
         out = [ eval_value(value, length) for value in self.proportions ]
@@ -200,8 +262,8 @@ def parse_layout(expr):
         ( tht @ 2in | smd ) @ 50% / tht
     '''
 
-    expr = re.sub(r'\s', '', expr).lower()
-    expr = re.sub(r'([0-9]*\.?[0-9]+)(mm|cm|in|mil|%)', r'"\1\2"', expr)
+    expr = re.sub(r'\s', '', expr)
+    expr = re.sub(r'([0-9]*\.?[0-9]+)([Mm][Mm]|[Cc][Mm]|[Ii][Nn]|[Mm][Ii][Ll]|%)', r'"\1\2"', expr)
     expr = expr.replace('/', '&')
     try:
         expr = ast.parse(expr, mode='eval').body
@@ -218,22 +280,66 @@ def parse_layout(expr):
     except SyntaxError as e:
         raise SyntaxError('Invalid layout expression') from e
 
-if __name__ == '__main__':
-    import sys
-    for line in [
-            'tht',
-            'tht@1mm',
-            'tht|tht',
-            'tht@1mm|tht',
-            'tht|tht|tht',
-            'tht@1mm|tht@2mm|tht@3mm',
-            '(tht@1mm|tht@2mm)|tht@3mm',
-            'tht@1mm|(tht@2mm|tht@3mm)',
-            'tht@2|tht|tht',
-            '(tht@1mm|tht|tht@3mm) / tht',
-            ]:
-        layout = parse_layout(line)
-        print(line, '->', layout)
-        print('    ', layout.layout(100))
-        print()
+PROTO_AREA_TYPES = {
+    'THTCircles': THTProtoAreaCircles
+}
 
+def eval_defs(defs):
+    defs = defs.replace('\n', ';')
+    defs = re.sub(r'\s', '', defs)
+
+    out = {}
+    for elem in defs.split(';'):
+        if not elem:
+            continue
+
+        if not (m := re.match('([a-zA-Z_][a-zA-Z0-9_]*)=([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)', elem)):
+            raise SyntaxError(f'Invalid pattern definition "{elem}"')
+
+        key, pattern, params = m.groups()
+        args, kws = [], {}
+        for elem in params.split(','):
+            if not elem:
+                continue
+            if (m := re.match('([a-zA-Z_][a-zA-Z0-9_]*)=(.*)', elem)):
+                param_name, param_value = m.groups()
+                kws[param_name] = ast.literal_eval(param_value)
+
+            else:
+                args.append(ast.literal_eval(elem))
+
+        out[key] = PROTO_AREA_TYPES[pattern](*args, **kws)
+    return out
+
+if __name__ == '__main__':
+#    import sys
+#    print('===== Layout expressions =====')
+#    for line in [
+#            'tht',
+#            'tht@1mm',
+#            'tht|tht',
+#            'tht@1mm|tht',
+#            'tht|tht|tht',
+#            'tht@1mm|tht@2mm|tht@3mm',
+#            '(tht@1mm|tht@2mm)|tht@3mm',
+#            'tht@1mm|(tht@2mm|tht@3mm)',
+#            'tht@2|tht|tht',
+#            '(tht@1mm|tht|tht@3mm) / tht',
+#            ]:
+#        layout = parse_layout(line)
+#        print(line, '->', layout)
+#        print('    ', layout.layout(100))
+#        print()
+#    print('===== Pattern definitions =====')
+#    for line in [
+#            'tht = THTCircles()',
+#            'tht = THTCircles(10)',
+#            'tht = THTCircles(10, 20)',
+#            'tht = THTCircles(plated=False)',
+#            'tht = THTCircles(10, plated=False)',
+#            ]:
+#        print(line, '->', eval_defs(line))
+#    print()
+#    print('===== Proto board =====')
+    b = ProtoBoard('tht = THTCircles()', 'tht@1in|(tht@2/tht@1)')
+    print(b.generate(80, 60))
