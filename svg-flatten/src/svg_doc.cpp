@@ -350,10 +350,6 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         stroke_clip.StrictlySimple(true);
         stroke_clip.AddPaths(ctx.clip(), ptClip, /* closed */ true);
 
-        ClipperOffset offx;
-        offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
-        offx.MiterLimit = stroke_miterlimit;
-
         /* We forward strokes as regular gerber interpolations instead of tracing their outline using clipper when one
          * of these is true:
          *
@@ -362,107 +358,129 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
          * 
          * We have to ignore patterned strokes since then we recursively call down to the pattern renderer. The checks
          * in (2) are to make sure that the semantics of our source SVG align with gerber's aperture semantics. Gerber
-         * cannot express anything other than "round" joins and ends. If a clip is set, the clipped line ends would not
-         * be round so we have to exclude that as well. A possible future optimization would be to check if we actually
-         * did clip the stroke, but that is too expensive since then we'd have to outline it first to account for
-         * stroke thickness and end caps.
+         * cannot express anything other than "round" joins and ends. If any part of the path is clipped, the clipped
+         * line ends would not be round so we have to exclude that as well. In case of outline mode, we accept this
+         * inaccuracies for usability (the only alternative would be to halt and catch fire).
          */
-        bool local_outline_mode = 
-                stroke_color != GRB_PATTERN_FILL && (
-                    ctx.settings().outline_mode || (
-                        ctx.clip().empty() &&
-                        end_type == ClipperLib::etOpenRound &&
-                        join_type == ClipperLib::jtRound));
-
-        /* For stroking we have to separately handle open and closed paths */
-        for (auto &poly : stroke_closed) {
-            if (poly.empty())
-                continue;
-
-            /* Special case: A closed path becomes a number of open paths when it is dashed. */
-            if (dasharray.empty()) {
-
-                if (local_outline_mode) {
-                    stroke_clip.AddPath(poly, ptSubject, /* closed */ true);
-                } else {
-                    offx.AddPath(poly, join_type, etClosedLine);
-                }
-
-            } else {
-                Path poly_copy(poly);
-                poly_copy.push_back(poly[0]);
-                Paths out;
-                dash_path(poly_copy, out, dasharray, stroke_dashoffset);
-
-                if (local_outline_mode) {
-                    stroke_clip.AddPaths(out, ptSubject, /* closed */ false);
-                } else {
-                    offx.AddPaths(out, join_type, end_type);
-                }
-            }
-        }
-
-        for (const auto &poly : stroke_open) {
-            Paths out;
-            dash_path(poly, out, dasharray, stroke_dashoffset);
-
-            if (ctx.settings().outline_mode) {
-                stroke_clip.AddPaths(out, ptSubject, /* closed */ false);
-            } else {
-                offx.AddPaths(out, join_type, end_type);
-            }
-        }
-
-        if (ctx.settings().outline_mode) {
-            stroke_clip.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
-            Paths outline_paths;
-            ctx.sink() << ApertureToken(stroke_width);
-
-            ClosedPathsFromPolyTree(ptree, outline_paths);
-            for (auto &path : outline_paths) {
-                /* we have to connect the last and first point here */
-                if (path.empty())
+        
+        /* Calculate out dashes: A closed path becomes a number of open paths when it is dashed. */
+        if (!dasharray.empty()) {
+            for (auto &poly : stroke_closed) {
+                if (poly.empty()) {
                     continue;
-                path.push_back(path[0]);
-                ctx.sink() << path;
+                }
+
+                poly.push_back(poly[0]);
+                dash_path(poly, stroke_open, dasharray, stroke_dashoffset);
+            }
+        }
+
+        if (stroke_color != GRB_PATTERN_FILL) {
+            cerr << "Analyzing direct conversion of stroke" << endl;
+            cerr << "  stroke_closed.size() = " << stroke_closed.size() << endl;
+            cerr << "  stroke_open.size() = " << stroke_open.size() << endl;
+            ctx.sink() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR);
+
+            ClipperOffset offx;
+            offx.ArcTolerance = 0.01 * clipper_scale; /* see below. */
+            offx.MiterLimit = 10;
+            offx.AddPaths(ctx.clip(), jtRound, etClosedPolygon);
+            PolyTree clip_ptree;
+            offx.Execute(clip_ptree, -0.5 * stroke_width * clipper_scale);
+
+            Paths dilated_clip;
+            ClosedPathsFromPolyTree(clip_ptree, dilated_clip);
+
+            Clipper stroke_clip;
+            stroke_clip.StrictlySimple(true);
+            stroke_clip.AddPaths(dilated_clip, ptClip, /* closed */ true);
+            stroke_clip.AddPaths(stroke_closed, ptSubject, /* closed */ true);
+            stroke_clip.AddPaths(stroke_open, ptSubject, /* closed */ false);
+            stroke_clip.Execute(ctDifference, ptree, pftNonZero, pftNonZero);
+            
+            /* Did any part of the path clip the clip path (which defaults to the document border)? */
+            bool nothing_clipped = ptree.Total() == 0;
+
+            /* Can all joins be mapped? True if either jtRound, or if there are no joins. */
+            bool joins_can_be_mapped = true;
+            if (join_type != ClipperLib::jtRound) {
+                for (auto &p : stroke_closed) {
+                    if (p.size() > 2) {
+                        joins_can_be_mapped = false;
+                    }
+                }
             }
 
-            OpenPathsFromPolyTree(ptree, outline_paths);
-            ctx.sink() << outline_paths;
+            /* Can all ends be mapped? True if either etOpenRound or if there are no ends (we only have closed paths) */
+            bool ends_can_be_mapped = (end_type == ClipperLib::etOpenRound) || (stroke_open.size() == 0);
+            /* Can gerber losslessly express this path? */
+            bool gerber_lossless = nothing_clipped && ends_can_be_mapped && joins_can_be_mapped;
+            
+            cerr << "  nothing_clipped = " << nothing_clipped << endl;
+            cerr << "  ends_can_be_mapped = " << ends_can_be_mapped << endl;
+            cerr << "  joins_can_be_mapped = " << joins_can_be_mapped << endl;
+            /* Accept loss of precision in outline mode. */
+            if (ctx.settings().outline_mode || gerber_lossless ) {
+                cerr << "  -> converting directly" << endl;
+                ctx.sink() << ApertureToken(stroke_width);
+                for (auto &path : stroke_closed) {
+                    if (path.empty()) {
+                        continue;
+                    }
+                    /* We have to manually close these here. */
+                    path.push_back(path[0]);
+                    ctx.sink() << path;
+                }
+                ctx.sink() << stroke_open;
+                return;
+            }
+            cerr << "  -> NOT converting directly" << endl;
+            /* else fall through to normal processing */
+        }
+
+        ClipperOffset offx;
+        offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
+        offx.MiterLimit = stroke_miterlimit;
+
+        /* For stroking we have to separately handle open and closed paths since coincident start and end points may
+         * render differently than joined start and end points. */
+        offx.AddPaths(stroke_closed, join_type, etClosedLine);
+        offx.AddPaths(stroke_open, join_type, end_type);
+        /* Execute clipper offset operation to generate stroke outlines */
+        offx.Execute(ptree, 0.5 * stroke_width * clipper_scale);
+
+        /* Clip. Note that (outside of outline mode) after the clipper outline operation, all we have is closed paths as
+         * any open path's stroke outline is itself a closed path. */
+        if (!ctx.clip().empty()) {
+            Paths outline_paths;
+            PolyTreeToPaths(ptree, outline_paths);
+            Clipper stroke_clip;
+            stroke_clip.StrictlySimple(true);
+            stroke_clip.AddPaths(ctx.clip(), ptClip, /* closed */ true);
+            stroke_clip.AddPaths(outline_paths, ptSubject, /* closed */ true);
+            /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
+            stroke_clip.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
+        }
+
+        /* Call out to pattern tiler for pattern strokes. The stroke's outline becomes the clip here. */
+        if (stroke_color == GRB_PATTERN_FILL) {
+            string stroke_pattern_id = usvg_id_url(node.attribute("stroke").value());
+            Pattern *pattern = lookup_pattern(stroke_pattern_id);
+            if (!pattern) {
+                cerr << "Warning: Fill pattern with id \"" << stroke_pattern_id << "\" not found." << endl;
+
+            } else {
+                Paths clip;
+                PolyTreeToPaths(ptree, clip);
+                RenderContext local_ctx(ctx, xform2d(), clip, true);
+                pattern->tile(local_ctx);
+            }
 
         } else {
-            /* Execute clipper offset operation to generate stroke outlines */
-            offx.Execute(ptree, 0.5 * stroke_width * clipper_scale);
-
-            /* Clip. Note that (outside of outline mode) after the clipper outline operation, all we have is closed paths as
-             * any open path's stroke outline is itself a closed path. */
-            if (!ctx.clip().empty()) {
-                Paths outline_paths;
-                PolyTreeToPaths(ptree, outline_paths);
-                stroke_clip.AddPaths(outline_paths, ptSubject, /* closed */ true);
-                /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
-                stroke_clip.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
-            }
-
-            /* Call out to pattern tiler for pattern strokes. The stroke's outline becomes the clip here. */
-            if (stroke_color == GRB_PATTERN_FILL) {
-                string stroke_pattern_id = usvg_id_url(node.attribute("stroke").value());
-                Pattern *pattern = lookup_pattern(stroke_pattern_id);
-                if (!pattern) {
-                    cerr << "Warning: Fill pattern with id \"" << stroke_pattern_id << "\" not found." << endl;
-
-                } else {
-                    Paths clip;
-                    PolyTreeToPaths(ptree, clip);
-                    RenderContext local_ctx(ctx, xform2d(), clip, true);
-                    pattern->tile(local_ctx);
-                }
-
-            } else {
-                Paths s_polys;
-                dehole_polytree(ptree, s_polys);
-                ctx.sink() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << ApertureToken() << s_polys;
-            }
+            Paths s_polys;
+            dehole_polytree(ptree, s_polys);
+            /* color has alredy been pushed above. */
+            ctx.sink() << ApertureToken() << s_polys;
         }
     }
 }

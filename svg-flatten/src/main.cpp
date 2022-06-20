@@ -246,8 +246,7 @@ int main(int argc, char **argv) {
             cerr << "Info: Loading scaled input @scale=" << scale << endl;
         }
 
-        sink = new SimpleGerberOutput(
-                *out_f, only_polys, 4, precision, scale, {0,0}, args["flip_gerber_polarity"], outline_mode);
+        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, scale, {0,0}, args["flip_gerber_polarity"]);
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
         if (!args["sexp_mod_name"]) {

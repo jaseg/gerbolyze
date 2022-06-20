@@ -46,7 +46,9 @@ namespace gerbolyze {
 
     class ApertureToken {
     public:
-        ApertureToken(double size=0.0) : m_size(size) {}
+        ApertureToken() : m_has_aperture(false) {}
+        ApertureToken(double size) : m_has_aperture(true), m_size(size) {}
+        bool m_has_aperture = false;
         double m_size = 0.0;
     };
 
@@ -317,7 +319,7 @@ namespace gerbolyze {
 
     class SimpleGerberOutput : public StreamPolygonSink {
     public:
-        SimpleGerberOutput(std::ostream &out, bool only_polys=false, int digits_int=4, int digits_frac=6, double scale=1.0, d2p offset={0,0}, bool flip_polarity=false, bool outline_mode=false);
+        SimpleGerberOutput(std::ostream &out, bool only_polys=false, int digits_int=4, int digits_frac=6, double scale=1.0, d2p offset={0,0}, bool flip_polarity=false);
         virtual ~SimpleGerberOutput() {}
         virtual SimpleGerberOutput &operator<<(const Polygon &poly);
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
@@ -336,8 +338,8 @@ namespace gerbolyze {
         d2p m_offset;
         double m_scale;
         bool m_flip_pol;
-        bool m_outline_mode;
         double m_current_aperture;
+        bool m_aperture_set;
         bool m_macro_aperture;
         unsigned int m_aperture_num;
     };

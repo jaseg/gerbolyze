@@ -50,7 +50,10 @@ PolygonScaler &PolygonScaler::operator<<(GerberPolarityToken pol) {
 }
 
 PolygonScaler &PolygonScaler::operator<<(const ApertureToken &tok) {
-    m_sink << ApertureToken(tok.m_size * m_scale);
+    if (tok.m_has_aperture)
+        m_sink << ApertureToken(tok.m_size * m_scale);
+    else
+        m_sink << tok;
     return *this;
 }
 

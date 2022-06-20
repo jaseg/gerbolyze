@@ -27,15 +27,15 @@
 using namespace gerbolyze;
 using namespace std;
 
-SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits_int, int digits_frac, double scale, d2p offset, bool flip_polarity, bool outline_mode)
+SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits_int, int digits_frac, double scale, d2p offset, bool flip_polarity)
     : StreamPolygonSink(out, only_polys),
     m_digits_int(digits_int),
     m_digits_frac(digits_frac),
     m_offset(offset),
     m_scale(scale),
     m_flip_pol(flip_polarity),
-    m_outline_mode(outline_mode),
     m_current_aperture(0.0),
+    m_aperture_set(false),
     m_macro_aperture(false),
     m_aperture_num(10) /* See gerber standard */
 {
@@ -63,27 +63,26 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
 }
 
 SimpleGerberOutput& SimpleGerberOutput::operator<<(const ApertureToken &ap) {
-    if (!m_macro_aperture && ap.m_size == m_current_aperture) {
+    if (m_aperture_set && !m_macro_aperture && ap.m_size == m_current_aperture) {
         return *this;
     }
 
+    m_aperture_set = ap.m_has_aperture;
     m_macro_aperture = false;
-    m_current_aperture = ap.m_size;
-    m_aperture_num += 1;
 
-    double size = (ap.m_size > 0.0) ? ap.m_size : 0.05;
-    m_out << "%ADD" << m_aperture_num << "C," << size << "*%" << endl;
-    m_out << "D" << m_aperture_num << "*" << endl;
+    if (m_aperture_set) {
+        m_current_aperture = ap.m_size;
+        m_aperture_num += 1;
 
+        double size = (ap.m_size > 0.0) ? ap.m_size : 0.05;
+        m_out << "%ADD" << m_aperture_num << "C," << size << "*%" << endl;
+        m_out << "D" << m_aperture_num << "*" << endl;
+    }
     return *this;
 }
 
 SimpleGerberOutput& SimpleGerberOutput::operator<<(GerberPolarityToken pol) {
     assert(pol == GRB_POL_DARK || pol == GRB_POL_CLEAR);
-
-    if (m_outline_mode) {
-        assert(pol == GRB_POL_DARK);
-    }
 
     if ((pol == GRB_POL_DARK) != m_flip_pol) {
         m_out << "%LPD*%" << endl;
@@ -94,15 +93,15 @@ SimpleGerberOutput& SimpleGerberOutput::operator<<(GerberPolarityToken pol) {
     return *this;
 }
 SimpleGerberOutput& SimpleGerberOutput::operator<<(const Polygon &poly) {
-    if (poly.size() < 3 && !m_outline_mode) {
-        cerr << "Warning: " << poly.size() << "-element polygon passed to SimpleGerberOutput" << endl;
+    if (poly.size() < 3 && !m_aperture_set) {
+        cerr << "Warning: " << poly.size() << "-element polygon passed to SimpleGerberOutput in region mode" << endl;
         return *this;
     }
 
     /* NOTE: Clipper and gerber both have different fixed-point scales. We get points in double mm. */
     double x = round((poly[0][0] * m_scale + m_offset[0]) * m_gerber_scale);
     double y = round((m_height - poly[0][1] * m_scale + m_offset[1]) * m_gerber_scale);
-    if (!m_outline_mode) {
+    if (!m_aperture_set) {
         m_out << "G36*" << endl;
     }
 
@@ -119,7 +118,7 @@ SimpleGerberOutput& SimpleGerberOutput::operator<<(const Polygon &poly) {
               << "D01*" << endl;
     }
 
-    if (!m_outline_mode) {
+    if (!m_aperture_set) {
         m_out << "G37*" << endl;
     }
 
@@ -132,6 +131,8 @@ void SimpleGerberOutput::footer_impl() {
 
 
 SimpleGerberOutput &SimpleGerberOutput::operator<<(const FlashToken &tok) {
+    assert(m_aperture_set);
+
     double x = round((tok.m_offset[0] * m_scale + m_offset[0]) * m_gerber_scale);
     double y = round((m_height - tok.m_offset[1] * m_scale + m_offset[1]) * m_gerber_scale);
 
