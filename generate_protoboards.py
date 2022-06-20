@@ -45,13 +45,14 @@ smd_basic = {
         'smd650': 'smd_sot_650um',
         'smd500': 'smd_sop_500um' }
 
-lengths_large = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 150, 160, 180, 200, 250, 300]
+#lengths_large = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 150, 160, 180, 200, 250, 300]
+lengths_large = [30, 40, 50, 60, 80, 100, 120, 150, 160]
 sizes_large = list(itertools.combinations(lengths_large, 2))
 
-lengths_small = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100]
+lengths_small = [15, 20, 25, 30, 40, 50, 60, 80, 100]
 sizes_small = list(itertools.combinations(lengths_small, 2))
 
-lengths_medium = [40, 45, 50, 60, 70, 80, 90, 100, 120, 150, 160]
+lengths_medium = lengths_large
 sizes_medium = list(itertools.combinations(lengths_medium, 2))
 
 def generate(outdir, fun, sizes=sizes_large, name=None):
@@ -150,7 +151,8 @@ def generate_all(outdir):
 
     def gen(size, mounting_holes=None):
         w, h = size
-        f = max(1.27*5, min(30, h*0.3)) f2 = max(1.27*5, min(25, w*0.1))
+        f = max(1.27*5, min(30, h*0.3))
+        f2 = max(1.27*5, min(25, w*0.1))
         return ProtoBoard(common_defs, f'tht50@10mm | tht | ((smd100r + smd100r) / (smd950r + smd950r) / (smd800 + smd800)@{f2}mm / (smd650 + smd650)@{f2}mm / (smd500 + smd500)@{f2}mm)@{f}mm', mounting_holes, border=1).generate(*size)
     generate(outdir / 'mixed', gen, [ (w, h) for w, h in sizes_medium if w > 60 and h > 60 ], name=f'all_tht_and_smd')
 
