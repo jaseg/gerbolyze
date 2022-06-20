@@ -35,6 +35,17 @@ class CirclePattern(Pattern):
     def content(self):
         return f'<circle cx="{self.w/2}" cy="{self.h/2}" r="{self.d/2}"/>'
 
+class RectPattern(Pattern):
+    def __init__(self, rw, rh, w, h):
+        self.rw, self.rh = rw, rh
+        self.w, self.h = w, h
+
+    @property
+    def content(self):
+        x = (self.w - self.rw) / 2
+        y = (self.h - self.rh) / 2
+        return f'<rect x="{x}" y="{y}" width="{self.rw}" height="{self.rh}"/>'
+
 make_layer = lambda layer_name, content: \
   f'<g id="g-{layer_name.replace(" ", "-")}" inkscape:label="{layer_name}" inkscape:groupmode="layer">{svg_str(content)}</g>'
 
@@ -59,9 +70,13 @@ svg_template = textwrap.dedent('''
 ''').strip()
 
 class PatternProtoArea:
-    def __init__(self, pitch_x, pitch_y=None):
+    def __init__(self, pitch_x, pitch_y=None, border=None):
         self.pitch_x = pitch_x
         self.pitch_y = pitch_y or pitch_x
+        match border:
+            case None: self.border = (0, 0, 0, 0)
+            case (t, r, b, l): self.border = border
+            case _: self.border = (border, border, border, border)
 
     @property
     def pitch(self):
@@ -70,6 +85,9 @@ class PatternProtoArea:
         return self.pitch_x
 
     def fit_rect(self, x, y, w, h, center=True):
+        t, r, b, l = self.border
+        x, y, w, h = (x+l), (y+t), (w-l-r), (h-t-b)
+
         w_mod, h_mod = round((w + 5e-7) % self.pitch_x, 6), round((h + 5e-7) % self.pitch_y, 6)
         w_fit, h_fit = round(w - w_mod, 6), round(h - h_mod, 6)
 
@@ -81,9 +99,24 @@ class PatternProtoArea:
         else:
             return x, y, w_fit, h_fit
 
+    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
+        return {}
+
+class EmptyProtoArea:
+    def __init__(self, copper=False, border=None):
+        match border:
+            case None: self.border = (0, 0, 0, 0)
+            case (t, r, b, l): self.border = border
+            case _: self.border = (border, border, border, border)
+
+    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
+        t, r, b, l = self.border
+        x, y, w, h = x+l, y+t, w-l-r, h-t-b
+        return { 'top copper': f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {clip} fill="black"/>' }
+
 class THTProtoAreaCircles(PatternProtoArea):
-    def __init__(self, pad_dia=2.0, drill=1.0, pitch=2.54, sides='both', plated=True):
-        super().__init__(pitch)
+    def __init__(self, pad_dia=2.0, drill=1.0, pitch=2.54, sides='both', plated=True, border=None):
+        super().__init__(pitch, border=border)
         self.pad_dia = pad_dia
         self.drill = drill
         self.drill_pattern = CirclePattern(self.drill, self.pitch)
@@ -92,7 +125,7 @@ class THTProtoAreaCircles(PatternProtoArea):
         self.plated = plated
         self.sides = sides
     
-    def generate(self, x, y, w, h, center=True, clip=''):
+    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
         x, y, w, h = self.fit_rect(x, y, w, h, center)
         drill = 'plated drill' if self.plated else 'nonplated drill'
 
@@ -106,13 +139,31 @@ class THTProtoAreaCircles(PatternProtoArea):
 
         if self.sides in ('top', 'both'):
             d['top copper'] = make_rect(pad_id, x, y, w, h, clip)
+            d['top mask'] = make_rect(pad_id, x, y, w, h, clip)
         if self.sides in ('bottom', 'both'):
             d['bottom copper'] = make_rect(pad_id, x, y, w, h, clip)
+            d['bottom mask'] = make_rect(pad_id, x, y, w, h, clip)
 
         return d
 
     def __repr__(self):
         return f'THTCircles(d={self.pad_dia}, h={self.drill}, p={self.pitch}, sides={self.sides}, plated={self.plated})'
+
+class SMDProtoAreaRectangles(PatternProtoArea):
+    def __init__(self, pitch_x, pitch_y, w=None, h=None, border=None):
+        super().__init__(pitch_x, pitch_y, border=border)
+        w = w or pitch_x - 0.15
+        h = h or pitch_y - 0.15
+        self.w, self.h = w, h
+        self.pad_pattern = RectPattern(w, h, pitch_x, pitch_y)
+        self.patterns = [self.pad_pattern]
+
+    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
+        x, y, w, h = self.fit_rect(x, y, w, h, center)
+        pad_id = str(uuid.uuid4())
+        return {'defs': [self.pad_pattern.svg_def(pad_id, x, y)],
+            'top copper': make_rect(pad_id, x, y, w, h, clip),
+            'top mask': make_rect(pad_id, x, y, w, h, clip)}
 
 LAYERS = [
         'top paste',
@@ -129,10 +180,15 @@ LAYERS = [
         ]
 
 class ProtoBoard:
-    def __init__(self, defs, expr, mounting_holes=None):
+    def __init__(self, defs, expr, mounting_holes=None, border=None, center=True):
         self.defs = eval_defs(defs)
         self.layout = parse_layout(expr)
         self.mounting_holes = mounting_holes
+        self.center = center
+        match border:
+            case None: self.border = (0, 0, 0, 0)
+            case (t, r, b, l): self.border = border
+            case _: self.border = (border, border, border, border)
 
     def generate(self, w, h):
         out = {l: [] for l in LAYERS}
@@ -152,7 +208,8 @@ class ProtoBoard:
                 f'<circle cx="{w-o}" cy="{h-o}" r="{d/2}"/>',
                 f'<circle cx="{o}" cy="{h-o}" r="{d/2}"/>' ])
 
-        for layer_dict in self.layout.generate(0, 0, w, h, self.defs, clip):
+        t, r, b, l = self.border
+        for layer_dict in self.layout.generate(l, t, w-l-r, h-t-b, self.defs, self.center, clip):
             for l in LAYERS:
                 if l in layer_dict:
                     out[l].append(layer_dict[l])
@@ -193,13 +250,13 @@ class PropLayout:
         if len(content) != len(proportions):
             raise ValueError('proportions and content must have same length')
 
-    def generate(self, x, y, w, h, defs, clip=''):
+    def generate(self, x, y, w, h, defs, center=True, clip=''):
         for (c_x, c_y, c_w, c_h), child in self.layout_2d(x, y, w, h):
             if isinstance(child, str):
-                yield defs[child].generate(c_x, c_y, c_w, c_h, defs, clip)
+                yield defs[child].generate(c_x, c_y, c_w, c_h, defs, center, clip)
 
             else:
-                yield from child.generate(c_x, c_y, c_w, c_h, defs, clip)
+                yield from child.generate(c_x, c_y, c_w, c_h, defs, center, clip)
 
     def layout_2d(self, x, y, w, h):
         for l, child in zip(self.layout(w if self.direction == 'h' else h), self.content):
@@ -298,7 +355,9 @@ def parse_layout(expr):
         raise SyntaxError('Invalid layout expression') from e
 
 PROTO_AREA_TYPES = {
-    'THTCircles': THTProtoAreaCircles
+    'THTCircles': THTProtoAreaCircles,
+    'SMDPads': SMDProtoAreaRectangles,
+    'Empty': EmptyProtoArea,
 }
 
 def eval_defs(defs):
@@ -358,5 +417,7 @@ if __name__ == '__main__':
 #        print(line, '->', eval_defs(line))
 #    print()
 #    print('===== Proto board =====')
-    b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)', 'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0))
+    #b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)',
+    #        'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0), border=2, center=False)
+    b = ProtoBoard('smd = SMDPads(0.8, 1.27)', 'smd', mounting_holes=(3.2, 5.0, 5.0), border=2)
     print(b.generate(80, 60))
