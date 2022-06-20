@@ -376,9 +376,9 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         }
 
         if (stroke_color != GRB_PATTERN_FILL) {
-            cerr << "Analyzing direct conversion of stroke" << endl;
-            cerr << "  stroke_closed.size() = " << stroke_closed.size() << endl;
-            cerr << "  stroke_open.size() = " << stroke_open.size() << endl;
+            // cerr << "Analyzing direct conversion of stroke" << endl;
+            // cerr << "  stroke_closed.size() = " << stroke_closed.size() << endl;
+            // cerr << "  stroke_open.size() = " << stroke_open.size() << endl;
             ctx.sink() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR);
 
             ClipperOffset offx;
@@ -416,12 +416,12 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             /* Can gerber losslessly express this path? */
             bool gerber_lossless = nothing_clipped && ends_can_be_mapped && joins_can_be_mapped;
             
-            cerr << "  nothing_clipped = " << nothing_clipped << endl;
-            cerr << "  ends_can_be_mapped = " << ends_can_be_mapped << endl;
-            cerr << "  joins_can_be_mapped = " << joins_can_be_mapped << endl;
+            // cerr << "  nothing_clipped = " << nothing_clipped << endl;
+            // cerr << "  ends_can_be_mapped = " << ends_can_be_mapped << endl;
+            // cerr << "  joins_can_be_mapped = " << joins_can_be_mapped << endl;
             /* Accept loss of precision in outline mode. */
             if (ctx.settings().outline_mode || gerber_lossless ) {
-                cerr << "  -> converting directly" << endl;
+                // cerr << "  -> converting directly" << endl;
                 ctx.sink() << ApertureToken(stroke_width);
                 for (auto &path : stroke_closed) {
                     if (path.empty()) {
@@ -434,7 +434,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 ctx.sink() << stroke_open;
                 return;
             }
-            cerr << "  -> NOT converting directly" << endl;
+            // cerr << "  -> NOT converting directly" << endl;
             /* else fall through to normal processing */
         }
 

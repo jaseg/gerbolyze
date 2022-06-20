@@ -144,6 +144,7 @@ SimpleGerberOutput &SimpleGerberOutput::operator<<(const FlashToken &tok) {
 }
 
 SimpleGerberOutput &SimpleGerberOutput::operator<<(const PatternToken &tok) {
+    m_aperture_set = true;
     m_macro_aperture = true;
     m_aperture_num += 1;
 
