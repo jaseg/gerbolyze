@@ -557,3 +557,14 @@ gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform
     m_mat.transform(transform);
 }
 
+gerbolyze::RenderContext::RenderContext(RenderContext &parent, PolygonSink &sink, ClipperLib::Paths &clip) :
+    m_sink(sink),
+    m_settings(parent.settings()),
+    m_mat(parent.mat()),
+    m_root(false),
+    m_included(false),
+    m_sel(parent.sel()),
+    m_clip(clip)
+{
+}
+

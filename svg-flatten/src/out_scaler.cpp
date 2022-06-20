@@ -69,3 +69,26 @@ PolygonScaler &PolygonScaler::operator<<(const DrillToken &tok) {
     m_sink << DrillToken(new_center);
     return *this;
 }
+
+PolygonScaler &PolygonScaler::operator<<(const FlashToken &tok) {
+    d2p new_offset = { tok.m_offset[0] * m_scale, tok.m_offset[1] * m_scale};
+    m_sink << FlashToken(new_offset);
+    return *this;
+}
+
+PolygonScaler &PolygonScaler::operator<<(const PatternToken &tok) {
+    vector<pair<Polygon, GerberPolarityToken>> new_polys;
+    for (size_t i=0; i<tok.m_polys.size(); i++) {
+        Polygon poly(tok.m_polys[i].first.size());
+        for (size_t j=0; j<poly.size(); j++) {
+            d2p new_point = tok.m_polys[i].first[j];
+            new_point[0] *= m_scale;
+            new_point[1] *= m_scale;
+            poly[j] = new_point;
+        }
+        new_polys.emplace_back(pair<Polygon, GerberPolarityToken>{poly, tok.m_polys[i].second});
+    }
+    m_sink << PatternToken(new_polys);
+    return *this;
+}
+

@@ -76,6 +76,9 @@ int main(int argc, char **argv) {
             {"pattern_complete_tiles_only", {"--pattern-complete-tiles-only"},
                 "Break SVG spec by only rendering complete pattern tiles, i.e. pattern tiles that entirely fit the target area, instead of performing clipping.",
                 0},
+            {"use_apertures_for_patterns", {"--use-apertures-for-patterns"},
+                "Try to use apertures to represent svg patterns where possible.",
+                0},
             {"min_feature_size", {"-d", "--trace-space"},
                 "Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.",
                 1},
@@ -84,6 +87,12 @@ int main(int argc, char **argv) {
                 1},
             {"drill_test_polsby_popper_tolerance", {"--drill-test-tolerance"},
                 "Tolerance for identifying circles as drills in outline mode",
+                1},
+            {"aperture_circle_test_tolerance", {"--circle-test-tolerance"},
+                "Tolerance for identifying circles as apertures in patterns (--use-apertures-for-patterns)",
+                1},
+            {"aperture_rect_test_tolerance", {"--rect-test-tolerance"},
+                "Tolerance for identifying rectangles as apertures in patterns (--use-apertures-for-patterns)",
                 1},
             {"no_header", {"--no-header"},
                 "Do not export output format header/footer, only export the primitives themselves",
@@ -297,7 +306,9 @@ int main(int argc, char **argv) {
 
     double min_feature_size = args["min_feature_size"].as<double>(0.1); /* mm */
     double curve_tolerance = args["curve_tolerance"].as<double>(0.1); /* mm */
-    double drill_test_polsby_popper_tolerance = args["drill_test_polsby_popper_tolerance"].as<double>(0.1); /* mm */
+    double drill_test_polsby_popper_tolerance = args["drill_test_polsby_popper_tolerance"].as<double>(0.1);
+    double aperture_rect_test_tolerance = args["aperture_rect_test_tolerance"].as<double>(0.1);
+    double aperture_circle_test_tolerance = args["aperture_circle_test_tolerance"].as<double>(0.1);
 
     string ending = "";
     auto idx = in_f_name.rfind(".");
@@ -427,15 +438,19 @@ int main(int argc, char **argv) {
     VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"].as<string>() : "");
     bool flip_svg_colors = args["flip_svg_color_interpretation"];
     bool pattern_complete_tiles_only = args["pattern_complete_tiles_only"];
+    bool use_apertures_for_patterns = args["use_apertures_for_patterns"];
 
     RenderSettings rset {
         min_feature_size,
         curve_tolerance,
         drill_test_polsby_popper_tolerance,
+        aperture_circle_test_tolerance,
+        aperture_rect_test_tolerance,
         vec_sel,
         outline_mode,
         flip_svg_colors,
         pattern_complete_tiles_only,
+        use_apertures_for_patterns,
     };
 
     SVGDocument doc;

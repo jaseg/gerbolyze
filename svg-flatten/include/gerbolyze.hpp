@@ -56,6 +56,18 @@ namespace gerbolyze {
         d2p m_center;
     };
 
+    class PatternToken {
+    public:
+        PatternToken(vector<pair<Polygon, GerberPolarityToken>> &polys) : m_polys(polys) {}
+        vector<pair<Polygon, GerberPolarityToken>> &m_polys;
+    };
+
+    class FlashToken {
+    public:
+        FlashToken(d2p offset) : m_offset(offset) {}
+        d2p m_offset;
+    };
+
     class PolygonSink {
         public:
             virtual ~PolygonSink() {}
@@ -80,6 +92,11 @@ namespace gerbolyze {
             virtual PolygonSink &operator<<(GerberPolarityToken pol) = 0;
             virtual PolygonSink &operator<<(const ApertureToken &) { return *this; };
             virtual PolygonSink &operator<<(const DrillToken &) { return *this; };
+            virtual PolygonSink &operator<<(const FlashToken &) { return *this; };
+            virtual PolygonSink &operator<<(const PatternToken &) {
+                cerr << "Error: pattern to aperture mapping is not supporte for this output." << endl;
+                return *this;
+            };
             virtual void footer() {}
     };
 
@@ -129,6 +146,8 @@ namespace gerbolyze {
             virtual PolygonScaler &operator<<(GerberPolarityToken pol);
             virtual PolygonScaler &operator<<(const ApertureToken &tok);
             virtual PolygonScaler &operator<<(const DrillToken &tok);
+            virtual PolygonScaler &operator<<(const FlashToken &tok);
+            virtual PolygonScaler &operator<<(const PatternToken &tok);
             virtual void footer();
 
         private:
@@ -194,10 +213,13 @@ namespace gerbolyze {
         double m_minimum_feature_size_mm = 0.1;
         double curve_tolerance_mm;
         double drill_test_polsby_popper_tolerance = 0.01;
+        double aperture_circle_test_tolerance = 0.01;
+        double aperture_rect_test_tolerance = 0.01;
         VectorizerSelectorizer &m_vec_sel;
         bool outline_mode = false;
         bool flip_color_interpretation = false;
         bool pattern_complete_tiles_only = false;
+        bool use_apertures_for_patterns = false;
     };
 
     class RenderContext {
@@ -212,6 +234,9 @@ namespace gerbolyze {
                     xform2d transform,
                     ClipperLib::Paths &clip,
                     bool included);
+            RenderContext(RenderContext &parent,
+                    PolygonSink &sink,
+                    ClipperLib::Paths &clip);
 
             PolygonSink &sink() { return m_sink; }
             const ElementSelector &sel() { return m_sel; }
@@ -305,6 +330,8 @@ namespace gerbolyze {
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
         virtual SimpleGerberOutput &operator<<(const DrillToken &tok);
         virtual SimpleGerberOutput &operator<<(const ApertureToken &ap);
+        virtual SimpleGerberOutput &operator<<(const FlashToken &tok);
+        virtual SimpleGerberOutput &operator<<(const PatternToken &tok);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
 
@@ -319,6 +346,7 @@ namespace gerbolyze {
         bool m_flip_pol;
         bool m_outline_mode;
         double m_current_aperture;
+        bool m_macro_aperture;
         unsigned int m_aperture_num;
     };
 

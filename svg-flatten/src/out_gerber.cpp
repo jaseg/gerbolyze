@@ -36,6 +36,7 @@ SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits
     m_flip_pol(flip_polarity),
     m_outline_mode(outline_mode),
     m_current_aperture(0.0),
+    m_macro_aperture(false),
     m_aperture_num(10) /* See gerber standard */
 {
     assert(1 <= digits_int && digits_int <= 9);
@@ -62,10 +63,11 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
 }
 
 SimpleGerberOutput& SimpleGerberOutput::operator<<(const ApertureToken &ap) {
-    if (ap.m_size == m_current_aperture) {
+    if (!m_macro_aperture && ap.m_size == m_current_aperture) {
         return *this;
     }
 
+    m_macro_aperture = false;
     m_current_aperture = ap.m_size;
     m_aperture_num += 1;
 
@@ -137,5 +139,39 @@ SimpleGerberOutput &SimpleGerberOutput::operator<<(const DrillToken &tok) {
 
 void SimpleGerberOutput::footer_impl() {
     m_out << "M02*" << endl;
+}
+
+
+SimpleGerberOutput &SimpleGerberOutput::operator<<(const FlashToken &tok) {
+    double x = round((tok.m_offset[0] * m_scale + m_offset[0]) * m_gerber_scale);
+    double y = round((m_height - tok.m_offset[1] * m_scale + m_offset[1]) * m_gerber_scale);
+
+    m_out << "X" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal /* isn't C++ a marvel of engineering? */ << (long long int)x
+          << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal << (long long int)y
+          << "D03*" << endl;
+
+    return *this;
+}
+
+SimpleGerberOutput &SimpleGerberOutput::operator<<(const PatternToken &tok) {
+    m_macro_aperture = true;
+    m_aperture_num += 1;
+
+    m_out << "%AMmacro" << m_aperture_num << "*" << endl;
+
+    for (auto &pair : tok.m_polys) {
+        int exposure = (pair.second == GRB_POL_DARK) ? 1 : 0;
+        m_out << 4 << "," << exposure << "," << pair.first.size();
+        for (auto &pt : pair.first) {
+            m_out << "," << pt[0] << "," << pt[1];
+        }
+        m_out << "," << pair.first.back()[0] << "," << pair.first.back()[1] << "*" << endl;
+    }
+
+    m_out << "%" << endl;
+    m_out << "%ADD" << m_aperture_num << "macro" << m_aperture_num << "*%" << endl;
+    m_out << "D" << m_aperture_num << "*" << endl;
+
+    return *this;
 }
 

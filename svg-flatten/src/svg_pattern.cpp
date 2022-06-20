@@ -25,7 +25,7 @@
 
 using namespace std;
 
-gerbolyze::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : _node(node), doc(&doc) {
+gerbolyze::Pattern::Pattern(const pugi::xml_node &node, SVGDocument &doc) : m_node(node), doc(&doc) {
     /* Read pattern attributes from SVG node */
     x = usvg_double_attr(node, "x");
     y = usvg_double_attr(node, "y");
@@ -87,6 +87,17 @@ void gerbolyze::Pattern::tile (gerbolyze::RenderContext &ctx) {
     /* Switch to pattern coordinates */
     RenderContext pat_ctx(ctx, patternTransform);
 
+    if (ctx.settings().use_apertures_for_patterns) {
+        vector<pair<Polygon, GerberPolarityToken>> out;
+        LambdaPolygonSink list_sink([&out](const Polygon &poly, GerberPolarityToken pol) {
+                out.emplace_back(pair<Polygon, GerberPolarityToken>{poly, pol});
+            });
+        ClipperLib::Paths empty_clip;
+        RenderContext macro_ctx(pat_ctx, list_sink, empty_clip);
+        doc->export_svg_group(macro_ctx, m_node);
+        pat_ctx.sink() << PatternToken(out);
+    }
+
     /* Iterate over all pattern tiles in pattern coordinates */
     for (double inst_off_x = fmod(inst_x, inst_w) - 2*inst_w;
             inst_off_x < bx + bw + 2*inst_w;
@@ -131,7 +142,12 @@ void gerbolyze::Pattern::tile (gerbolyze::RenderContext &ctx) {
                 }
             }
 
-            doc->export_svg_group(elem_ctx, _node);
+            if (ctx.settings().use_apertures_for_patterns) {
+                /* use inst_h offset to compensate for gerber <-> svg "y" coordinate spaces */
+                elem_ctx.sink() << FlashToken(elem_ctx.mat().doc2phys({0, inst_h}));
+            } else {
+                doc->export_svg_group(elem_ctx, m_node);
+            }
         }
     }
 }

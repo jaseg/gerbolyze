@@ -47,7 +47,7 @@ private:
     xform2d patternTransform_inv;
     enum RelativeUnits patternUnits;
     enum RelativeUnits patternContentUnits;
-    const pugi::xml_node _node;
+    const pugi::xml_node m_node;
     SVGDocument *doc = nullptr;
 };
 
