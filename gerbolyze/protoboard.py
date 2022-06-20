@@ -287,6 +287,39 @@ class PropLayout:
         children = ', '.join( f'{elem}:{width}' for elem, width in zip(self.content, self.proportions))
         return f'PropLayout[{self.direction.upper()}]({children})'
 
+class TwoSideLayout:
+    def __init__(self, top, bottom):
+        self.top, self.bottom = top, bottom
+
+    def flip(self, defs):
+        out = dict(defs)
+        for layer in ('copper', 'mask', 'silk', 'paste'):
+            top, bottom = f'top {layer}', f'bottom {layer}'
+            tval, bval = defs.get(top), defs.get(bottom)
+
+            if tval:
+                defs[bottom] = tval
+            elif bottom in defs:
+                del defs[bottom]
+
+            if bval:
+                defs[top] = bval
+            elif top in defs:
+                del defs[top]
+
+        return defs
+
+    def generate(self, x, y, w, h, defs, center=True, clip=''):
+        if isinstance(self.top, str):
+            yield defs[self.top].generate(x, y, w, h, defs, center, clip)
+        else:
+            yield from self.top.generate(x, y, w, h, defs, center, clip)
+
+        if isinstance(self.bottom, str):
+            yield self.flip(defs[self.bottom].generate(x, y, w, h, defs, center, clip))
+        else:
+            yield from map(self.flip, self.bottom.generate(x, y, w, h, defs, center, clip))
+
 def _map_expression(node):
     match node:
         case ast.Name():
@@ -295,7 +328,7 @@ def _map_expression(node):
         case ast.Constant():
             return node.value
 
-        case ast.BinOp(op=ast.BitOr()) | ast.BinOp(op=ast.BitAnd()):
+        case ast.BinOp(op=ast.BitOr()) | ast.BinOp(op=ast.BitAnd()) | ast.BinOp(op=ast.Add()):
             left_prop = right_prop = None
 
             left, right = node.left, node.right
@@ -308,9 +341,9 @@ def _map_expression(node):
                 right_prop = _map_expression(right.right)
                 right = right.left
 
-            direction = 'h' if isinstance(node.op, ast.BitOr) else 'v'
             left, right = _map_expression(left), _map_expression(right)
 
+            direction = 'h' if isinstance(node.op, ast.BitOr) else 'v'
             if isinstance(left, PropLayout) and left.direction == direction and left_prop is None:
                 left.content.append(right)
                 left.proportions.append(right_prop)
@@ -320,6 +353,12 @@ def _map_expression(node):
                 right.content.insert(0, left)
                 right.proportions.insert(0, left_prop)
                 return right
+
+            elif isinstance(node.op, ast.Add):
+                if left_prop or right_prop:
+                    raise SyntaxError(f'Proportions ("@") not supported for two-side layout ("+")')
+
+                return TwoSideLayout(left, right)
 
             else:
                 return PropLayout([left, right], direction, [left_prop, right_prop])
@@ -419,5 +458,5 @@ if __name__ == '__main__':
 #    print('===== Proto board =====')
     #b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)',
     #        'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0), border=2, center=False)
-    b = ProtoBoard('smd = SMDPads(0.8, 1.27)', 'smd', mounting_holes=(3.2, 5.0, 5.0), border=2)
+    b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(0.8, 1.27); smd2 = SMDPads(0.95, 1.895)', 'tht@1in | (smd1 + smd2)', mounting_holes=(3.2, 5.0, 5.0), border=2)
     print(b.generate(80, 60))
