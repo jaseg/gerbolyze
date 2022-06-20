@@ -354,6 +354,26 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
         offx.MiterLimit = stroke_miterlimit;
 
+        /* We forward strokes as regular gerber interpolations instead of tracing their outline using clipper when one
+         * of these is true:
+         *
+         *  (1) Global outline mode is enabled (-o gerber-outline).
+         *  (2) The stroke has round joins and ends and no clip is set.
+         * 
+         * We have to ignore patterned strokes since then we recursively call down to the pattern renderer. The checks
+         * in (2) are to make sure that the semantics of our source SVG align with gerber's aperture semantics. Gerber
+         * cannot express anything other than "round" joins and ends. If a clip is set, the clipped line ends would not
+         * be round so we have to exclude that as well. A possible future optimization would be to check if we actually
+         * did clip the stroke, but that is too expensive since then we'd have to outline it first to account for
+         * stroke thickness and end caps.
+         */
+        bool local_outline_mode = 
+                stroke_color != GRB_PATTERN_FILL && (
+                    ctx.settings().outline_mode || (
+                        ctx.clip().empty() &&
+                        end_type == ClipperLib::etOpenRound &&
+                        join_type == ClipperLib::jtRound));
+
         /* For stroking we have to separately handle open and closed paths */
         for (auto &poly : stroke_closed) {
             if (poly.empty())
@@ -362,8 +382,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             /* Special case: A closed path becomes a number of open paths when it is dashed. */
             if (dasharray.empty()) {
 
-                if (ctx.settings().outline_mode && stroke_color != GRB_PATTERN_FILL) {
-                    cerr << "add closed path of size " << poly.size() << endl;
+                if (local_outline_mode) {
                     stroke_clip.AddPath(poly, ptSubject, /* closed */ true);
                 } else {
                     offx.AddPath(poly, join_type, etClosedLine);
@@ -375,8 +394,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 Paths out;
                 dash_path(poly_copy, out, dasharray, stroke_dashoffset);
 
-                if (ctx.settings().outline_mode && stroke_color != GRB_PATTERN_FILL) {
-                    cerr << "add open path dashes of size " << out.size() << endl;
+                if (local_outline_mode) {
                     stroke_clip.AddPaths(out, ptSubject, /* closed */ false);
                 } else {
                     offx.AddPaths(out, join_type, end_type);
@@ -388,15 +406,14 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             Paths out;
             dash_path(poly, out, dasharray, stroke_dashoffset);
 
-            if (ctx.settings().outline_mode && stroke_color != GRB_PATTERN_FILL) {
-                cerr << "add open paths of size " << out.size() << endl;
+            if (ctx.settings().outline_mode) {
                 stroke_clip.AddPaths(out, ptSubject, /* closed */ false);
             } else {
                 offx.AddPaths(out, join_type, end_type);
             }
         }
 
-        if (ctx.settings().outline_mode && stroke_color != GRB_PATTERN_FILL) {
+        if (ctx.settings().outline_mode) {
             stroke_clip.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
             Paths outline_paths;
             ctx.sink() << ApertureToken(stroke_width);
