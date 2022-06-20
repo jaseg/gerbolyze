@@ -104,15 +104,19 @@ class PatternProtoArea:
 
 class EmptyProtoArea:
     def __init__(self, copper=False, border=None):
+        self.copper = copper
         match border:
             case None: self.border = (0, 0, 0, 0)
             case (t, r, b, l): self.border = border
             case _: self.border = (border, border, border, border)
 
     def generate(self, x, y, w, h, defs=None, center=True, clip=''):
-        t, r, b, l = self.border
-        x, y, w, h = x+l, y+t, w-l-r, h-t-b
-        return { 'top copper': f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {clip} fill="black"/>' }
+        if self.copper:
+            t, r, b, l = self.border
+            x, y, w, h = x+l, y+t, w-l-r, h-t-b
+            return { 'top copper': f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {clip} fill="black"/>' }
+        else:
+            return {}
 
 class THTProtoAreaCircles(PatternProtoArea):
     def __init__(self, pad_dia=2.0, drill=1.0, pitch=2.54, sides='both', plated=True, border=None):
@@ -196,9 +200,20 @@ class ProtoBoard:
         clip = ''
 
         if self.mounting_holes:
-            d, o, k = self.mounting_holes # diameter, offset from edge, keepout to proto area
+            d, o, *k = self.mounting_holes # diameter, offset from edge, keepout to proto area
+            k = k[0] if k else o
             q = o + k
-            clip_d = f'M 0 {q} L {q} {q} L {q} 0 L {w-q} 0 L {w-q} {q} L {w} {q} L {w} {h-q} L {w-q} {h-q} L {w-q} {h} L {q} {h} L {q} {h-q} L 0 {h-q} Z'
+            if 2*q < w:
+                if 2*q < h:
+                    clip_d = f'M 0 {q} L {q} {q} L {q} 0 L {w-q} 0 L {w-q} {q} L {w} {q} L {w} {h-q} L {w-q} {h-q} L {w-q} {h} L {q} {h} L {q} {h-q} L 0 {h-q} Z'
+                else:
+                    clip_d = f'M {q} 0 L {w-q} 0 L {w-q} {h} L 0 {h} Z'
+            else:
+                if 2*q < h:
+                    clip_d = f'M 0 {q} L 0 {h-q} L {w} {h-q} L {w} {q} Z'
+                else:
+                    raise ValueError(f'Hole keepout areas are so large that no board area is left. Available size is {w}x{h} mm, keepout areas are {q}x{q} mm in all four corners.')
+
             svg_defs.append(f'<clipPath id="hole-clip"><path d="{clip_d}"/></clipPath>')
             clip = 'clip-path="url(#hole-clip)"'
 
@@ -458,5 +473,5 @@ if __name__ == '__main__':
 #    print('===== Proto board =====')
     #b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)',
     #        'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0), border=2, center=False)
-    b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(0.8, 1.27); smd2 = SMDPads(0.95, 1.895)', 'tht@1in | (smd1 + smd2)', mounting_holes=(3.2, 5.0, 5.0), border=2)
+    b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(0.8, 1.27); smd2 = SMDPads(0.95, 1.895); plane=Empty(copper=True)', 'tht@1in | (smd1 + plane)', mounting_holes=(3.2, 5.0, 5.0), border=2)
     print(b.generate(80, 60))
