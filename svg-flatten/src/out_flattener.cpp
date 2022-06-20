@@ -152,7 +152,7 @@ Flattener &Flattener::operator<<(const LayerNameToken &layer_name) {
     return *this;
 }
 
-Flattener &Flattener::operator<<(const DrillToken &tok) {
+Flattener &Flattener::operator<<(const FlashToken &tok) {
     m_sink << tok;
     return *this;
 }

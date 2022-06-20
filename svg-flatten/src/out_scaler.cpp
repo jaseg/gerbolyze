@@ -64,12 +64,6 @@ PolygonScaler &PolygonScaler::operator<<(const Polygon &poly) {
     return *this;
 }
 
-PolygonScaler &PolygonScaler::operator<<(const DrillToken &tok) {
-    d2p new_center { tok.m_center[0] * m_scale, tok.m_center[1] * m_scale };
-    m_sink << DrillToken(new_center);
-    return *this;
-}
-
 PolygonScaler &PolygonScaler::operator<<(const FlashToken &tok) {
     d2p new_offset = { tok.m_offset[0] * m_scale, tok.m_offset[1] * m_scale};
     m_sink << FlashToken(new_offset);

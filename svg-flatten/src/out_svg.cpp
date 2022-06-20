@@ -77,7 +77,7 @@ SimpleSVGOutput &SimpleSVGOutput::operator<<(const Polygon &poly) {
     return *this;
 }
 
-SimpleSVGOutput &SimpleSVGOutput::operator<<(const DrillToken &) {
+SimpleSVGOutput &SimpleSVGOutput::operator<<(const FlashToken &) {
     return *this;
 }
 

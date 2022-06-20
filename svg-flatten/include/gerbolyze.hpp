@@ -50,12 +50,6 @@ namespace gerbolyze {
         double m_size = 0.0;
     };
 
-    class DrillToken {
-    public:
-        DrillToken(d2p center) : m_center(center) {}
-        d2p m_center;
-    };
-
     class PatternToken {
     public:
         PatternToken(vector<pair<Polygon, GerberPolarityToken>> &polys) : m_polys(polys) {}
@@ -91,7 +85,6 @@ namespace gerbolyze {
             virtual PolygonSink &operator<<(const LayerNameToken &) { return *this; };
             virtual PolygonSink &operator<<(GerberPolarityToken pol) = 0;
             virtual PolygonSink &operator<<(const ApertureToken &) { return *this; };
-            virtual PolygonSink &operator<<(const DrillToken &) { return *this; };
             virtual PolygonSink &operator<<(const FlashToken &) { return *this; };
             virtual PolygonSink &operator<<(const PatternToken &) {
                 cerr << "Error: pattern to aperture mapping is not supporte for this output." << endl;
@@ -110,7 +103,7 @@ namespace gerbolyze {
             virtual Flattener &operator<<(const LayerNameToken &layer_name);
             virtual Flattener &operator<<(GerberPolarityToken pol);
             virtual Flattener &operator<<(const ApertureToken &tok);
-            virtual Flattener &operator<<(const DrillToken &tok);
+            virtual Flattener &operator<<(const FlashToken &tok);
             virtual void footer();
 
         private:
@@ -129,6 +122,7 @@ namespace gerbolyze {
             virtual Dilater &operator<<(const LayerNameToken &layer_name);
             virtual Dilater &operator<<(GerberPolarityToken pol);
             virtual Dilater &operator<<(const ApertureToken &ap);
+            virtual Dilater &operator<<(const FlashToken &tok);
             virtual void footer();
 
         private:
@@ -145,7 +139,6 @@ namespace gerbolyze {
             virtual PolygonScaler &operator<<(const LayerNameToken &layer_name);
             virtual PolygonScaler &operator<<(GerberPolarityToken pol);
             virtual PolygonScaler &operator<<(const ApertureToken &tok);
-            virtual PolygonScaler &operator<<(const DrillToken &tok);
             virtual PolygonScaler &operator<<(const FlashToken &tok);
             virtual PolygonScaler &operator<<(const PatternToken &tok);
             virtual void footer();
@@ -328,7 +321,6 @@ namespace gerbolyze {
         virtual ~SimpleGerberOutput() {}
         virtual SimpleGerberOutput &operator<<(const Polygon &poly);
         virtual SimpleGerberOutput &operator<<(GerberPolarityToken pol);
-        virtual SimpleGerberOutput &operator<<(const DrillToken &tok);
         virtual SimpleGerberOutput &operator<<(const ApertureToken &ap);
         virtual SimpleGerberOutput &operator<<(const FlashToken &tok);
         virtual SimpleGerberOutput &operator<<(const PatternToken &tok);
@@ -356,7 +348,7 @@ namespace gerbolyze {
         virtual ~SimpleSVGOutput() {}
         virtual SimpleSVGOutput &operator<<(const Polygon &poly);
         virtual SimpleSVGOutput &operator<<(GerberPolarityToken pol);
-        virtual SimpleSVGOutput &operator<<(const DrillToken &tok);
+        virtual SimpleSVGOutput &operator<<(const FlashToken &tok);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
 
@@ -374,7 +366,7 @@ namespace gerbolyze {
         virtual ~KicadSexpOutput() {}
         virtual KicadSexpOutput &operator<<(const Polygon &poly);
         virtual KicadSexpOutput &operator<<(const LayerNameToken &layer_name);
-        virtual KicadSexpOutput &operator<<(const DrillToken &tok);
+        virtual KicadSexpOutput &operator<<(const FlashToken &tok);
         virtual KicadSexpOutput &operator<<(GerberPolarityToken pol);
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();

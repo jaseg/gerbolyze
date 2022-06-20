@@ -126,17 +126,6 @@ SimpleGerberOutput& SimpleGerberOutput::operator<<(const Polygon &poly) {
     return *this;
 }
 
-SimpleGerberOutput &SimpleGerberOutput::operator<<(const DrillToken &tok) {
-    double x = round((tok.m_center[0] * m_scale + m_offset[0]) * m_gerber_scale);
-    double y = round((m_height - tok.m_center[1] * m_scale + m_offset[1]) * m_gerber_scale);
-
-    m_out << "X" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal /* isn't C++ a marvel of engineering? */ << (long long int)x
-          << "Y" << setw(m_digits_int + m_digits_frac) << setfill('0') << std::internal << (long long int)y
-          << "D03*" << endl;
-
-    return *this;
-}
-
 void SimpleGerberOutput::footer_impl() {
     m_out << "M02*" << endl;
 }

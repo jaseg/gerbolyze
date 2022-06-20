@@ -213,8 +213,10 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
 @click.option('--pattern-complete-tiles-only', is_flag=True, help='passed through to svg-flatten')
+@click.option('--use-apertures-for-patterns', is_flag=True, help='passed through to svg-flatten')
 def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtract, subtract, trace_space, vectorizer,
-        vectorizer_map, exclude_groups, separate_drill, naming_scheme, pattern_complete_tiles_only):
+        vectorizer_map, exclude_groups, separate_drill, naming_scheme,
+        pattern_complete_tiles_only, use_apertures_for_patterns):
     ''' Convert SVG file directly to gerbers.
 
     Unlike `gerbolyze paste`, this does not add the SVG's contents to existing gerbers. It allows you to directly create
@@ -244,6 +246,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
                 trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
                 exclude_groups=exclude_groups, curve_tolerance=curve_tolerance, only_groups=group_id,
                 pattern_complete_tiles_only=pattern_complete_tiles_only,
+                use_apertures_for_patterns=(use_apertures_for_patterns and use not in ('outline', 'drill')),
                 outline_mode=(use == 'outline' or use == 'drill'))
         grb.original_path = Path()
 

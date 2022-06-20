@@ -135,7 +135,7 @@ KicadSexpOutput &KicadSexpOutput::operator<<(const Polygon &poly) {
     return *this;
 }
 
-KicadSexpOutput &KicadSexpOutput::operator<<(const DrillToken &) {
+KicadSexpOutput &KicadSexpOutput::operator<<(const FlashToken &) {
     return *this;
 }
 
