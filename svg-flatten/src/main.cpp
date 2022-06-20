@@ -73,6 +73,9 @@ int main(int argc, char **argv) {
             {"flip_svg_color_interpretation", {"-i", "--svg-white-is-gerber-dark"},
                 "Flip polarity of SVG color interpretation. This affects only SVG primitives like paths and NOT embedded bitmaps. With -i: white -> silk there/\"dark\" gerber primitive.",
                 0},
+            {"pattern_complete_tiles_only", {"--pattern-complete-tiles-only"},
+                "Break SVG spec by only rendering complete pattern tiles, i.e. pattern tiles that entirely fit the target area, instead of performing clipping.",
+                0},
             {"min_feature_size", {"-d", "--trace-space"},
                 "Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.",
                 1},
@@ -423,6 +426,7 @@ int main(int argc, char **argv) {
 
     VectorizerSelectorizer vec_sel(vectorizer, args["vectorizer_map"] ? args["vectorizer_map"].as<string>() : "");
     bool flip_svg_colors = args["flip_svg_color_interpretation"];
+    bool pattern_complete_tiles_only = args["pattern_complete_tiles_only"];
 
     RenderSettings rset {
         min_feature_size,
@@ -431,6 +435,7 @@ int main(int argc, char **argv) {
         vec_sel,
         outline_mode,
         flip_svg_colors,
+        pattern_complete_tiles_only,
     };
 
     SVGDocument doc;

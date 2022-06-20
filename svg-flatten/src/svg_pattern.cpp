@@ -108,6 +108,29 @@ void gerbolyze::Pattern::tile (gerbolyze::RenderContext &ctx) {
 
             /* Export the pattern tile's content like a group */
             RenderContext elem_ctx(pat_ctx, elem_xf);
+
+            if (ctx.settings().pattern_complete_tiles_only) {
+                ClipperLib::Clipper c;
+
+                double eps = 1e-6;
+                Polygon poly = {{eps, eps}, {inst_w-eps, eps}, {inst_w-eps, inst_h-eps}, {eps, inst_h-eps}};
+                elem_ctx.mat().transform_polygon(poly);
+                ClipperLib::Path path(poly.size());
+                for (size_t i=0; i<poly.size(); i++) {
+                    long long int x = poly[i][0] * clipper_scale, y = poly[i][1] * clipper_scale;
+                    path[i] = {x, y};
+                }
+
+                ClipperLib::Paths out;
+                c.StrictlySimple(true);
+                c.AddPath(path, ClipperLib::ptSubject, /* closed */ true);
+                c.AddPaths(elem_ctx.clip(), ClipperLib::ptClip, /* closed */ true);
+                c.Execute(ClipperLib::ctDifference, out, ClipperLib::pftNonZero);
+                if (out.size() > 0) {
+                    continue;
+                }
+            }
+
             doc->export_svg_group(elem_ctx, _node);
         }
     }

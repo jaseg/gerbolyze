@@ -143,15 +143,26 @@ namespace gerbolyze {
             /* Transform given clipper paths */
             void transform_paths(ClipperLib::Paths &paths) {
                 for (auto &p : paths) {
-                    std::transform(p.begin(), p.end(), p.begin(),
-                            [this](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
-                                d2p out(this->doc2phys(d2p{p.X / clipper_scale, p.Y / clipper_scale}));
-                                return {
-                                    (ClipperLib::cInt)round(out[0] * clipper_scale),
-                                    (ClipperLib::cInt)round(out[1] * clipper_scale)
-                                };
-                            });
+                    transform_clipper_path(p);
                 }
+            }
+
+            void transform_clipper_path(ClipperLib::Path &path) {
+                std::transform(path.begin(), path.end(), path.begin(),
+                        [this](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
+                            d2p out(this->doc2phys(d2p{p.X / clipper_scale, p.Y / clipper_scale}));
+                            return {
+                                (ClipperLib::cInt)round(out[0] * clipper_scale),
+                                (ClipperLib::cInt)round(out[1] * clipper_scale)
+                            };
+                        });
+            }
+
+            void transform_polygon(Polygon &poly) {
+                std::transform(poly.begin(), poly.end(), poly.begin(),
+                        [this](d2p p) -> d2p {
+                            return this->doc2phys(d2p{p[0], p[1]});
+                        });
             }
 
             string dbg_str() {

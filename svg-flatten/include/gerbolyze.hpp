@@ -197,6 +197,7 @@ namespace gerbolyze {
         VectorizerSelectorizer &m_vec_sel;
         bool outline_mode = false;
         bool flip_color_interpretation = false;
+        bool pattern_complete_tiles_only = false;
     };
 
     class RenderContext {
