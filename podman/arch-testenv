@@ -7,4 +7,4 @@ RUN python3 -m pip install pytest-parallel
 RUN rustup install stable
 RUN rustup default stable
 RUN cargo install usvg resvg
-
+RUN python3 -m pip install --upgrade gerbonara

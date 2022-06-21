@@ -20,9 +20,13 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+make -C svg-flatten -j build/svg-flatten.wasm
+
+rm -rf podman/testdata/git
 mkdir -p podman/testdata/git
-git ls-tree --full-tree -r HEAD --name-only | rsync -lptgoDv --delete . --files-from - podman/testdata/git/
-#git clone --depth 1 . podman/testdata/git
+git clone --depth 1 . podman/testdata/git
+git ls-tree --full-tree -r HEAD --name-only | rsync -lptgoD --delete . --files-from - podman/testdata/git/
+rsync -a --delete svg-flatten/build/svg-flatten.wasm podman/testdata/git/svg-flatten/build/
 
 for distro in ubuntu-old ubuntu arch
 do

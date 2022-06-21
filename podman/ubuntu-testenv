@@ -5,4 +5,4 @@ RUN env DEBIAN_FRONTEND=noninteractive apt update -y
 RUN env DEBIAN_FRONTEND=noninteractive apt install -y libopencv-dev libpugixml-dev libpangocairo-1.0-0 libpango1.0-dev libcairo2-dev clang make python3 git python3-wheel curl python3-pip python3-venv cargo rsync gerbv
 RUN cargo install usvg resvg
 RUN python3 -m pip install numpy slugify lxml click pillow scipy sphinx pytest beautifulsoup4 pytest-parallel
-
+RUN python3 -m pip install --upgrade gerbonara

@@ -40,26 +40,26 @@ def run_command(*args):
 def test_template_round_trip():
     with tempfile.NamedTemporaryFile(suffix='.svg') as out_svg,\
             tempfile.TemporaryDirectory() as out_dir:
-        run_command('python', '-m', 'gerbolyze', 'empty-template', '--force', out_svg.name)
-        run_command('python', '-m', 'gerbolyze', 'convert', out_svg.name, out_dir)
+        run_command('python3', '-m', 'gerbolyze', 'empty-template', '--force', out_svg.name)
+        run_command('python3', '-m', 'gerbolyze', 'convert', out_svg.name, out_dir)
 
 def test_zip_write():
     with tempfile.NamedTemporaryFile(suffix='.svg') as out_svg,\
             tempfile.NamedTemporaryFile(suffix='.zip') as out_zip:
-        run_command('python', '-m', 'gerbolyze', 'empty-template', '--force', out_svg.name)
-        run_command('python', '-m', 'gerbolyze', 'convert', out_svg.name, out_zip.name)
+        run_command('python3', '-m', 'gerbolyze', 'empty-template', '--force', out_svg.name)
+        run_command('python3', '-m', 'gerbolyze', 'convert', out_svg.name, out_zip.name)
 
 @pytest.mark.parametrize('reference', REFERENCE_SVGS)
 def test_complex_conversion(reference):
     infile = reference_path(reference)
     with tempfile.NamedTemporaryFile(suffix='.zip') as out_zip:
-        run_command('python', '-m', 'gerbolyze', 'convert', infile, out_zip.name)
-        run_command('python', '-m', 'gerbolyze', 'convert', '--pattern-complete-tiles-only', '--use-apertures-for-patterns', infile, out_zip.name)
+        run_command('python3', '-m', 'gerbolyze', 'convert', infile, out_zip.name)
+        run_command('python3', '-m', 'gerbolyze', 'convert', '--pattern-complete-tiles-only', '--use-apertures-for-patterns', infile, out_zip.name)
 
 @pytest.mark.parametrize('reference', REFERENCE_GERBERS)
 def test_template(reference):
     with tempfile.NamedTemporaryFile(suffix='.zip') as out_svg:
         infile = reference_path(reference)
-        run_command('python', '-m', 'gerbolyze', 'template', '--top', '--force', infile, out_svg.name)
-        run_command('python', '-m', 'gerbolyze', 'template', '--bottom', '--force', '--vector', infile, out_svg.name)
+        run_command('python3', '-m', 'gerbolyze', 'template', '--top', '--force', infile, out_svg.name)
+        run_command('python3', '-m', 'gerbolyze', 'template', '--bottom', '--force', '--vector', infile, out_svg.name)
 
