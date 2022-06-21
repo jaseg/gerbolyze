@@ -73,10 +73,16 @@ class PatternProtoArea:
     def __init__(self, pitch_x, pitch_y=None, border=None):
         self.pitch_x = pitch_x
         self.pitch_y = pitch_y or pitch_x
-        match border:
-            case None: self.border = (0, 0, 0, 0)
-            case (t, r, b, l): self.border = border
-            case _: self.border = (border, border, border, border)
+
+        if border is None:
+            self.border = (0, 0, 0, 0)
+        elif hasattr(border, '__iter__'):
+            if len(border == 4):
+                self.border = border
+            else:
+                raise TypeError('border must be None, int, or a 4-tuple of floats (top, right, bottom, left)')
+        else:
+            self.border = (border, border, border, border)
 
     @property
     def pitch(self):
@@ -105,10 +111,16 @@ class PatternProtoArea:
 class EmptyProtoArea:
     def __init__(self, copper=False, border=None):
         self.copper = copper
-        match border:
-            case None: self.border = (0, 0, 0, 0)
-            case (t, r, b, l): self.border = border
-            case _: self.border = (border, border, border, border)
+
+        if border is None:
+            self.border = (0, 0, 0, 0)
+        elif hasattr(border, '__iter__'):
+            if len(border == 4):
+                self.border = border
+            else:
+                raise TypeError('border must be None, int, or a 4-tuple of floats (top, right, bottom, left)')
+        else:
+            self.border = (border, border, border, border)
 
     def generate(self, x, y, w, h, defs=None, center=True, clip=''):
         if self.copper:
@@ -189,10 +201,16 @@ class ProtoBoard:
         self.layout = parse_layout(expr)
         self.mounting_holes = mounting_holes
         self.center = center
-        match border:
-            case None: self.border = (0, 0, 0, 0)
-            case (t, r, b, l): self.border = border
-            case _: self.border = (border, border, border, border)
+
+        if border is None:
+            self.border = (0, 0, 0, 0)
+        elif hasattr(border, '__iter__'):
+            if len(border == 4):
+                self.border = border
+            else:
+                raise TypeError('border must be None, int, or a 4-tuple of floats (top, right, bottom, left)')
+        else:
+            self.border = (border, border, border, border)
 
     def generate(self, w, h):
         out = {l: [] for l in LAYERS}
@@ -237,12 +255,17 @@ class ProtoBoard:
 
 
 def convert_to_mm(value, unit):
-    match unit.lower():
-        case 'mm': return value
-        case 'cm': return value*10
-        case 'in': return value*25.4
-        case 'mil': return value/1000*25.4
-    raise ValueError(f'Invalid unit {unit}, allowed units are mm, cm, in, and mil.')
+    unitl  = unit.lower()
+    if unitl == 'mm':
+        return value
+    elif unitl == 'cm':
+        return value*10
+    elif unitl == 'in':
+        return value*25.4
+    elif unitl == 'mil':
+        return value/1000*25.4
+    else:
+        raise ValueError(f'Invalid unit {unit}, allowed units are mm, cm, in, and mil.')
 
 value_re = re.compile('([0-9]*\.?[0-9]+)(cm|mm|in|mil|%)')
 def eval_value(value, total_length=None):
@@ -336,53 +359,53 @@ class TwoSideLayout:
             yield from map(self.flip, self.bottom.generate(x, y, w, h, defs, center, clip))
 
 def _map_expression(node):
-    match node:
-        case ast.Name():
-            return node.id
+    if isinstance(node, ast.Name):
+        return node.id
 
-        case ast.Constant():
-            return node.value
+    elif isinstance(node, ast.Constant):
+        return node.value
 
-        case ast.BinOp(op=ast.BitOr()) | ast.BinOp(op=ast.BitAnd()) | ast.BinOp(op=ast.Add()):
-            left_prop = right_prop = None
 
-            left, right = node.left, node.right
+    elif isinstance(node, ast.BinOp) and isinstance(node.op, (ast.BitOr, ast.BitAnd, ast.Add)):
+        left_prop = right_prop = None
 
-            if isinstance(left, ast.BinOp) and isinstance(left.op, ast.MatMult):
-                left_prop = _map_expression(left.right)
-                left = left.left
+        left, right = node.left, node.right
 
-            if isinstance(right, ast.BinOp) and isinstance(right.op, ast.MatMult):
-                right_prop = _map_expression(right.right)
-                right = right.left
+        if isinstance(left, ast.BinOp) and isinstance(left.op, ast.MatMult):
+            left_prop = _map_expression(left.right)
+            left = left.left
 
-            left, right = _map_expression(left), _map_expression(right)
+        if isinstance(right, ast.BinOp) and isinstance(right.op, ast.MatMult):
+            right_prop = _map_expression(right.right)
+            right = right.left
 
-            direction = 'h' if isinstance(node.op, ast.BitOr) else 'v'
-            if isinstance(left, PropLayout) and left.direction == direction and left_prop is None:
-                left.content.append(right)
-                left.proportions.append(right_prop)
-                return left
+        left, right = _map_expression(left), _map_expression(right)
 
-            elif isinstance(right, PropLayout) and right.direction == direction and right_prop is None:
-                right.content.insert(0, left)
-                right.proportions.insert(0, left_prop)
-                return right
+        direction = 'h' if isinstance(node.op, ast.BitOr) else 'v'
+        if isinstance(left, PropLayout) and left.direction == direction and left_prop is None:
+            left.content.append(right)
+            left.proportions.append(right_prop)
+            return left
 
-            elif isinstance(node.op, ast.Add):
-                if left_prop or right_prop:
-                    raise SyntaxError(f'Proportions ("@") not supported for two-side layout ("+")')
+        elif isinstance(right, PropLayout) and right.direction == direction and right_prop is None:
+            right.content.insert(0, left)
+            right.proportions.insert(0, left_prop)
+            return right
 
-                return TwoSideLayout(left, right)
+        elif isinstance(node.op, ast.Add):
+            if left_prop or right_prop:
+                raise SyntaxError(f'Proportions ("@") not supported for two-side layout ("+")')
 
-            else:
-                return PropLayout([left, right], direction, [left_prop, right_prop])
-            
-        case ast.BinOp(op=ast.MatMult()):
-            raise SyntaxError(f'Unexpected width specification "{ast.unparse(node.right)}"')
+            return TwoSideLayout(left, right)
 
-        case _:
-            raise SyntaxError(f'Invalid layout expression "{ast.unparse(node)}"')
+        else:
+            return PropLayout([left, right], direction, [left_prop, right_prop])
+        
+    elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.MatMult):
+        raise SyntaxError(f'Unexpected width specification "{ast.unparse(node.right)}"')
+
+    else:
+        raise SyntaxError(f'Invalid layout expression "{ast.unparse(node)}"')
 
 def parse_layout(expr):
     ''' Example layout:
