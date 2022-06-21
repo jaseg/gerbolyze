@@ -365,12 +365,17 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         
         /* Calculate out dashes: A closed path becomes a number of open paths when it is dashed. */
         if (!dasharray.empty()) {
-            for (auto &poly : stroke_closed) {
-                if (poly.empty()) {
-                    continue;
-                }
+            auto open_copy(stroke_open);
+            stroke_open.clear();
 
+            for (auto &poly : stroke_closed) {
                 poly.push_back(poly[0]);
+                dash_path(poly, stroke_open, dasharray, stroke_dashoffset);
+            }
+
+            stroke_closed.clear();
+
+            for (auto &poly : open_copy) {
                 dash_path(poly, stroke_open, dasharray, stroke_dashoffset);
             }
         }
@@ -420,7 +425,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             // cerr << "  ends_can_be_mapped = " << ends_can_be_mapped << endl;
             // cerr << "  joins_can_be_mapped = " << joins_can_be_mapped << endl;
             /* Accept loss of precision in outline mode. */
-            if (ctx.settings().outline_mode || gerber_lossless ) {
+            if (ctx.sink().can_do_apertures() && (ctx.settings().outline_mode || gerber_lossless )) {
                 // cerr << "  -> converting directly" << endl;
                 ctx.sink() << ApertureToken(stroke_width);
                 for (auto &path : stroke_closed) {
@@ -442,6 +447,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
         offx.MiterLimit = stroke_miterlimit;
 
+        //cerr << "offsetting " << stroke_closed.size() << " closed and " << stroke_open.size() << " open paths" << endl;
         /* For stroking we have to separately handle open and closed paths since coincident start and end points may
          * render differently than joined start and end points. */
         offx.AddPaths(stroke_closed, join_type, etClosedLine);

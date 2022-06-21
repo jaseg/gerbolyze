@@ -185,7 +185,6 @@ void gerbolyze::parse_dasharray(const pugi::xml_node &node, vector<double> &out)
 /* Take a Clipper path in clipper-scaled document units, and apply the given SVG dash array to it. Do this by walking
  * the path from start to end while emitting dashes. */
 void gerbolyze::dash_path(const ClipperLib::Path &in, ClipperLib::Paths &out, const vector<double> dasharray, double dash_offset) {
-    out.clear();
     if (dasharray.empty() || in.size() < 2) {
         out.push_back(in);
         return;
@@ -225,6 +224,7 @@ void gerbolyze::dash_path(const ClipperLib::Path &in, ClipperLib::Paths &out, co
             /* end this dash */
             current_dash.push_back(intermediate);
             if (dash_idx%2 == 0) { /* dash */
+                //cerr << "dash of size " << current_dash.size() << " from " << (current_dash[0].X/clipper_scale) << ", " << (current_dash[0].Y/clipper_scale) << " to " << (current_dash.back().X/clipper_scale) << ", " << (current_dash.back().Y/clipper_scale) << endl;
                 out.push_back(current_dash);
             } /* else space */
             dash_idx = (dash_idx + 1) % num_dashes;
@@ -246,6 +246,7 @@ void gerbolyze::dash_path(const ClipperLib::Path &in, ClipperLib::Paths &out, co
                 /* end this dash */
                 current_dash.push_back(intermediate);
                 if (dash_idx%2 == 0) { /* dash */
+                    //cerr << "dash of size " << current_dash.size() << " from " << (current_dash[0].X/clipper_scale) << ", " << (current_dash[0].Y/clipper_scale) << " to " << (current_dash.back().X/clipper_scale) << ", " << (current_dash.back().Y/clipper_scale) << endl;
                     out.push_back(current_dash);
                 } /* else space */
                 dash_idx = (dash_idx + 1) % num_dashes;
@@ -262,7 +263,10 @@ void gerbolyze::dash_path(const ClipperLib::Path &in, ClipperLib::Paths &out, co
 
     /* Finish last dash */
     if (current_dash.size() > 0 && (dash_idx%2 == 0)) {
+        //cerr << "dash of size " << current_dash.size() << " from " << (current_dash[0].X/clipper_scale) << ", " << (current_dash[0].Y/clipper_scale) << " to " << (current_dash.back().X/clipper_scale) << ", " << (current_dash.back().Y/clipper_scale) << endl;
+
         out.push_back(current_dash);
     }
+    //cerr << "out now has " << out.size() << " elements" << endl;
 }
 

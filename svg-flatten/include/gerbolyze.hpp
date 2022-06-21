@@ -68,6 +68,7 @@ namespace gerbolyze {
         public:
             virtual ~PolygonSink() {}
             virtual void header(d2p origin, d2p size) {(void) origin; (void) size;}
+            virtual bool can_do_apertures() { return false; }
             virtual PolygonSink &operator<<(const Polygon &poly) = 0;
             virtual PolygonSink &operator<<(const ClipperLib::Paths paths) {
                 for (const auto &poly : paths) {
@@ -137,6 +138,7 @@ namespace gerbolyze {
         public:
             PolygonScaler(PolygonSink &sink, double scale=1.0) : m_sink(sink), m_scale(scale) {}
             virtual void header(d2p origin, d2p size);
+            virtual bool can_do_apertures();
             virtual PolygonScaler &operator<<(const Polygon &poly);
             virtual PolygonScaler &operator<<(const LayerNameToken &layer_name);
             virtual PolygonScaler &operator<<(GerberPolarityToken pol);
@@ -326,6 +328,7 @@ namespace gerbolyze {
         virtual SimpleGerberOutput &operator<<(const ApertureToken &ap);
         virtual SimpleGerberOutput &operator<<(const FlashToken &tok);
         virtual SimpleGerberOutput &operator<<(const PatternToken &tok);
+        virtual bool can_do_apertures() { return true; }
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
 

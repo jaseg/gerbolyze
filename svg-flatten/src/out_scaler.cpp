@@ -38,6 +38,10 @@ void PolygonScaler::footer() {
     m_sink.footer();
 }
 
+bool PolygonScaler::can_do_apertures() {
+    return m_sink.can_do_apertures();
+}
+
 PolygonScaler &PolygonScaler::operator<<(const LayerNameToken &layer_name) {
     m_sink << layer_name;
 
