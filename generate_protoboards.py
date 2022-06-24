@@ -36,7 +36,7 @@ def tht_pitch_50mil(size, mounting_holes=None):
 def tht_mixed_pitch(size, mounting_holes=None):
     w, h = size
     f = max(1.27*5, min(30, h*0.3))
-    return ProtoBoard(common_defs, f'tht50@{f}mm / tht', mounting_holes, border=2).generate(*size)
+    return ProtoBoard(common_defs, f'tht50@{f}mm / tht', mounting_holes, border=2, tight_layout=True).generate(*size)
 
 smd_basic = {
         'smd100': 'smd_soic_100mil',
@@ -102,13 +102,13 @@ def generate_all(outdir):
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
-            return ProtoBoard(common_defs, f'({pattern} + {pattern})@{f}mm / tht', mounting_holes, border=1).generate(*size)
+            return ProtoBoard(common_defs, f'({pattern} + {pattern})@{f}mm / tht', mounting_holes, border=1, tight_layout=True).generate(*size)
         generate(outdir / 'mixed', gen, sizes_small, name=f'tht_and_{name}')
 
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
-            return ProtoBoard(common_defs, f'({pattern} + {pattern}) / tht@{f}mm', mounting_holes, border=1).generate(*size)
+            return ProtoBoard(common_defs, f'({pattern} + {pattern}) / tht@{f}mm', mounting_holes, border=1, tight_layout=True).generate(*size)
         generate(outdir / 'mixed', gen, sizes_small, name=f'{name}_and_tht')
 
         *_, suffix = name.split('_')
@@ -117,7 +117,7 @@ def generate_all(outdir):
                 w, h = size
                 f = max(1.27*5, min(50, h*0.3))
                 f2 = max(1.27*5, min(30, w*0.2))
-                return ProtoBoard(common_defs, f'((smd100 + smd100) | (smd950 + smd950) | ({pattern}r + {pattern}r)@{f2}mm)@{f}mm / tht', mounting_holes, border=1).generate(*size)
+                return ProtoBoard(common_defs, f'((smd100 + smd100) | (smd950 + smd950) | ({pattern}r + {pattern}r)@{f2}mm)@{f}mm / tht', mounting_holes, border=1, tight_layout=True).generate(*size)
             generate(outdir / 'mixed', gen, sizes_medium, name=f'tht_and_three_smd_100mil_950um_{suffix}')
 
     for (pattern1, name1), (pattern2, name2) in itertools.combinations(smd_basic.items(), 2):
@@ -127,13 +127,13 @@ def generate_all(outdir):
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
-            return ProtoBoard(common_defs, f'(({pattern1} + {pattern1}) | ({pattern2} + {pattern2}))@{f}mm / tht', mounting_holes, border=1).generate(*size)
+            return ProtoBoard(common_defs, f'(({pattern1} + {pattern1}) | ({pattern2} + {pattern2}))@{f}mm / tht', mounting_holes, border=1, tight_layout=True).generate(*size)
         generate(outdir / 'mixed', gen, sizes_small, name=f'tht_and_two_smd_{name1}_{name2}')
 
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
-            return ProtoBoard(common_defs, f'({pattern1} + {pattern2})@{f}mm / tht', mounting_holes, border=1).generate(*size)
+            return ProtoBoard(common_defs, f'({pattern1} + {pattern2})@{f}mm / tht', mounting_holes, border=1, tight_layout=True).generate(*size)
         generate(outdir / 'mixed', gen, sizes_small, name=f'tht_and_two_sided_smd_{name1}_{name2}')
 
         def gen(size, mounting_holes=None):
@@ -146,14 +146,14 @@ def generate_all(outdir):
         w, h = size
         f = max(1.27*5, min(50, h*0.3))
         f2 = max(1.27*5, min(30, w*0.2))
-        return ProtoBoard(common_defs, f'((smd100 + smd100) | (smd950 + smd950) | tht50@{f2}mm)@{f}mm / tht', mounting_holes, border=1).generate(*size)
+        return ProtoBoard(common_defs, f'((smd100 + smd100) | (smd950 + smd950) | tht50@{f2}mm)@{f}mm / tht', mounting_holes, border=1, tight_layout=True).generate(*size)
     generate(outdir / 'mixed', gen, sizes_medium, name=f'tht_and_50mil_and_two_smd_100mil_950um_{suffix}')
 
     def gen(size, mounting_holes=None):
         w, h = size
         f = max(1.27*5, min(30, h*0.3))
         f2 = max(1.27*5, min(25, w*0.1))
-        return ProtoBoard(common_defs, f'tht50@10mm | tht | ((smd100r + smd100r) / (smd950r + smd950r) / (smd800 + smd800)@{f2}mm / (smd650 + smd650)@{f2}mm / (smd500 + smd500)@{f2}mm)@{f}mm', mounting_holes, border=1).generate(*size)
+        return ProtoBoard(common_defs, f'tht50@10mm | tht | ((smd100r + smd100r) / (smd950r + smd950r) / (smd800 + smd800)@{f2}mm / (smd650 + smd650)@{f2}mm / (smd500 + smd500)@{f2}mm)@{f}mm', mounting_holes, border=1, tight_layout=True).generate(*size)
     generate(outdir / 'mixed', gen, [ (w, h) for w, h in sizes_medium if w > 60 and h > 60 ], name=f'all_tht_and_smd')
 
 

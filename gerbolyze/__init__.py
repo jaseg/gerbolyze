@@ -517,6 +517,7 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
 
     with tempfile.NamedTemporaryFile(suffix='.gbr') as temp_gbr:
         args += [str(infile), str(temp_gbr.name)]
+        print(' '.join(args))
 
         if 'SVG_FLATTEN' in os.environ:
             subprocess.run([os.environ['SVG_FLATTEN'], *args], check=True)

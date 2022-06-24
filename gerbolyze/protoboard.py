@@ -90,6 +90,11 @@ class PatternProtoArea:
             raise ValueError('Pattern has different X and Y pitches')
         return self.pitch_x
 
+    def fit_size(self, defs, w, h):
+        x, y, w, h = self.fit_rect(0, 0, w, h, False)
+        t, r, b, l = self.border
+        return (w+l+r), (h+t+b)
+
     def fit_rect(self, x, y, w, h, center=True):
         t, r, b, l = self.border
         x, y, w, h = (x+l), (y+t), (w-l-r), (h-t-b)
@@ -105,8 +110,8 @@ class PatternProtoArea:
         else:
             return x, y, w_fit, h_fit
 
-    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
-        return {}
+    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
+        yield {}
 
 class EmptyProtoArea:
     def __init__(self, copper=False, border=None):
@@ -122,13 +127,16 @@ class EmptyProtoArea:
         else:
             self.border = (border, border, border, border)
 
-    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
+    def fit_size(self, defs, w, h):
+        return w, h
+
+    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
         if self.copper:
             t, r, b, l = self.border
             x, y, w, h = x+l, y+t, w-l-r, h-t-b
-            return { 'top copper': f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {clip} fill="black"/>' }
+            yield { 'top copper': f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {clip} fill="black"/>' }
         else:
-            return {}
+            yield {}
 
 class THTProtoAreaCircles(PatternProtoArea):
     def __init__(self, pad_dia=2.0, drill=1.0, pitch=2.54, sides='both', plated=True, border=None):
@@ -141,7 +149,7 @@ class THTProtoAreaCircles(PatternProtoArea):
         self.plated = plated
         self.sides = sides
     
-    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
+    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
         x, y, w, h = self.fit_rect(x, y, w, h, center)
         drill = 'plated drill' if self.plated else 'nonplated drill'
 
@@ -160,7 +168,7 @@ class THTProtoAreaCircles(PatternProtoArea):
             d['bottom copper'] = make_rect(pad_id, x, y, w, h, clip)
             d['bottom mask'] = make_rect(pad_id, x, y, w, h, clip)
 
-        return d
+        yield d
 
     def __repr__(self):
         return f'THTCircles(d={self.pad_dia}, h={self.drill}, p={self.pitch}, sides={self.sides}, plated={self.plated})'
@@ -174,10 +182,10 @@ class SMDProtoAreaRectangles(PatternProtoArea):
         self.pad_pattern = RectPattern(w, h, pitch_x, pitch_y)
         self.patterns = [self.pad_pattern]
 
-    def generate(self, x, y, w, h, defs=None, center=True, clip=''):
+    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
         x, y, w, h = self.fit_rect(x, y, w, h, center)
         pad_id = str(uuid.uuid4())
-        return {'defs': [self.pad_pattern.svg_def(pad_id, x, y)],
+        yield {'defs': [self.pad_pattern.svg_def(pad_id, x, y)],
             'top copper': make_rect(pad_id, x, y, w, h, clip),
             'top mask': make_rect(pad_id, x, y, w, h, clip)}
 
@@ -196,11 +204,12 @@ LAYERS = [
         ]
 
 class ProtoBoard:
-    def __init__(self, defs, expr, mounting_holes=None, border=None, center=True):
+    def __init__(self, defs, expr, mounting_holes=None, border=None, center=True, tight_layout=False):
         self.defs = eval_defs(defs)
         self.layout = parse_layout(expr)
         self.mounting_holes = mounting_holes
         self.center = center
+        self.tight_layout = tight_layout
 
         if border is None:
             self.border = (0, 0, 0, 0)
@@ -242,7 +251,7 @@ class ProtoBoard:
                 f'<circle cx="{o}" cy="{h-o}" r="{d/2}"/>' ])
 
         t, r, b, l = self.border
-        for layer_dict in self.layout.generate(l, t, w-l-r, h-t-b, self.defs, self.center, clip):
+        for layer_dict in self.layout.generate(l, t, w-l-r, h-t-b, self.defs, self.center, clip, self.tight_layout):
             for l in LAYERS:
                 if l in layer_dict:
                     out[l].append(layer_dict[l])
@@ -288,25 +297,47 @@ class PropLayout:
         if len(content) != len(proportions):
             raise ValueError('proportions and content must have same length')
 
-    def generate(self, x, y, w, h, defs, center=True, clip=''):
-        for (c_x, c_y, c_w, c_h), child in self.layout_2d(x, y, w, h):
-            if isinstance(child, str):
-                yield defs[child].generate(c_x, c_y, c_w, c_h, defs, center, clip)
+    def generate(self, x, y, w, h, defs, center=True, clip='', tight_layout=False):
+        for (c_x, c_y, c_w, c_h), child in self.layout_2d(defs, x, y, w, h, tight_layout):
+            yield from child.generate(c_x, c_y, c_w, c_h, defs, center, clip, tight_layout)
 
-            else:
-                yield from child.generate(c_x, c_y, c_w, c_h, defs, center, clip)
+    def fit_size(self, defs, w, h):
+        widths = []
+        heights = []
+        for (_x, _y, w, h), child in self.layout_2d(defs, 0, 0, w, h, True):
+            if not isinstance(child, EmptyProtoArea):
+                widths.append(w)
+                heights.append(h)
+        if self.direction == 'h':
+            return sum(widths), max(heights)
+        else:
+            return max(widths), sum(heights)
 
-    def layout_2d(self, x, y, w, h):
+    def layout_2d(self, defs, x, y, w, h, tight_layout=False):
+        actual_l = 0
+        target_l = 0
         for l, child in zip(self.layout(w if self.direction == 'h' else h), self.content):
-            this_w, this_h = w, h
             this_x, this_y = x, y
+            this_w, this_h = w, h
+            target_l += l
+
+            if isinstance(child, str):
+                child = defs[child]
 
             if self.direction == 'h':
-                this_w = l
-                x += l
+                this_w = target_l - actual_l
             else:
-                this_h = l
-                y += l
+                this_h = target_l - actual_l
+
+            if tight_layout:
+                this_w, this_h = child.fit_size(defs, this_w, this_h)
+
+            if self.direction == 'h':
+                x += this_w
+                actual_l += this_w
+            else:
+                y += this_h
+                actual_l += this_h
 
             yield (this_x, this_y, this_w, this_h), child
 
@@ -327,7 +358,7 @@ class PropLayout:
 
 class TwoSideLayout:
     def __init__(self, top, bottom):
-        self.top, self.bottom = top, bottom
+        self._top, self._bottom = top, bottom
 
     def flip(self, defs):
         out = dict(defs)
@@ -347,16 +378,27 @@ class TwoSideLayout:
 
         return defs
 
-    def generate(self, x, y, w, h, defs, center=True, clip=''):
-        if isinstance(self.top, str):
-            yield defs[self.top].generate(x, y, w, h, defs, center, clip)
-        else:
-            yield from self.top.generate(x, y, w, h, defs, center, clip)
+    def top(self, defs):
+        return defs[self._top] if isinstance(self._top, str) else self._top
 
-        if isinstance(self.bottom, str):
-            yield self.flip(defs[self.bottom].generate(x, y, w, h, defs, center, clip))
-        else:
-            yield from map(self.flip, self.bottom.generate(x, y, w, h, defs, center, clip))
+    def bottom(self, defs):
+        return defs[self._bottom] if isinstance(self._bottom, str) else self._bottom
+
+    def fit_size(self, defs, w, h):
+        top, bottom = self.top(defs), self.bottom(defs)
+        w1, h1 = top.fit_size(defs, w, h)
+        w2, h2 = bottom.fit_size(defs, w, h)
+        if isinstance(top, EmptyProtoArea):
+            if isinstance(bottom, EmptyProtoArea):
+                return w1, h1
+            return w2, h2
+        if isinstance(bottom, EmptyProtoArea):
+            return w1, h1
+        return max(w1, w2), max(h1, h2)
+
+    def generate(self, x, y, w, h, defs, center=True, clip='', tight_layout=False):
+        yield from self.top(defs).generate(x, y, w, h, defs, center, clip, tight_layout)
+        yield from map(self.flip, self.bottom(defs).generate(x, y, w, h, defs, center, clip, tight_layout))
 
 def _map_expression(node):
     if isinstance(node, ast.Name):
@@ -496,5 +538,5 @@ if __name__ == '__main__':
 #    print('===== Proto board =====')
     #b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)',
     #        'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0), border=2, center=False)
-    b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(0.8, 1.27); smd2 = SMDPads(0.95, 1.895); plane=Empty(copper=True)', 'tht@1in | (smd1 + plane)', mounting_holes=(3.2, 5.0, 5.0), border=2)
+    b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(2.0, 2.0); smd2 = SMDPads(0.95, 1.895); plane=Empty(copper=True)', 'tht@25mm | (smd1 + plane)', mounting_holes=(3.2, 5.0, 5.0), border=2, tight_layout=True)
     print(b.generate(80, 60))
