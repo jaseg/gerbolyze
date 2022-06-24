@@ -622,7 +622,7 @@ gerbolyze::RenderContext::RenderContext(RenderContext &parent, PolygonSink &sink
     m_settings(parent.settings()),
     m_mat(parent.mat()),
     m_root(false),
-    m_included(false),
+    m_included(true),
     m_sel(parent.sel()),
     m_clip(clip)
 {

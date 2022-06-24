@@ -156,7 +156,10 @@ SimpleGerberOutput &SimpleGerberOutput::operator<<(const PatternToken &tok) {
         for (auto &pt : pair.first) {
             m_out << "," << pt[0] << "," << pt[1];
         }
-        m_out << "," << pair.first.back()[0] << "," << pair.first.back()[1] << "*" << endl;
+        /* We internally represent closed polys as (a - b - c - d), while Gerber aperture macros require the first and
+         * last vertex to be the same as in (a - b - c - d - a).
+         */
+        m_out << "," << pair.first[0][0] << "," << pair.first[0][1] << "*" << endl;
     }
 
     m_out << "%" << endl;
