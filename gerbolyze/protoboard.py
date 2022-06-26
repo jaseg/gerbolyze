@@ -90,7 +90,7 @@ class PatternProtoArea:
             raise ValueError('Pattern has different X and Y pitches')
         return self.pitch_x
 
-    def fit_size(self, defs, w, h):
+    def fit_size(self, w, h):
         x, y, w, h = self.fit_rect(0, 0, w, h, False)
         t, r, b, l = self.border
         return (w+l+r), (h+t+b)
@@ -110,8 +110,15 @@ class PatternProtoArea:
         else:
             return x, y, w_fit, h_fit
 
-    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
+    def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
         yield {}
+
+    def symmetric_sides(self):
+        return False
+
+    def used_patterns(self):
+        yield self
+
 
 class EmptyProtoArea:
     def __init__(self, copper=False, border=None):
@@ -127,16 +134,20 @@ class EmptyProtoArea:
         else:
             self.border = (border, border, border, border)
 
-    def fit_size(self, defs, w, h):
+    def fit_size(self, w, h):
         return w, h
 
-    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
+    def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
         if self.copper:
             t, r, b, l = self.border
             x, y, w, h = x+l, y+t, w-l-r, h-t-b
             yield { 'top copper': f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {clip} fill="black"/>' }
         else:
             yield {}
+
+    def used_patterns(self):
+        yield self
+
 
 class THTProtoAreaCircles(PatternProtoArea):
     def __init__(self, pad_dia=2.0, drill=1.0, pitch=2.54, sides='both', plated=True, border=None):
@@ -149,7 +160,7 @@ class THTProtoAreaCircles(PatternProtoArea):
         self.plated = plated
         self.sides = sides
     
-    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
+    def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
         x, y, w, h = self.fit_rect(x, y, w, h, center)
         drill = 'plated drill' if self.plated else 'nonplated drill'
 
@@ -173,6 +184,10 @@ class THTProtoAreaCircles(PatternProtoArea):
     def __repr__(self):
         return f'THTCircles(d={self.pad_dia}, h={self.drill}, p={self.pitch}, sides={self.sides}, plated={self.plated})'
 
+    def symmetric_sides(self):
+        return True
+
+
 class SMDProtoAreaRectangles(PatternProtoArea):
     def __init__(self, pitch_x, pitch_y, w=None, h=None, border=None):
         super().__init__(pitch_x, pitch_y, border=border)
@@ -182,12 +197,15 @@ class SMDProtoAreaRectangles(PatternProtoArea):
         self.pad_pattern = RectPattern(w, h, pitch_x, pitch_y)
         self.patterns = [self.pad_pattern]
 
-    def generate(self, x, y, w, h, defs=None, center=True, clip='', tight_layout=False):
+    def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
         x, y, w, h = self.fit_rect(x, y, w, h, center)
         pad_id = str(uuid.uuid4())
         yield {'defs': [self.pad_pattern.svg_def(pad_id, x, y)],
             'top copper': make_rect(pad_id, x, y, w, h, clip),
             'top mask': make_rect(pad_id, x, y, w, h, clip)}
+
+    def symmetric_sides(self):
+        return False
 
 LAYERS = [
         'top paste',
@@ -206,7 +224,7 @@ LAYERS = [
 class ProtoBoard:
     def __init__(self, defs, expr, mounting_holes=None, border=None, center=True, tight_layout=False):
         self.defs = eval_defs(defs)
-        self.layout = parse_layout(expr)
+        self.layout = parse_layout(expr, self.defs)
         self.mounting_holes = mounting_holes
         self.center = center
         self.tight_layout = tight_layout
@@ -220,6 +238,14 @@ class ProtoBoard:
                 raise TypeError('border must be None, int, or a 4-tuple of floats (top, right, bottom, left)')
         else:
             self.border = (border, border, border, border)
+
+    @property
+    def symmetric_sides(self):
+        return self.layout.symmetric_sides()
+
+    @property
+    def used_patterns(self):
+        return set(self.layout.used_patterns())
 
     def generate(self, w, h):
         out = {l: [] for l in LAYERS}
@@ -251,7 +277,7 @@ class ProtoBoard:
                 f'<circle cx="{o}" cy="{h-o}" r="{d/2}"/>' ])
 
         t, r, b, l = self.border
-        for layer_dict in self.layout.generate(l, t, w-l-r, h-t-b, self.defs, self.center, clip, self.tight_layout):
+        for layer_dict in self.layout.generate(l, t, w-l-r, h-t-b, self.center, clip, self.tight_layout):
             for l in LAYERS:
                 if l in layer_dict:
                     out[l].append(layer_dict[l])
@@ -297,14 +323,14 @@ class PropLayout:
         if len(content) != len(proportions):
             raise ValueError('proportions and content must have same length')
 
-    def generate(self, x, y, w, h, defs, center=True, clip='', tight_layout=False):
-        for (c_x, c_y, c_w, c_h), child in self.layout_2d(defs, x, y, w, h, tight_layout):
-            yield from child.generate(c_x, c_y, c_w, c_h, defs, center, clip, tight_layout)
+    def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
+        for (c_x, c_y, c_w, c_h), child in self.layout_2d(x, y, w, h, tight_layout):
+            yield from child.generate(c_x, c_y, c_w, c_h, center, clip, tight_layout)
 
-    def fit_size(self, defs, w, h):
+    def fit_size(self, w, h):
         widths = []
         heights = []
-        for (_x, _y, w, h), child in self.layout_2d(defs, 0, 0, w, h, True):
+        for (_x, _y, w, h), child in self.layout_2d(0, 0, w, h, True):
             if not isinstance(child, EmptyProtoArea):
                 widths.append(w)
                 heights.append(h)
@@ -313,7 +339,7 @@ class PropLayout:
         else:
             return max(widths), sum(heights)
 
-    def layout_2d(self, defs, x, y, w, h, tight_layout=False):
+    def layout_2d(self, x, y, w, h, tight_layout=False):
         actual_l = 0
         target_l = 0
         for l, child in zip(self.layout(w if self.direction == 'h' else h), self.content):
@@ -321,23 +347,22 @@ class PropLayout:
             this_w, this_h = w, h
             target_l += l
 
-            if isinstance(child, str):
-                child = defs[child]
-
             if self.direction == 'h':
                 this_w = target_l - actual_l
             else:
                 this_h = target_l - actual_l
 
             if tight_layout:
-                this_w, this_h = child.fit_size(defs, this_w, this_h)
+                this_w, this_h = child.fit_size(this_w, this_h)
 
             if self.direction == 'h':
                 x += this_w
                 actual_l += this_w
+                this_h = h
             else:
                 y += this_h
                 actual_l += this_h
+                this_w = w
 
             yield (this_x, this_y, this_w, this_h), child
 
@@ -356,9 +381,17 @@ class PropLayout:
         children = ', '.join( f'{elem}:{width}' for elem, width in zip(self.content, self.proportions))
         return f'PropLayout[{self.direction.upper()}]({children})'
 
+    def symmetric_sides(self):
+        return all(child.symmetric_sides() for child in self.content)
+
+    def used_patterns(self):
+        for child in self.content:
+            yield from child.used_patterns()
+
+
 class TwoSideLayout:
     def __init__(self, top, bottom):
-        self._top, self._bottom = top, bottom
+        self.top, self.bottom = top, bottom
 
     def flip(self, defs):
         out = dict(defs)
@@ -378,16 +411,10 @@ class TwoSideLayout:
 
         return defs
 
-    def top(self, defs):
-        return defs[self._top] if isinstance(self._top, str) else self._top
-
-    def bottom(self, defs):
-        return defs[self._bottom] if isinstance(self._bottom, str) else self._bottom
-
-    def fit_size(self, defs, w, h):
-        top, bottom = self.top(defs), self.bottom(defs)
-        w1, h1 = top.fit_size(defs, w, h)
-        w2, h2 = bottom.fit_size(defs, w, h)
+    def fit_size(self, w, h):
+        top, bottom = self.top, self.bottom
+        w1, h1 = top.fit_size(w, h)
+        w2, h2 = bottom.fit_size(w, h)
         if isinstance(top, EmptyProtoArea):
             if isinstance(bottom, EmptyProtoArea):
                 return w1, h1
@@ -396,13 +423,21 @@ class TwoSideLayout:
             return w1, h1
         return max(w1, w2), max(h1, h2)
 
-    def generate(self, x, y, w, h, defs, center=True, clip='', tight_layout=False):
-        yield from self.top(defs).generate(x, y, w, h, defs, center, clip, tight_layout)
-        yield from map(self.flip, self.bottom(defs).generate(x, y, w, h, defs, center, clip, tight_layout))
+    def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
+        yield from self.top.generate(x, y, w, h, center, clip, tight_layout)
+        yield from map(self.flip, self.bottom.generate(x, y, w, h, center, clip, tight_layout))
 
-def _map_expression(node):
+    def symmetric_sides(self):
+        return self.top == self.bottom
+
+    def used_patterns(self):
+        yield from self.top.used_patterns()
+        yield from self.bottom.used_patterns()
+
+
+def _map_expression(node, defs):
     if isinstance(node, ast.Name):
-        return node.id
+        return defs[node.id]
 
     elif isinstance(node, ast.Constant):
         return node.value
@@ -414,14 +449,14 @@ def _map_expression(node):
         left, right = node.left, node.right
 
         if isinstance(left, ast.BinOp) and isinstance(left.op, ast.MatMult):
-            left_prop = _map_expression(left.right)
+            left_prop = _map_expression(left.right, defs)
             left = left.left
 
         if isinstance(right, ast.BinOp) and isinstance(right.op, ast.MatMult):
-            right_prop = _map_expression(right.right)
+            right_prop = _map_expression(right.right, defs)
             right = right.left
 
-        left, right = _map_expression(left), _map_expression(right)
+        left, right = _map_expression(left, defs), _map_expression(right, defs)
 
         direction = 'h' if isinstance(node.op, ast.BitOr) else 'v'
         if isinstance(left, PropLayout) and left.direction == direction and left_prop is None:
@@ -449,7 +484,7 @@ def _map_expression(node):
     else:
         raise SyntaxError(f'Invalid layout expression "{ast.unparse(node)}"')
 
-def parse_layout(expr):
+def parse_layout(expr, defs):
     ''' Example layout:
 
         ( tht @ 2in | smd ) @ 50% / tht
@@ -462,14 +497,14 @@ def parse_layout(expr):
         expr = ast.parse(expr, mode='eval').body
         match expr:
             case ast.Name():
-                return PropLayout([expr.id], 'h', [None])
+                return PropLayout([defs[expr.id]], 'h', [None])
 
             case ast.BinOp(op=ast.MatMult()):
                 assert isinstance(expr.right, ast.Constant)
-                return PropLayout([_map_expression(expr.left)], 'h', [expr.right.value])
+                return PropLayout([_map_expression(expr.left, defs)], 'h', [expr.right.value])
 
             case _:
-                return _map_expression(expr)
+                return _map_expression(expr, defs)
     except SyntaxError as e:
         raise SyntaxError('Invalid layout expression') from e
 
@@ -506,6 +541,26 @@ def eval_defs(defs):
         out[key] = PROTO_AREA_TYPES[pattern](*args, **kws)
     return out
 
+COMMON_DEFS = '''
+empty = Empty(copper=False);
+ground = Empty(copper=True);
+
+tht = THTCircles();
+tht50 = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27);
+
+smd100 = SMDPads(1.27, 2.54);
+smd100r = SMDPads(2.54, 1.27);
+smd950 = SMDPads(0.95, 2.5);
+smd950r = SMDPads(2.5, 0.95);
+smd800 = SMDPads(0.80, 2.0);
+smd800r = SMDPads(2.0, 0.80);
+smd650 = SMDPads(0.65, 2.0);
+smd650r = SMDPads(2.0, 0.65);
+smd500 = SMDPads(0.5, 2.0);
+smd500r = SMDPads(2.0, 0.5);
+'''
+
+
 if __name__ == '__main__':
 #    import sys
 #    print('===== Layout expressions =====')
@@ -538,5 +593,6 @@ if __name__ == '__main__':
 #    print('===== Proto board =====')
     #b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)',
     #        'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0), border=2, center=False)
-    b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(2.0, 2.0); smd2 = SMDPads(0.95, 1.895); plane=Empty(copper=True)', 'tht@25mm | (smd1 + plane)', mounting_holes=(3.2, 5.0, 5.0), border=2, tight_layout=True)
+    #b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(2.0, 2.0); smd2 = SMDPads(0.95, 1.895); plane=Empty(copper=True)', 'tht@25mm | (smd1 + plane)', mounting_holes=(3.2, 5.0, 5.0), border=2, tight_layout=True)
+    b = ProtoBoard(COMMON_DEFS, f'((smd100 + smd100) | (smd950 + smd950) | tht50@20mm)@20mm / tht', mounting_holes=(3.2,5,5), border=1, tight_layout=True, center=True)
     print(b.generate(80, 60))
