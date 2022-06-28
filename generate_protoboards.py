@@ -90,19 +90,20 @@ def write_index(index, outdir):
     tht_pitches = lambda patterns: [ p.pitch for p in patterns if isinstance(p, THTProtoAreaCircles) ]
     smd_pitches = lambda patterns: [ min(p.pitch_x, p.pitch_y) for p in patterns if isinstance(p, SMDProtoAreaRectangles) ]
     has_ground_plane = lambda patterns: any(isinstance(p, EmptyProtoArea) and p.copper for p in patterns)
-    format_pitches = lambda pitches: ', '.join(f'{p:.2f} mm' for p in sorted(pitches))
+    format_pitches = lambda pitches: ', '.join(f'{p:.2f}' for p in sorted(pitches))
     format_length = lambda length_or_none, default='': default if length_or_none is None else f'{length_or_none:.2f} mm'
+    area_count = lambda patterns: len(set(p for p in patterns if not isinstance(p, EmptyProtoArea)))
 
     table_rows = [
             ('<tr>'
-            f'<td><a href="gerber/{path.relative_to(outdir / "svg").with_suffix(".zip")}" download>Gerbers</a></td>'
+            f'<td><a href="gerber/{path.relative_to(outdir / "svg").with_suffix(".zip")}" download>Gerber</a></td>'
             f'<td><a href="png/{path.relative_to(outdir / "svg").with_suffix(".png")}">Preview</a></td>'
             f'<td><a href="{path.relative_to(outdir)}" download>SVG</a></td>'
-            f'<td>{w:.2f} mm</td>'
-            f'<td>{h:.2f} mm</td>'
+            f'<td>{w:.2f}</td>'
+            f'<td>{h:.2f}</td>'
             f'<td>{"Yes" if hole_dia is not None else "No"}</td>'
-            f'<td>{format_length(hole_dia)}</td>'
-            f'<td>{len(patterns)}</td>'
+            f'<td>{f"{hole_dia:.2f}" if hole_dia is not None else ""}</td>'
+            f'<td>{area_count(patterns)}</td>'
             f'<td>{"Yes" if symmetric else "No"}</td>'
             f'<td>{"Yes" if has_ground_plane(patterns) else "No"}</td>'
             f'<td>{format_pitches(tht_pitches(patterns))}</td>'
@@ -116,7 +117,7 @@ def write_index(index, outdir):
             'Width': sorted(set(w for w, h, *rest in index.values())),
             'Height': sorted(set(h for w, h, *rest in index.values())),
             'Mounting Hole Diameter': sorted(set(dia for w, h, dia, *rest in index.values() if dia)) + ['None'],
-            'Number of Areas': sorted(set(len(patterns) for *_rest, patterns in index.values())),
+            'Number of Areas': sorted(set(area_count(patterns) for *_rest, patterns in index.values())),
             'Symmetric Top and Bottom?': ['Yes', 'No'],
             'Ground Plane?': ['Yes', 'No'],
             'THT Pitches': sorted(set(p for *_rest, patterns in index.values() for p in tht_pitches(patterns))) + ['None'],
@@ -150,7 +151,7 @@ def write_index(index, outdir):
             selected = [];
             for (let checkbox of filter.querySelectorAll('input')) {
                 if (checkbox.checked) {
-                    selected.push(checkbox.nextElementSibling.textContent);
+                    selected.push(checkbox.nextElementSibling.textContent.replace(/ mm$/, ''));
                 }
             }
             filters[filter.id.replace(/^filter-/, '')] = selected;
@@ -237,9 +238,9 @@ def write_index(index, outdir):
     }
 
     table {
-      table-layout: fixed;
       border-collapse: collapse;
       box-shadow: 0 0 3px gray;
+      width: 100%;
     }
 
     td {
@@ -256,22 +257,63 @@ def write_index(index, outdir):
     #listing tr:hover {
       background-color: #ffff80;
     }
+    
+    #listing tr td {
+        text-align: center;
+    }
+
+    #listing tr td:nth-child(4), #listing tr td:nth-child(5) {
+        text-align: right;
+    }
+
+    #filter {
+        margin-top: 2em;
+    }
 
     button {
       margin: 2em 0.2em;
       padding: .5em 1em;
     }
+
+    body {
+        max-width: 80em;
+        margin: 3em auto;
+    }
+
+    body > div {
+        width: 100%;
+    }
     '''.strip())
     html = textwrap.dedent(f'''
     <!DOCTYPE html>
     <html>
-    <head><title>Protoboard Index</title></head>
+    <head><title>Gerbolyze Protoboard Index</title></head>
     <script src="tablesort.min.js"></script>
     <script src="tablesort.number.min.js"></script>
     <style>
     {style}
     </style>
     <body>
+    <h1>Gerbolyze Protoboard Index</h1>
+    <p>
+    This page contains gerbers for many different types of prototype circuit boards. Everything from different pitches
+    of THT hole patterns to SMD pad patterns is included in many different sizes and with several mounting hole options.
+    </p>
+
+    <p>
+    All downloads on this page are licensed under the <a href="https://unlicense.org">Unlicense</a>. This means you can
+    download what you like and do with it whatever you want. Just note that everything here is provided without any
+    warranty, so if you send files you find here to a pcb board house and what you get back from them is all wrong,
+    that's your problem.
+    </p>
+
+    <p>
+    All files on this page have been generated automatically from a number of templates using
+    <a href="https://gitlab.com/gerbolyze/gerbolyze/">gerbolyze</a>
+    (<a href="https://github.com/jaseg/gerbolyze">github mirror</a>). If you have any suggestions for additional layouts
+    or layout options, please feel free to file an issue on
+    <a href="https://github.com/jaseg/gerbolyze/issues">Gerbolyze's issue tracker</a> on github.
+    </p>
     <div id="filters-container">
     <table id="filter">
     <tr>
@@ -288,18 +330,18 @@ def write_index(index, outdir):
     <table id="listing">
     <thead>
     <tr>
-        <th data-sort-method="none">Download</th>
-        <th data-sort-method="none">Preview</th>
-        <th data-sort-method="none">Source SVG</th>
-        <th data-filter-key="width">Width</th>
-        <th data-filter-key="height">Height</th>
-        <th>Has Mounting Holes?</th>
-        <th data-filter-key="mounting_hole_diameter">Mounting Hole Diameter</th>
-        <th data-filter-key="number_of_areas">Number of Areas</th>
-        <th data-filter-key="symmetric_top_and_bottom">Symmetric Top and Bottom?</th>
-        <th data-filter-key="ground_plane">Ground Plane?</th>
-        <th data-filter-key="tht_pitches">THT Pitches</th>
-        <th data-filter-key="smd_pitches">SMD Pitches</th>
+        <th data-sort-method="none" width="6em">Download</th>
+        <th data-sort-method="none" width="6em">Preview</th>
+        <th data-sort-method="none" width="3em">Source SVG</th>
+        <th data-filter-key="width" width="3.5em">Width [mm]</th>
+        <th data-filter-key="height" width="3.5em">Height [mm]</th>
+        <th width="3em">Has Mounting Holes?</th>
+        <th data-filter-key="mounting_hole_diameter" width="3em">Mounting Hole Diameter [mm]</th>
+        <th data-filter-key="number_of_areas" width="3em">Number of Areas</th>
+        <th data-filter-key="symmetric_top_and_bottom" width="3em">Symmetric Top and Bottom?</th>
+        <th data-filter-key="ground_plane" width="3em">Ground Plane?</th>
+        <th data-filter-key="tht_pitches">THT Pitches [mm]</th>
+        <th data-filter-key="smd_pitches">SMD Pitches [mm]</th>
     </tr>
     </thead>
     <tbody>

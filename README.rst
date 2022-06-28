@@ -671,6 +671,9 @@ Gallery
 .. image:: pics/sample3.jpg
   :width: 400px
 
+For a demonstration of ``gerbolyze convert``, check out the `Gerbolyze Protoboard Index`_, where you can download gerber
+files for over 7.000 SMD and THT protoboard layouts.
+
 Licensing
 ---------
 
@@ -689,4 +692,5 @@ avoid that so the default license is still AGPL.
 .. _pcb-tools-extension: https://github.com/opiopan/pcb-tools-extension
 .. _GIMP: https://gimp.org/
 .. _gerbonara: https://gitlab.com/gerbolyze/gerbonara
+.. _`Gerbolyze Protoboard Index`: https://dyna.kokoroyukuma.de/protos/
 
