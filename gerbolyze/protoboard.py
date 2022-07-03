@@ -8,17 +8,16 @@ import uuid
 svg_str = lambda content: content if isinstance(content, str) else '\n'.join(str(c) for c in content)
 
 class Pattern:
-    def __init__(self, w, h, content):
-        self.w = w
-        self.h = h
-        self.content = content
+    def __init__(self, w, h=None):
+        self.vb_w = self.w = w
+        self.vb_h = self.h = h or w
 
     def svg_def(self, svg_id, off_x, off_y):
         return textwrap.dedent(f'''
-            <pattern id="{svg_id}" x="{off_x}" y="{off_y}" viewBox="0,0,{self.w},{self.h}" width="{self.w}" height="{self.h}" patternUnits="userSpaceOnUse">
+            <pattern id="{svg_id}" x="{off_x}" y="{off_y}" viewBox="0,0,{self.vb_w},{self.vb_h}" width="{self.w}" height="{self.h}" patternUnits="userSpaceOnUse">
                 {svg_str(self.content)}
             </pattern>''')
-
+    
 def make_rect(svg_id, x, y, w, h, clip=''):
     #import random
     #c = random.randint(0, 2**24)
@@ -27,9 +26,8 @@ def make_rect(svg_id, x, y, w, h, clip=''):
 
 class CirclePattern(Pattern):
     def __init__(self, d, w, h=None):
+        super().__init__(w, h)
         self.d = d
-        self.w = w
-        self.h = h or w
 
     @property
     def content(self):
@@ -37,14 +35,30 @@ class CirclePattern(Pattern):
 
 class RectPattern(Pattern):
     def __init__(self, rw, rh, w, h):
+        super().__init__(w, h)
         self.rw, self.rh = rw, rh
-        self.w, self.h = w, h
 
     @property
     def content(self):
         x = (self.w - self.rw) / 2
         y = (self.h - self.rh) / 2
         return f'<rect x="{x}" y="{y}" width="{self.rw}" height="{self.rh}"/>'
+
+class ManhattanPattern(Pattern):
+    def __init__(self, pitch=2.54*4, gap=0.2):
+        super().__init__(pitch)
+        self.vb_w, self.vb_h = 1, 1
+        self.gap = gap
+
+    @property
+    def content(self):
+        return textwrap.dedent('''
+                <rect x="0"   y="0"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
+                <rect x="0"   y="0.5"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
+                <rect x="0.5"   y="0"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
+                <rect x="0.5"   y="0.5"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
+                <rect x="0.3" y="0.3" width="0.4" height="0.4" style="fill: black; stroke: white; stroke-width: 0.01mm" transform="rotate(45 0.5 0.5)"/>
+                '''.strip())
 
 make_layer = lambda layer_name, content: \
   f'<g id="g-{layer_name.replace(" ", "-")}" inkscape:label="{layer_name}" inkscape:groupmode="layer">{svg_str(content)}</g>'
@@ -149,13 +163,17 @@ class EmptyProtoArea:
         yield self
 
 
-class THTProtoAreaCircles(PatternProtoArea):
-    def __init__(self, pad_dia=2.0, drill=1.0, pitch=2.54, sides='both', plated=True, border=None):
+class THTProtoArea(PatternProtoArea):
+    def __init__(self, pad_size=2.0, drill=1.0, pitch=2.54, sides='both', plated=True, border=None, pad_shape='circle'):
         super().__init__(pitch, border=border)
-        self.pad_dia = pad_dia
+        self.pad_size = pad_size
+        self.pad_shape = pad_shape.lower().rstrip('s')
         self.drill = drill
         self.drill_pattern = CirclePattern(self.drill, self.pitch)
-        self.pad_pattern = CirclePattern(self.pad_dia, self.pitch)
+        if self.pad_shape == 'circle':
+            self.pad_pattern = CirclePattern(self.pad_size, self.pitch)
+        elif self.pad_shape == 'square':
+            self.pad_pattern = RectPattern(self.pad_size, self.pad_size, self.pitch, self.pitch)
         self.patterns = [self.drill_pattern, self.pad_pattern]
         self.plated = plated
         self.sides = sides
@@ -182,7 +200,7 @@ class THTProtoAreaCircles(PatternProtoArea):
         yield d
 
     def __repr__(self):
-        return f'THTCircles(d={self.pad_dia}, h={self.drill}, p={self.pitch}, sides={self.sides}, plated={self.plated})'
+        return f'THTPads(size={self.pad_size}, h={self.drill}, p={self.pitch}, sides={self.sides}, plated={self.plated}, pad_shape="{self.pad_shape}")'
 
     def symmetric_sides(self):
         return True
@@ -195,6 +213,23 @@ class SMDProtoAreaRectangles(PatternProtoArea):
         h = h or pitch_y - 0.15
         self.w, self.h = w, h
         self.pad_pattern = RectPattern(w, h, pitch_x, pitch_y)
+        self.patterns = [self.pad_pattern]
+
+    def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
+        x, y, w, h = self.fit_rect(x, y, w, h, center)
+        pad_id = str(uuid.uuid4())
+        yield {'defs': [self.pad_pattern.svg_def(pad_id, x, y)],
+            'top copper': make_rect(pad_id, x, y, w, h, clip),
+            'top mask': make_rect(pad_id, x, y, w, h, clip)}
+
+    def symmetric_sides(self):
+        return False
+
+class ManhattanProtoArea(PatternProtoArea):
+    def __init__(self, pitch=2.54*4, gap=0.25, border=None):
+        super().__init__(pitch, pitch, border=border)
+        self.gap = gap
+        self.pad_pattern = ManhattanPattern(pitch, gap)
         self.patterns = [self.pad_pattern]
 
     def generate(self, x, y, w, h, center=True, clip='', tight_layout=False):
@@ -509,8 +544,9 @@ def parse_layout(expr, defs):
         raise SyntaxError('Invalid layout expression') from e
 
 PROTO_AREA_TYPES = {
-    'THTCircles': THTProtoAreaCircles,
+    'THTPads': THTProtoArea,
     'SMDPads': SMDProtoAreaRectangles,
+    'Manhattan': ManhattanProtoArea,
     'Empty': EmptyProtoArea,
 }
 
@@ -545,8 +581,9 @@ COMMON_DEFS = '''
 empty = Empty(copper=False);
 ground = Empty(copper=True);
 
-tht = THTCircles();
-tht50 = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27);
+tht = THTPads();
+manhattan = Manhattan();
+tht50 = THTPads(pad_size=1.0, drill=0.6, pitch=1.27);
 
 smd100 = SMDPads(1.27, 2.54);
 smd100r = SMDPads(2.54, 1.27);
@@ -591,8 +628,9 @@ if __name__ == '__main__':
 #        print(line, '->', eval_defs(line))
 #    print()
 #    print('===== Proto board =====')
-    #b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27)',
+    #b = ProtoBoard('tht = THTCircles(); tht_small = THTCircles(pad_size=1.0, drill=0.6, pitch=1.27)',
     #        'tht@1in|(tht_small@2/tht@1)', mounting_holes=(3.2, 5.0, 5.0), border=2, center=False)
     #b = ProtoBoard('tht = THTCircles(); smd1 = SMDPads(2.0, 2.0); smd2 = SMDPads(0.95, 1.895); plane=Empty(copper=True)', 'tht@25mm | (smd1 + plane)', mounting_holes=(3.2, 5.0, 5.0), border=2, tight_layout=True)
-    b = ProtoBoard(COMMON_DEFS, f'((smd100 + smd100) | (smd950 + smd950) | tht50@20mm)@20mm / tht', mounting_holes=(3.2,5,5), border=1, tight_layout=True, center=True)
+    #b = ProtoBoard(COMMON_DEFS, f'((smd100 + smd100) | (smd950 + smd950) | tht50@20mm)@20mm / tht', mounting_holes=(3.2,5,5), border=1, tight_layout=True, center=True)
+    b = ProtoBoard(COMMON_DEFS, f'manhattan', mounting_holes=(3.2,5,5), border=1, tight_layout=True, center=True)
     print(b.generate(80, 60))

@@ -6,14 +6,25 @@ import textwrap
 
 import click
 
-from gerbolyze.protoboard import ProtoBoard, EmptyProtoArea, THTProtoAreaCircles, SMDProtoAreaRectangles
+from gerbolyze.protoboard import ProtoBoard, EmptyProtoArea, THTProtoArea, SMDProtoAreaRectangles, ManhattanProtoArea
 
 common_defs = '''
 empty = Empty(copper=False);
 ground = Empty(copper=True);
 
-tht = THTCircles();
-tht50 = THTCircles(pad_dia=1.0, drill=0.6, pitch=1.27);
+tht = THTPads();
+thtsq = THTPads(pad_shape="square");
+thtl = THTPads(drill=1.2);
+thtxl = THTPads(drill=1.6, pad_size=2.1, pad_shape="square");
+tht50 = THTPads(pad_size=1.0, drill=0.6, pitch=1.27);
+tht50sq = THTPads(pad_size=1.0, drill=0.6, pitch=1.27, pad_shape="square");
+manhattan = Manhattan();
+
+conn125 = THTPads(drill=0.6, pad_size=1.0, pitch=1.25);
+conn250 = THTPads(drill=1.0, pad_size=1.6, pitch=2.00);
+conn200 = THTPads(drill=1.2, pad_size=2.0, pitch=2.50);
+conn350 = THTPads(drill=1.6, pad_size=2.8, pitch=3.50);
+conn396 = THTPads(drill=1.6, pad_size=2.8, pitch=3.96);
 
 smd100 = SMDPads(1.27, 2.54);
 smd100r = SMDPads(2.54, 1.27);
@@ -28,23 +39,22 @@ smd500r = SMDPads(2.0, 0.5);
 '''
 
 
-def tht_normal_pitch100mil(size, mounting_holes=None):
-    return ProtoBoard(common_defs, 'tht', mounting_holes, border=2)
-
-def tht_pitch_50mil(size, mounting_holes=None):
-    return ProtoBoard(common_defs, 'tht50', mounting_holes, border=2)
-
-def tht_mixed_pitch(size, mounting_holes=None):
-    w, h = size
-    f = max(1.27*5, min(30, h*0.3))
-    return ProtoBoard(common_defs, f'tht50@{f}mm / tht', mounting_holes, border=2, tight_layout=True)
-
 smd_basic = {
         'smd100': 'smd_soic_100mil',
         'smd950': 'smd_sot_950um',
         'smd800': 'smd_sop_800um',
         'smd650': 'smd_sot_650um',
-        'smd500': 'smd_sop_500um' }
+        'smd500': 'smd_sop_500um',
+        'manhattan': 'manhattan_400mil'}
+
+connector_pitches = {
+        'tht50': '50mil',
+        'conn125': '1.25mm',
+        'conn200': '2.00mm',
+        'conn250': '2.50mm',
+        'conn350': '3.50mm',
+        'conn396': '3.96mm',
+        }
 
 #lengths_large = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 120, 150, 160, 180, 200, 250, 300]
 lengths_large = [30, 40, 50, 60, 80, 100, 120, 150, 160]
@@ -56,40 +66,16 @@ sizes_small = list(itertools.combinations(lengths_small, 2))
 lengths_medium = lengths_large
 sizes_medium = list(itertools.combinations(lengths_medium, 2))
 
-def generate(outdir, fun, sizes=sizes_large, name=None, generate_svg=True):
-    name = name or fun.__name__
-    outdir = outdir / f'{name}'
-    plain_dir = outdir / 'no_mounting_holes'
-    plain_dir.mkdir(parents=True, exist_ok=True)
-
-    for w, h in sizes:
-        outfile = plain_dir / f'{name}_{w}x{h}.svg'
-        board = fun((w, h))
-        yield outfile, (float(w), float(h), None, board.symmetric_sides, board.used_patterns)
-        if generate_svg:
-            outfile.write_text(board.generate(w, h))
-
-    for dia in (2, 2.5, 3, 4):
-        hole_dir  = outdir / f'mounting_holes_M{dia:.1f}'
-        hole_dir.mkdir(exist_ok=True)
-
-        for w, h in sizes:
-            if w < 25 or h < 25:
-                continue
-            outfile = hole_dir / f'{name}_{w}x{h}_holes_M{dia:.1f}.svg'
-            try:
-                board = fun((w, h), (dia, dia+2))
-                yield outfile, (float(w), float(h), float(dia), board.symmetric_sides, board.used_patterns)
-                if generate_svg:
-                    outfile.write_text(board.generate(w, h))
-            except ValueError: # mounting hole keepout too large for small board, ignore.
-                pass
-
+def min_dim(sizes, dim):
+    return [(w, h) for w, h in sizes if w > dim and h > dim]
 
 def write_index(index, outdir):
-    tht_pitches = lambda patterns: [ p.pitch for p in patterns if isinstance(p, THTProtoAreaCircles) ]
+    tht_pitches = lambda patterns: [ p.pitch for p in patterns if isinstance(p, THTProtoArea) ]
     smd_pitches = lambda patterns: [ min(p.pitch_x, p.pitch_y) for p in patterns if isinstance(p, SMDProtoAreaRectangles) ]
     has_ground_plane = lambda patterns: any(isinstance(p, EmptyProtoArea) and p.copper for p in patterns)
+    has_manhattan_area = lambda patterns: any(isinstance(p, ManhattanProtoArea) for p in patterns)
+    has_square_pads = lambda patterns: any(isinstance(p, THTProtoArea) and p.pad_shape == 'square' for p in patterns)
+    has_large_holes = lambda patterns: any(isinstance(p, THTProtoArea) and abs(p.pitch_x - 2.54) < 0.01 and p.drill > 1.1 for p in patterns)
     format_pitches = lambda pitches: ', '.join(f'{p:.2f}' for p in sorted(pitches))
     format_length = lambda length_or_none, default='': default if length_or_none is None else f'{length_or_none:.2f} mm'
     area_count = lambda patterns: len(set(p for p in patterns if not isinstance(p, EmptyProtoArea)))
@@ -106,6 +92,9 @@ def write_index(index, outdir):
             f'<td>{area_count(patterns)}</td>'
             f'<td>{"Yes" if symmetric else "No"}</td>'
             f'<td>{"Yes" if has_ground_plane(patterns) else "No"}</td>'
+            f'<td>{"Yes" if has_manhattan_area(patterns) else "No"}</td>'
+            f'<td>{"Yes" if has_square_pads(patterns) else "No"}</td>'
+            f'<td>{"Yes" if has_large_holes(patterns) else "No"}</td>'
             f'<td>{format_pitches(tht_pitches(patterns))}</td>'
             f'<td>{format_pitches(smd_pitches(patterns))}</td>'
             '</tr>')
@@ -120,6 +109,9 @@ def write_index(index, outdir):
             'Number of Areas': sorted(set(area_count(patterns) for *_rest, patterns in index.values())),
             'Symmetric Top and Bottom?': ['Yes', 'No'],
             'Ground Plane?': ['Yes', 'No'],
+            'Manhattan Area?': ['Yes', 'No'],
+            'Square Pads?': ['Yes', 'No'],
+            'Large Holes?': ['Yes', 'No'],
             'THT Pitches': sorted(set(p for *_rest, patterns in index.values() for p in tht_pitches(patterns))) + ['None'],
             'SMD Pitches': sorted(set(p for *_rest, patterns in index.values() for p in smd_pitches(patterns))) + ['None'],
             }
@@ -340,6 +332,9 @@ def write_index(index, outdir):
         <th data-filter-key="number_of_areas" width="3em">Number of Areas</th>
         <th data-filter-key="symmetric_top_and_bottom" width="3em">Symmetric Top and Bottom?</th>
         <th data-filter-key="ground_plane" width="3em">Ground Plane?</th>
+        <th data-filter-key="manhattan_area" width="3em">Manhattan Area?</th>
+        <th data-filter-key="square_pads" width="3em">Square Pads?</th>
+        <th data-filter-key="large_holes" width="3em">Large Holes?</th>
         <th data-filter-key="tht_pitches">THT Pitches [mm]</th>
         <th data-filter-key="smd_pitches">SMD Pitches [mm]</th>
     </tr>
@@ -360,87 +355,194 @@ def write_index(index, outdir):
     (outdir / 'index.html').write_text(html) 
 
 
+def generate(outdir, fun, sizes=sizes_large, name=None, generate_svg=True):
+    name = name or fun.__name__
+    outdir = outdir / f'{name}'
+    plain_dir = outdir / 'no_mounting_holes'
+    plain_dir.mkdir(parents=True, exist_ok=True)
+
+    for w, h in sizes:
+        outfile = plain_dir / f'{name}_{w}x{h}.svg'
+        board = fun((w, h))
+        yield outfile, (float(w), float(h), None, board.symmetric_sides, board.used_patterns)
+        if generate_svg:
+            outfile.write_text(board.generate(w, h))
+
+    for dia in (2, 2.5, 3, 4):
+        hole_dir  = outdir / f'mounting_holes_M{dia:.1f}'
+        hole_dir.mkdir(exist_ok=True)
+
+        for w, h in sizes:
+            if w < 25 or h < 25:
+                continue
+            outfile = hole_dir / f'{name}_{w}x{h}_holes_M{dia:.1f}.svg'
+            try:
+                # Add 0.2 mm tolerance to mounting holes for easier insertion of screw
+                board = fun((w, h), (dia+0.2, dia+2))
+                yield outfile, (float(w), float(h), float(dia), board.symmetric_sides, board.used_patterns)
+                if generate_svg:
+                    outfile.write_text(board.generate(w, h))
+            except ValueError: # mounting hole keepout too large for small board, ignore.
+                pass
+
 @click.command()
 @click.argument('outdir', type=click.Path(file_okay=False, dir_okay=True, path_type=pathlib.Path))
 @click.option('--generate-svg/--no-generate-svg')
 def generate_all(outdir, generate_svg):
-    index = {}
+    index_d = {}
+    def index(sizes=sizes_large, name=None):
+        def deco(fun):
+            nonlocal index_d
+            index_d.update(generate(outdir / 'svg', fun, sizes=sizes, name=name, generate_svg=generate_svg))
+            return fun
+        return deco
 
-    index.update(generate(outdir / 'svg' / 'simple', tht_normal_pitch100mil, generate_svg=generate_svg))
-    index.update(generate(outdir / 'svg' / 'simple', tht_pitch_50mil, generate_svg=generate_svg))
-    index.update(generate(outdir / 'svg' / 'mixed', tht_mixed_pitch, generate_svg=generate_svg))
+    @index()
+    def tht_normal_pitch100mil(size, mounting_holes=None):
+        return ProtoBoard(common_defs, 'tht', mounting_holes, border=2)
+
+    @index()
+    def tht_normal_pitch100mil_large_holes(size, mounting_holes=None):
+        return ProtoBoard(common_defs, 'thtl', mounting_holes, border=2)
+
+    @index()
+    def tht_normal_pitch100mil_xl_holes(size, mounting_holes=None):
+        return ProtoBoard(common_defs, 'thtl', mounting_holes, border=2)
+
+    @index()
+    def tht_normal_pitch100mil_square_pads(size, mounting_holes=None):
+        return ProtoBoard(common_defs, 'thtl', mounting_holes, border=2)
+
+    @index()
+    def tht_pitch_50mil(size, mounting_holes=None):
+        return ProtoBoard(common_defs, 'tht50', mounting_holes, border=2)
+
+    @index()
+    def tht_pitch_50mil_square_pads(size, mounting_holes=None):
+        return ProtoBoard(common_defs, 'tht50', mounting_holes, border=2)
+
+    @index()
+    def tht_mixed_pitch(size, mounting_holes=None):
+        w, h = size
+        f = max(1.27*5, min(30, h*0.3))
+        return ProtoBoard(common_defs, f'tht50@{f}mm / tht', mounting_holes, border=2, tight_layout=True)
+
+    @index()
+    def tht_mixed_pitch_square_pads(size, mounting_holes=None):
+        w, h = size
+        f = max(1.27*5, min(30, h*0.3))
+        return ProtoBoard(common_defs, f'tht50@{f}mm / tht', mounting_holes, border=2, tight_layout=True)
+
+    for pattern, name in connector_pitches.items():
+        @index(name=f'tht_and_connector_area_{name}')
+        def tht_and_connector_area(size, mounting_holes=None):
+            w, h = size
+            f = max(3.96*2.1, min(15, h*0.1))
+            return ProtoBoard(common_defs, f'{pattern}@{f}mm / tht', border=2, tight_layout=True)
+
+    @index()
+    def tht_and_connector_areas(size, mounting_holes=None):
+        w, h = size
+        fh = max(3.96*2.1, min(15, h*0.1))
+        fw = max(3.96*2.1, min(15, w*0.1))
+        return ProtoBoard(common_defs, f'conn396@{fw}mm | ((tht50 | conn200)@{fh}mm / tht / (conn125|conn250)@{fh}mm) | conn350@{fw}mm', border=2, tight_layout=True)
 
     for pattern, name in smd_basic.items():
+        pattern_sizes = sizes_small if pattern not in ['manhattan'] else sizes_medium
+        # Default to ground plane on back for manhattan proto boards
+        pattern_back = pattern if pattern not in ['manhattan'] else 'ground'
+
+        @index(sizes=pattern_sizes, name=f'{name}_ground_plane')
         def gen(size, mounting_holes=None):
             return ProtoBoard(common_defs, f'{pattern} + ground', mounting_holes, border=1)
-        index.update(generate(outdir / 'svg' / 'simple', gen, sizes_small, name=f'{name}_ground_plane', generate_svg=generate_svg))
 
+        @index(sizes=pattern_sizes, name=f'{name}_single_side')
         def gen(size, mounting_holes=None):
             return ProtoBoard(common_defs, f'{pattern} + empty', mounting_holes, border=1)
-        index.update(generate(outdir / 'svg' / 'simple', gen, sizes_small, name=f'{name}_single_side', generate_svg=generate_svg))
 
+        @index(sizes=pattern_sizes, name=f'{name}_double_side')
         def gen(size, mounting_holes=None):
             return ProtoBoard(common_defs, f'{pattern} + {pattern}', mounting_holes, border=1)
-        index.update(generate(outdir / 'svg' / 'simple', gen, sizes_small, name=f'{name}_double_side', generate_svg=generate_svg))
 
+        @index(sizes=pattern_sizes, name=f'tht_and_{name}_large_holes')
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
-            return ProtoBoard(common_defs, f'({pattern} + {pattern})@{f}mm / tht', mounting_holes, border=1, tight_layout=True)
-        index.update(generate(outdir / 'svg' / 'mixed', gen, sizes_small, name=f'tht_and_{name}', generate_svg=generate_svg))
+            return ProtoBoard(common_defs, f'({pattern} + {pattern_back})@{f}mm / thtl', mounting_holes, border=1, tight_layout=True)
 
+        @index(sizes=pattern_sizes, name=f'{name}_and_tht_large_holes')
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
-            return ProtoBoard(common_defs, f'({pattern} + {pattern}) / tht@{f}mm', mounting_holes, border=1, tight_layout=True)
-        index.update(generate(outdir / 'svg' / 'mixed', gen, sizes_small, name=f'{name}_and_tht', generate_svg=generate_svg))
+            return ProtoBoard(common_defs, f'({pattern} + {pattern_back}) / thtl@{f}mm', mounting_holes, border=1, tight_layout=True)
+
+        @index(sizes=pattern_sizes, name=f'tht_and_{name}')
+        def gen(size, mounting_holes=None):
+            w, h = size
+            f = max(1.27*5, min(30, h*0.3))
+            return ProtoBoard(common_defs, f'({pattern} + {pattern_back})@{f}mm / tht', mounting_holes, border=1, tight_layout=True)
+
+        @index(sizes=pattern_sizes, name=f'{name}_and_tht')
+        def gen(size, mounting_holes=None):
+            w, h = size
+            f = max(1.27*5, min(30, h*0.3))
+            return ProtoBoard(common_defs, f'({pattern} + {pattern_back}) / tht@{f}mm', mounting_holes, border=1, tight_layout=True)
+
+        @index(sizes=min_dim(pattern_sizes, 20), name=f'{name}_and_connector_areas')
+        def gen(size, mounting_holes=None):
+            w, h = size
+            fh = max(3.96*2.1, min(15, h*0.1))
+            fw = max(3.96*2.1, min(15, w*0.1))
+            return ProtoBoard(common_defs, f'conn396@{fw}mm | ((tht50 | conn200)@{fh}mm / ({pattern} + {pattern_back}) / (conn125|conn250)@{fh}mm) | conn350@{fw}mm', border=2, tight_layout=True)
 
         *_, suffix = name.split('_')
         if suffix not in ('100mil', '950um'):
+            @index(sizes=sizes_medium, name=f'tht_and_three_smd_100mil_950um_{suffix}')
             def gen(size, mounting_holes=None):
                 w, h = size
                 f = max(1.27*5, min(50, h*0.3))
                 f2 = max(1.27*5, min(30, w*0.2))
-                return ProtoBoard(common_defs, f'((smd100 + smd100) | (smd950 + smd950) | ({pattern}r + {pattern}r)@{f2}mm)@{f}mm / tht', mounting_holes, border=1, tight_layout=True)
-            index.update(generate(outdir / 'svg' / 'mixed', gen, sizes_medium, name=f'tht_and_three_smd_100mil_950um_{suffix}', generate_svg=generate_svg))
+                pattern_rot = f'{pattern}r' if pattern not in ['manhattan'] else pattern
+                pattern_back_rot = f'{pattern_back}r' if pattern not in ['manhattan'] else 'ground'
+                return ProtoBoard(common_defs, f'((smd100 + smd100) | (smd950 + smd950) | ({pattern_rot} + {pattern_back_rot})@{f2}mm)@{f}mm / tht', mounting_holes, border=1, tight_layout=True)
 
     for (pattern1, name1), (pattern2, name2) in itertools.combinations(smd_basic.items(), 2):
         *_, name1 = name1.split('_')
         *_, name2 = name2.split('_')
 
+        @index(sizes=sizes_small, name=f'tht_and_two_smd_{name1}_{name2}')
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
             return ProtoBoard(common_defs, f'(({pattern1} + {pattern1}) | ({pattern2} + {pattern2}))@{f}mm / tht', mounting_holes, border=1, tight_layout=True)
-        index.update(generate(outdir / 'svg' / 'mixed', gen, sizes_small, name=f'tht_and_two_smd_{name1}_{name2}', generate_svg=generate_svg))
 
+        @index(sizes=sizes_small, name=f'tht_and_two_sided_smd_{name1}_{name2}')
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
             return ProtoBoard(common_defs, f'({pattern1} + {pattern2})@{f}mm / tht', mounting_holes, border=1, tight_layout=True)
-        index.update(generate(outdir / 'svg' / 'mixed', gen, sizes_small, name=f'tht_and_two_sided_smd_{name1}_{name2}', generate_svg=generate_svg))
 
+        @index(sizes=sizes_small, name=f'two_sided_smd_{name1}_{name2}')
         def gen(size, mounting_holes=None):
             w, h = size
             f = max(1.27*5, min(30, h*0.3))
             return ProtoBoard(common_defs, f'{pattern1} + {pattern2}', mounting_holes, border=1)
-        index.update(generate(outdir / 'svg' / 'mixed', gen, sizes_small, name=f'two_sided_smd_{name1}_{name2}', generate_svg=generate_svg))
 
+    @index(sizes_medium, name=f'tht_and_50mil_and_two_smd_100mil_950um')
     def gen(size, mounting_holes=None):
         w, h = size
         f = max(1.27*5, min(50, h*0.3))
         f2 = max(1.27*5, min(30, w*0.2))
         return ProtoBoard(common_defs, f'((smd100 + smd100) | (smd950 + smd950) | tht50@{f2}mm)@{f}mm / tht', mounting_holes, border=1, tight_layout=True)
-    index.update(generate(outdir / 'svg' / 'mixed', gen, sizes_medium, name=f'tht_and_50mil_and_two_smd_100mil_950um', generate_svg=generate_svg))
 
+    @index(sizes=min_dim(sizes_medium, 60), name=f'all_tht_and_smd')
     def gen(size, mounting_holes=None):
         w, h = size
         f = max(1.27*5, min(30, h*0.3))
         f2 = max(1.27*5, min(25, w*0.1))
         return ProtoBoard(common_defs, f'tht50@10mm | tht | ((smd100r + smd100r) / (smd950r + smd950r) / (smd800 + smd800)@{f2}mm / (smd650 + smd650)@{f2}mm / (smd500 + smd500)@{f2}mm)@{f}mm', mounting_holes, border=1, tight_layout=True)
-    index.update(generate(outdir / 'svg' / 'mixed', gen, [ (w, h) for w, h in sizes_medium if w > 61 and h > 60 ], name=f'all_tht_and_smd', generate_svg=generate_svg))
 
-    write_index(index, outdir)
+    write_index(index_d, outdir)
 
 
 if __name__ == '__main__':
