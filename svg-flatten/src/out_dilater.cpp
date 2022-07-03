@@ -85,7 +85,10 @@ Dilater &Dilater::operator<<(const Polygon &poly) {
 }
 
 Dilater &Dilater::operator<<(const ApertureToken &ap) {
-    m_sink << ApertureToken(ap.m_size + 2*m_dilation);
+    if (ap.m_has_aperture)
+        m_sink << ApertureToken(ap.m_size + 2*m_dilation);
+    else
+        m_sink << ap;
     return *this;
 }
 
