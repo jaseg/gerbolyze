@@ -47,7 +47,7 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
     stack = gn.LayerStack.open(input_gerbers, lazy=True)
     (bb_min_x, bb_min_y), (bb_max_x, bb_max_y) = bounds = stack.board_bounds()
 
-    output_is_zip = output_gerbers.lower().endswith('.zip') if is_zip is None else is_zip
+    output_is_zip = output_gerbers.name.lower().endswith('.zip') if is_zip is None else is_zip
 
     # Create output dir if it does not exist yet. Do this now so we fail early
     if not output_is_zip:
