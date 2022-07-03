@@ -3,6 +3,7 @@ import signal
 import subprocess
 import logging
 import itertools
+import tempfile
 
 from job_queue import JobQueue
 
@@ -28,13 +29,30 @@ if __name__ == '__main__':
         for job in job_queue.job_iter('render'):
             logging.info(f'Processing {job.type} job {job.id} session {job["session_id"]} from {job.client} submitted {job.created}')
             with job:
-                job.result = subprocess.call(['sudo', '/usr/local/sbin/gerbolyze_render.sh', job['session_id']])
-                logging.info(f'Finishied processing {job.type} job {job.id}')
+                try:
+                    with tempfile.NamedTemporaryFile(suffix='.svg') as svg:
+                        subprocess.run(['python3', '-m', 'gerbonara', '--top', job['infile'], svg.name], check=True)
+                        subprocess.run(['resvg', '--dpi', '300', svg.name, job['preview_top_out']], check=True)
+                    with tempfile.NamedTemporaryFile(suffix='.svg') as svg:
+                        subprocess.run(['python3', '-m', 'gerbonara', '--bottom', job['infile'], svg.name], check=True)
+                        subprocess.run(['resvg', '--dpi', '300', svg.name, job['preview_bottom_out']], check=True)
+                    subprocess.run(['python3', '-m', 'gerbolyze', 'template', '--top', job['infile'], job['template_top_out']], check=True)
+                    subprocess.run(['python3', '-m', 'gerbolyze', 'template', '--bottom', job['infile'], job['template_bottom_out']], check=True)
+                    logging.info(f'Finishied processing {job.type} job {job.id}')
+                    job.result = True
+                except:
+                    logging.exception('Error during job processing')
+                    job.result = False
 
         for job in job_queue.job_iter('vector'):
             logging.info(f'Processing {job.type} job {job.id} session {job["session_id"]} from {job.client} submitted {job.created}')
             with job:
-                job.result = subprocess.call(['sudo', '/usr/local/sbin/gerbolyze_vector.sh', job['session_id'], job['side']])
-                logging.info(f'Finishied processing {job.type} job {job.id}')
+                try:
+                    subprocess.run(['python3', '-m', 'gerbolyze', 'paste', job['gerber_in'], job['overlay'], job['gerber_out']], check=True)
+                    logging.info(f'Finishied processing {job.type} job {job.id}')
+                    job.result = True
+                except:
+                    logging.exception('Error during job processing')
+                    job.result = False
     logging.info('Caught SIGINT. Exiting.')
 

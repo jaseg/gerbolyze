@@ -26,8 +26,6 @@ class UploadForm(FlaskForm):
 
 class OverlayForm(UploadForm):
     upload_file = FileField(validators=[FileRequired()])
-    side = RadioField('Side', choices=[('top', 'Top'), ('bottom', 'Bottom')],
-            default=lambda: session.get('side_selected', session.get('last_download')))
 
 class ResetForm(FlaskForm):
     pass
@@ -64,11 +62,14 @@ def index():
 
     for job_type in ('vector_job', 'render_job'):
         if job_type in session:
-            job = job_queue[session[job_type]]
-            if job.finished:
-                if job.result != 0:
-                    flash(f'Error processing gerber files', 'success') # FIXME make this an error, add CSS
-                del session[job_type]
+            try:
+                job = job_queue[session[job_type]]
+                if job.finished:
+                    if not job.result:
+                        flash(f'Error processing gerber files', 'success') # FIXME make this an error, add CSS
+                    del session[job_type]
+            except:
+                session.clear()
 
     r = make_response(render_template('index.html',
             has_renders = path.isfile(tempfile_path('gerber.zip')),
@@ -89,13 +90,20 @@ def vectorize():
     session['vector_job'] = job_queue.enqueue('vector',
             client=request.remote_addr,
             session_id=session['session_id'],
-            side=session['side_selected'])
+            gerber_in=tempfile_path('gerber.zip'),
+            overlay=tempfile_path('overlay.svg'),
+            gerber_out=tempfile_path('gerber_out.zip'))
 
 def render():
     if 'render_job' in session:
         job_queue[session['render_job']].abort()
     session['render_job'] = job_queue.enqueue('render',
             session_id=session['session_id'],
+            infile=tempfile_path('gerber.zip'),
+            preview_top_out=tempfile_path('preview_top.png'),
+            preview_bottom_out=tempfile_path('preview_bottom.png'),
+            template_top_out=tempfile_path('template_top.svg'),
+            template_bottom_out=tempfile_path('template_bottom.svg'),
             client=request.remote_addr)
 
 @app.route('/upload/gerber', methods=['POST'])
@@ -119,11 +127,8 @@ def upload_gerber():
 def upload_overlay():
     upload_form = OverlayForm()
     if upload_form.validate_on_submit():
-        # FIXME raise error when no side selected
         f = upload_form.upload_file.data
         f.save(tempfile_path('overlay.svg'))
-        session['side_selected'] = upload_form.side.data
-
         vectorize()
 
         flash(f'Overlay file successfully uploaded.', 'success')
@@ -133,7 +138,7 @@ def upload_overlay():
 def render_preview(side):
     if not side in ('top', 'bottom'):
         return abort(400, 'side must be either "top" or "bottom"')
-    return send_file(tempfile_path(f'template_{side}.preview.png'))
+    return send_file(tempfile_path(f'preview_{side}.png'))
 
 @app.route('/render/download/<side>')
 def render_download(side):
