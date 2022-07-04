@@ -1,0 +1,86 @@
+---
+- name: Setup gerboweb
+  hosts: all
+  tasks:
+  - name: Set local facts
+    set_fact:
+      gerboweb_cache: /var/cache/gerboweb
+
+  - name: Install packages into gerbolyze container
+    pacman:
+      name: python3,python-numpy,python-pip,imagemagick,pugixml,git,python,make,clang,rustup,cargo
+      state: present
+
+  - name: Setup usvg
+    shell: cargo install usvg resvg
+    args:
+      creates: /usr/bin/usvg
+
+  - name: Copy webapp sources
+    git:
+        repo: ../..
+        dest: /var/lib/gerboweb
+
+  - name: Create uwsgi worker user and group
+    user:
+        name: uwsgi-gerboweb
+        create_home: no
+        group: uwsgi
+        password: '!'
+        shell: /sbin/nologin
+        system: yes
+
+  - name: Template webapp config
+    template:
+      src: gerboweb.cfg.j2
+      dest: /var/lib/gerboweb/gerboweb_prod.cfg
+      owner: uwsgi-gerboweb
+      group: root
+      mode: 0660
+
+  - name: Copy uwsgi config
+    copy:
+        src: uwsgi-gerboweb.ini
+        dest: /etc/uwsgi.d/gerboweb.ini
+        owner: uwsgi-gerboweb
+        group: uwsgi
+        mode: 0440
+
+  - name: Copy job processor systemd service config
+    template:
+        src: gerboweb-job-processor.service.j2
+        dest: /etc/systemd/system/gerboweb-job-processor.service
+
+  - name: Enable uwsgi systemd socket
+    systemd:
+        daemon-reload: yes
+        name: uwsgi-app@gerboweb.socket
+        enabled: yes
+
+  - name: Copy gerboweb cache dir tmpfiles.d config
+    template:
+        src: tmpfiles-gerboweb.conf.j2
+        dest: /etc/tmpfiles.d/gerboweb.conf
+        owner: root
+        group: root
+        mode: 0644
+    register: tmpfiles_config
+
+  - name: Kick systemd tmpfiles service to create cache dir
+    command: systemd-tmpfiles --create
+    when: tmpfiles_config is changed
+
+  - name: Create job queue db
+    file:
+      path: "{{gerboweb_cache}}/job_queue.sqlite3"
+      owner: root
+      group: uwsgi
+      mode: 0660
+      state: touch
+
+  - name: Enable and launch job processor
+    systemd:
+        name: gerboweb-job-processor.service
+        enabled: yes
+        state: restarted
+

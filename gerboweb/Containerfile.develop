@@ -1,0 +1,12 @@
+FROM docker.io/archlinux:latest
+MAINTAINER gerbolyze@jaseg.de
+RUN pacman --noconfirm -Syu
+RUN pacman --noconfirm -Sy pugixml opencv pango cairo git python make clang rustup cargo python-pip base-devel gerbv rsync tmux
+RUN rustup install stable
+RUN rustup default stable
+RUN cargo install usvg resvg
+RUN mkdir /app /gerbolyze
+RUN python3 -m pip install pip==21.3.1
+RUN python3 -m pip install flask numpy lxml wasmtime svg_flatten_wasi resvg_wasi flask_wtf
+COPY develop-startup.sh /app/
+ENTRYPOINT /app/develop-startup.sh

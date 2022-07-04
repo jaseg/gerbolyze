@@ -1,0 +1,17 @@
+#!/bin/sh
+
+[ $# != 1 ] && exit 1
+ID=$1
+egrep -x -q '^[-0-9A-Za-z]{36}$'<<<"$ID" || exit 2
+
+systemd-nspawn \
+    -D {{gerboweb_root}} \
+    -x --bind={{gerboweb_cache}}/upload/$ID:/mnt \
+    /bin/sh -c "set -euo pipefail
+unzip -j -d /tmp/gerber /mnt/gerber.zip
+rm -f /mnt/template_top.svg /mnt/template_bottom.svg /mnt/template_top.preview.png /mnt/template_bottom.preview.png
+date; echo 'Rendering'
+gerbolyze template --top /mnt/template_top.svg --bottom /mnt/template_bottom.svg /tmp/gerber
+date; echo 'Scaling down'
+convert /mnt/template_top.svg -resize 500x500 -negate -brightness-contrast 30x30 -colorspace gray /mnt/template_top.preview.png
+convert /mnt/template_bottom.svg -resize 500x500 -negate -brightness-contrast 30x30 -colorspace gray /mnt/template_bottom.preview.png
