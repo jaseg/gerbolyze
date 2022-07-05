@@ -1,0 +1,18 @@
+FROM docker.io/archlinux:latest
+MAINTAINER gerbolyze@jaseg.de
+RUN pacman --noconfirm -Syu
+RUN pacman --noconfirm -Sy pugixml opencv pango cairo git python make clang cargo python-pip base-devel gerbv rsync tmux uwsgi uwsgi-plugin-python
+RUN cargo install usvg resvg
+RUN python3 -m pip install pip==21.3.1
+RUN python3 -m pip install flask numpy lxml wasmtime svg_flatten_wasi resvg_wasi flask_wtf
+RUN --mount=type=bind,rw,destination=/git \
+    cd /git/gerbonara && \
+    python3 -m pip --disable-pip-version-check install . && \
+    cd /git && \
+    python3 -m pip --disable-pip-version-check install .
+RUN mkdir /gerboweb
+ADD ["gerboweb/uwsgi-gerboweb.ini","gerboweb/gerboweb.py","gerboweb/job_processor.py","gerboweb/job_queue.py","/gerboweb/"]
+ADD ["gerboweb/static","/gerboweb/"]
+ADD ["gerboweb/templates","/gerboweb/"]
+ADD gerboweb/gerboweb_prod.cfg /gerboweb/gerboweb.cfg
+ENTRYPOINT uwsgi --ini /gerboweb/uwsgi-gerboweb.ini --chmod-socket=660 --socket=/run/uwsgi/socket

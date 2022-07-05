@@ -6,6 +6,7 @@ import tempfile
 import uuid
 from functools import wraps
 from os import path
+from pathlib import Path
 import os
 import sqlite3
 
@@ -20,6 +21,11 @@ from job_queue import JobQueue
 
 app = Flask(__name__, static_url_path='/static')
 app.config.from_envvar('GERBOWEB_SETTINGS')
+if app.config['SECRET_KEY'] is None:
+    if (p := Path('/run/secrets/gerboweb')).isfile():
+        app.config['SECRET_KEY'] = p.read_bytes()
+    else:
+        app.config['SECRET_KEY'] = os.urandom(32)
 
 class UploadForm(FlaskForm):
     upload_file = FileField(validators=[DataRequired()])
