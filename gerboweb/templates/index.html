@@ -6,6 +6,17 @@
     <link rel="icon" type="image/png" href="{{url_for('static', filename='favicon-512.png')}}">
     <link rel="apple-touch-icon" href="{{url_for('static', filename='favicon-512.png')}}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+
+div.header {
+	background-image: url("{{url_for('static', filename='bg10.jpg')}}");
+}
+
+.sample-images > h1 {
+  background-image: url("{{url_for('static', filename='bg10.jpg')}}");
+}
+</style>
+
   </head>
   <body>
     <div class="layout-container">
@@ -110,7 +121,7 @@
               {{overlay_form.csrf_token}}
             </form>
             <div class="form-controls">
-              <div class="form-label upload-label">Upload Overlay PNG file:</div>
+              <div class="form-label upload-label">Upload Overlay SVG file:</div>
               <input class='upload-button' form="overlay-upload-form" name="upload_file" size="20" type="file">
             </div>
             <div class="submit-buttons">

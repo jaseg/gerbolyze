@@ -11,6 +11,7 @@ import sys
 import warnings
 import shutil
 from zipfile import ZipFile, is_zipfile
+from pathlib import Path
 
 from lxml import etree
 import numpy as np

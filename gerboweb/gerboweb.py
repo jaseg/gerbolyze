@@ -16,13 +16,15 @@ from flask_wtf.file import FileField, FileRequired
 from wtforms.fields import RadioField
 from wtforms.validators import DataRequired
 from werkzeug.utils import secure_filename
+import uwsgidecorators
 
 from job_queue import JobQueue
+import job_processor
 
-app = Flask(__name__, static_url_path='/static')
+app = Flask(__name__, static_url_path='/gerboweb/static')
 app.config.from_envvar('GERBOWEB_SETTINGS')
 if app.config['SECRET_KEY'] is None:
-    if (p := Path('/run/secrets/gerboweb')).isfile():
+    if (p := Path('/run/secrets/gerboweb')).is_file():
         app.config['SECRET_KEY'] = p.read_bytes()
     else:
         app.config['SECRET_KEY'] = os.urandom(32)
@@ -37,6 +39,10 @@ class ResetForm(FlaskForm):
     pass
 
 job_queue = JobQueue(app.config['JOB_QUEUE_DB'])
+
+@uwsgidecorators.timer(1)
+def job_processor_timer(_num):
+    job_processor.process_job(job_queue)
 
 def tempfile_path(namespace):
     """ Return a path for a per-session temporary file identified by the given namespace. Create the session tempfile
@@ -92,7 +98,10 @@ def index():
 
 def vectorize():
     if 'vector_job' in session:
-        job_queue[session['vector_job']].abort()
+        try:
+            job_queue[session['vector_job']].abort()
+        except:
+            pass
     session['vector_job'] = job_queue.enqueue('vector',
             client=request.remote_addr,
             session_id=session['session_id'],
@@ -102,7 +111,10 @@ def vectorize():
 
 def render():
     if 'render_job' in session:
-        job_queue[session['render_job']].abort()
+        try:
+            job_queue[session['render_job']].abort()
+        except:
+            pass
     session['render_job'] = job_queue.enqueue('render',
             session_id=session['session_id'],
             infile=tempfile_path('gerber.zip'),
@@ -168,9 +180,15 @@ def output_download():
 @require_session_id
 def session_reset():
     if 'render_job' in session:
-        job_queue[session['render_job']].abort()
+        try:
+            job_queue[session['render_job']].abort()
+        except:
+            pass
     if 'vector_job' in session:
-        job_queue[session['vector_job']].abort()
+        try:
+            job_queue[session['vector_job']].abort()
+        except:
+            pass
     session.clear()
     flash('Session reset', 'success');
     return redirect(url_for('index'))

@@ -1,0 +1,17 @@
+[Unit]
+Description=Gerboweb server service
+Documentation=https://gitlab.com/gerbolyze/gerbolyze
+Wants=network-online.target
+Wants=nginx.service
+After=nginx.service
+RequiresMountsFor=/var/run/container/storage
+
+[Service]
+ExecStart=/usr/bin/podman run --secret=gerboweb  --conmon-pidfile=%t/container-gerboweb.pid --volume=${RUNTIME_DIRECTORY}:/run/uwsgi --detach gerboweb
+ExecStop=/usr/bin/podman stop --time 2 gerboweb
+Type=forking
+PIDFile=%t/container-gerboweb.pid
+RuntimeDirectory=gerboweb-uwsgi
+
+[Install]
+WantedBy=default.target

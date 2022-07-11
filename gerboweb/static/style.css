@@ -73,7 +73,6 @@ body {
 }
 
 div.header {
-  background-image: url("/static/bg10.jpg");
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -283,7 +282,6 @@ a.preview:link, a.preview:hover, a.preview:visited, a.preview:active {
   line-height: 70px;
   /* background-image: linear-gradient(to top right, var(--cg5), var(--cg6)); */
 
-  background-image: url("/static/bg10.jpg");
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;

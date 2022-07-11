@@ -12,7 +12,8 @@ RUN --mount=type=bind,rw,destination=/git \
     python3 -m pip --disable-pip-version-check install .
 RUN mkdir /gerboweb
 ADD ["gerboweb/uwsgi-gerboweb.ini","gerboweb/gerboweb.py","gerboweb/job_processor.py","gerboweb/job_queue.py","/gerboweb/"]
-ADD ["gerboweb/static","/gerboweb/"]
-ADD ["gerboweb/templates","/gerboweb/"]
+ADD ["gerboweb/static","/gerboweb/static"]
+ADD ["gerboweb/templates","/gerboweb/templates"]
 ADD gerboweb/gerboweb_prod.cfg /gerboweb/gerboweb.cfg
+RUN mkdir /var/cache/gerboweb
 ENTRYPOINT uwsgi --ini /gerboweb/uwsgi-gerboweb.ini --chmod-socket=660 --socket=/run/uwsgi/socket
