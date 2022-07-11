@@ -14,7 +14,7 @@ patterns, dashes and transformations.
 Raster images can either be vectorized through contour tracing (like gerbolyze v1.0 did) or they can be embedded using
 high-resolution grayscale emulation while (mostly) guaranteeing trace/space design rules.
 
-Try gerbolyze online at https://tsugi.kokoroyukuma.de/gerboweb
+Try gerbolyze online at https://dyna.kokoroyukuma.de/gerboweb
 
 .. figure:: pics/pcbway_sample_02_small.jpg
   :width: 800px
@@ -189,7 +189,7 @@ This is the algorithm svg-flatten uses to process an SVG.
 Web interface
 -------------
 
-You can try gerbolyze online at https://tsugi.kokoroyukuma.de/gerboweb
+You can try gerbolyze online at https://dyna.kokoroyukuma.de/gerboweb
 
 The web interface does not expose all of gerbolyze's bells and whistles, but it allows you to simply paste a single SVG
 file on a board to try out gerbolyze. Upload your design on the web interface, then download the template for either the
