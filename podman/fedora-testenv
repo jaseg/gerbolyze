@@ -3,5 +3,5 @@ FROM docker.io/fedora:latest
 MAINTAINER gerbolyze@jaseg.de
 RUN dnf update --refresh -y
 RUN dnf install -y python3 make clang opencv-devel pugixml-devel pango-devel cairo-devel rust cargo
-RUN cargo install usvg
+RUN cargo install resvg
 

@@ -151,7 +151,7 @@ class ClickSizeParam(click.ParamType):
         if isinstance(value, tuple):
             return value
 
-        if not (m := re.match('([0-9]+\.?[0-9]*)(mm|cm|in)?[xX*/,×]([0-9]+\.?[0-9]*)(mm|cm|in)?', value)):
+        if not (m := re.match(r'([0-9]+\.?[0-9]*)(mm|cm|in)?[xX*/,×]([0-9]+\.?[0-9]*)(mm|cm|in)?', value)):
             self.fail('Size must have format [width]x[height][unit]. The unit can be mm, cm or in. The unit is optional and defaults to mm.', param=param, ctx=ctx)
 
         w, unit1, h, unit2 = m.groups()
@@ -314,7 +314,7 @@ def parse_subtract_script(script, default_dilation=0.1, default_script=DEFAULT_S
             continue
 
         line = line.lower()
-        line = re.sub('\s', '', line)
+        line = re.sub(r'\s', '', line)
 
         # out.copper -= in.copper+0.1
         varname = r'([a-z]+\.[a-z]+)'

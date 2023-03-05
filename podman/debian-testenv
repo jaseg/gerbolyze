@@ -7,5 +7,5 @@ RUN env DEBIAN_FRONTEND=noninteractive apt install -y libopencv-dev libpugixml-d
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN sh -c '. ~/.cargo/env && rustup install stable'
 RUN sh -c '. ~/.cargo/env && rustup default stable'
-RUN sh -c '. ~/.cargo/env && cargo install usvg'
+RUN sh -c '. ~/.cargo/env && cargo install resvg'
 

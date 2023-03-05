@@ -3,8 +3,8 @@ FROM docker.io/archlinux:latest
 MAINTAINER gerbolyze@jaseg.de
 RUN pacman --noconfirm -Syu
 RUN pacman --noconfirm -Sy pugixml opencv pango cairo git python make clang rustup cargo python-pip base-devel gerbv rsync
-RUN python3 -m pip install pytest-parallel
+RUN python3 -m pip install pytest-parallel setuptools wasmtime
 RUN rustup install stable
 RUN rustup default stable
-RUN cargo install usvg resvg
+RUN cargo install resvg
 RUN python3 -m pip install --upgrade gerbonara
