@@ -32,14 +32,14 @@ using namespace gerbolyze;
 using namespace std;
 using namespace ClipperLib;
 
-bool gerbolyze::SVGDocument::load(string filename) {
+bool gerbolyze::SVGDocument::load(string filename, double scale) {
     ifstream in_f;
     in_f.open(filename);
 
-    return in_f && load(in_f);
+    return in_f && load(in_f, scale);
 }
 
-bool gerbolyze::SVGDocument::load(istream &in) {
+bool gerbolyze::SVGDocument::load(istream &in, double scale) {
     /* Load XML document */
     auto res = svg_doc.load(in);
     if (!res) {
@@ -62,8 +62,8 @@ bool gerbolyze::SVGDocument::load(istream &in) {
     /* usvg resolves all units, but instead of outputting some reasonable absolute length like mm, it converts
      * everything to px, which depends on usvg's DPI setting (--dpi).
      */
-    page_w_mm = page_w / assumed_usvg_dpi * 25.4;
-    page_h_mm = page_h / assumed_usvg_dpi * 25.4;
+    page_w_mm = page_w / assumed_usvg_dpi * 25.4 * scale;
+    page_h_mm = page_h / assumed_usvg_dpi * 25.4 * scale;
     if (!(page_w_mm > 0.0 && page_h_mm > 0.0 && page_w_mm < 10e3 && page_h_mm < 10e3)) {
         cerr << "Warning: Page has zero or negative size, or is larger than 10 x 10 meters! Parsed size: " << page_w << " x " << page_h << " millimeter" << endl;
     }
@@ -256,6 +256,11 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
     bool has_fill = fill_color;
     bool has_stroke = stroke_color && stroke_width > 0.0;
 
+    cerr << "processing svg path" << endl;
+    cerr << "  * " << fill_paths.size() << " fill paths" << endl;
+    cerr << "  * " << stroke_closed.size() << " closed strokes" << endl;
+    cerr << "  * " << stroke_open.size() << " open strokes" << endl;
+
     /* In outline mode, identify drills before applying clip */
     if (ctx.settings().outline_mode && has_fill && fill_color != GRB_PATTERN_FILL) {
         /* Polsby-Popper test */
@@ -301,8 +306,10 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             c.AddPaths(ctx.clip(), ptClip, /* closed */ true);
             c.StrictlySimple(true);
 
+            cerr << "clipping " << fill_paths.size() << " paths, got polytree with " << ptree_fill.ChildCount() << " top-level children" << endl;
             /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
             c.Execute(ctIntersection, ptree_fill, pftNonZero, pftNonZero);
+            cerr << "  > " << ptree_fill.ChildCount() << " clipped fill ptree top-level children" << endl;
         }
 
         /* Call out to pattern tiler for pattern fills. The path becomes the clip here. */
@@ -402,6 +409,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             stroke_clip.AddPaths(stroke_closed, ptSubject, /* closed */ true);
             stroke_clip.AddPaths(stroke_open, ptSubject, /* closed */ false);
             stroke_clip.Execute(ctDifference, ptree, pftNonZero, pftNonZero);
+            cerr << "  > " << ptree.ChildCount() << " clipped stroke ptree top-level children" << endl;
             
             /* Did any part of the path clip the clip path (which defaults to the document border)? */
             bool nothing_clipped = ptree.Total() == 0;
@@ -520,6 +528,7 @@ void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<p
 void gerbolyze::SVGDocument::setup_viewport_clip() {
     /* Set up view port clip path */
     Path vb_path;
+    cerr << "setting up viewport clip at " << vb_x << ", " << vb_y << " with size " << vb_w << ", " << vb_h << endl;
     for (d2p &p : vector<d2p> {
             {vb_x,      vb_y},
             {vb_x+vb_w, vb_y},

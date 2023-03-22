@@ -137,7 +137,10 @@ int main(int argc, char **argv) {
                 "Do not preprocess input using usvg (do not use unless you know *exactly* what you're doing)",
                 0},
             {"scale", {"--scale"},
-                "Scale input svg lengths by this factor (-o gerber only).",
+                "Scale input SVG by the given factor.",
+                1},
+            {"gerber_scale", {"--gerber-scale"},
+                "Scale Gerber output coordinates by the given factor.",
                 1},
             {"exclude_groups", {"-e", "--exclude-groups"},
                 "Comma-separated list of group IDs to exclude from export. Takes precedence over --only-groups.",
@@ -233,20 +236,23 @@ int main(int argc, char **argv) {
     PolygonSink *sink = nullptr;
     PolygonSink *flattener = nullptr;
     PolygonSink *dilater = nullptr;
+    cerr << "Render sink stack:" << endl;
     if (fmt == "svg") {
         string dark_color = args["svg_dark_color"] ? args["svg_dark_color"].as<string>() : "#000000";
         string clear_color = args["svg_clear_color"] ? args["svg_clear_color"].as<string>() : "#ffffff";
         sink = new SimpleSVGOutput(*out_f, only_polys, precision, dark_color, clear_color);
+        cerr << "  * SVG sink " << endl;
 
     } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber" || fmt == "gerber-outline") {
         outline_mode = fmt == "gerber-outline";
 
-        double scale = args["scale"].as<double>(1.0);
-        if (scale != 1.0) {
-            cerr << "Info: Loading scaled input @scale=" << scale << endl;
+        double gerber_scale = args["scale"].as<double>(1.0);
+        if (gerber_scale != 1.0) {
+            cerr << "Info: Scaling gerber output @gerber_scale=" << gerber_scale << endl;
         }
 
-        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, scale, {0,0}, args["flip_gerber_polarity"]);
+        sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, gerber_scale, {0,0}, args["flip_gerber_polarity"]);
+        cerr << "  * Gerber sink " << endl;
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
         if (!args["sexp_mod_name"]) {
@@ -257,6 +263,7 @@ int main(int argc, char **argv) {
         sink = new KicadSexpOutput(*out_f, args["sexp_mod_name"], sexp_layer, only_polys);
         force_flatten = true;
         is_sexp = true;
+        cerr << "  * KiCAD SExp sink " << endl;
 
     } else {
         cerr << "Error: Unknown output format \"" << fmt << "\"" << endl;
@@ -268,11 +275,13 @@ int main(int argc, char **argv) {
     if (args["dilate"]) {
         dilater = new Dilater(*top_sink, args["dilate"].as<double>());
         top_sink = dilater;
+        cerr << "  * Dilater " << endl;
     }
 
     if (args["flatten"] || (force_flatten && !args["no_flatten"])) {
         flattener = new Flattener(*top_sink);
         top_sink = flattener;
+        cerr << "  * Flattener " << endl;
     }
 
     /* Because the C++ stdlib is bullshit */
@@ -454,8 +463,14 @@ int main(int argc, char **argv) {
 
     SVGDocument doc;
     //cerr << "Loading temporary file " << frob << endl;
+
+    double scale = args["scale"].as<double>(1.0);
+    if (scale != 1.0) {
+        cerr << "Info: Loading scaled input @scale=" << scale << endl;
+    }
+
     ifstream load_f(frob);
-    if (!doc.load(load_f)) {
+    if (!doc.load(load_f, scale)) {
         cerr <<  "Error loading input file \"" << in_f_name << "\", exiting." << endl;
         return EXIT_FAILURE;
     }

@@ -34,13 +34,19 @@ int gerbolyze::run_cargo_command(const char *cmd_name, std::vector<std::string> 
     bool found = false;
     int proc_rc = -1;
     for (int i=0; i<3; i++) {
+        std::string envvar_cx;
         const char *envvar_val;
         switch (i) {
         case 0:
             if ((envvar_val = getenv(envvar)) == NULL) {
                 continue;
             } else {
-                cmdline_c[0] = envvar_val;
+                if (envvar_val[0] == '~') {
+                    envvar_cx = homedir_s + std::string(envvar_val+1);
+                    cmdline_c[0] = envvar_cx.c_str();
+                } else {
+                    cmdline_c[0] = envvar_val;
+                }
             }
             break;
 

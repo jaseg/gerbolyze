@@ -264,8 +264,8 @@ namespace gerbolyze {
             SVGDocument() : _valid(false) {}
 
             /* true -> load successful */
-            bool load(std::istream &in);
-            bool load(std::string filename);
+            bool load(std::istream &in, double scale=1.0);
+            bool load(std::string filename, double scale=1.0);
             /* true -> load successful */
             bool valid() const { return _valid; }
             operator bool() const { return valid(); }
