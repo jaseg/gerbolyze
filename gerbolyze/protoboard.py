@@ -54,9 +54,9 @@ class ManhattanPattern(Pattern):
     def content(self):
         return textwrap.dedent('''
                 <rect x="0"   y="0"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
-                <rect x="0"   y="0.5"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
-                <rect x="0.5"   y="0"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
-                <rect x="0.5"   y="0.5"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
+                <rect x="0"   y="0.5" width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
+                <rect x="0.5" y="0"   width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
+                <rect x="0.5" y="0.5" width="0.5" height="0.5" style="fill: black; stroke: white; stroke-width: 0.01mm"/>
                 <rect x="0.3" y="0.3" width="0.4" height="0.4" style="fill: black; stroke: white; stroke-width: 0.01mm" transform="rotate(45 0.5 0.5)"/>
                 '''.strip())
 
