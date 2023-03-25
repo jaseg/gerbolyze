@@ -82,8 +82,11 @@ int main(int argc, char **argv) {
             {"min_feature_size", {"-d", "--trace-space"},
                 "Minimum feature size of elements in vectorized graphics (trace/space) in mm. Default: 0.1mm.",
                 1},
-            {"curve_tolerance", {"-c", "--curve-tolerance"},
-                "Tolerance for curve flattening in mm. Default: 0.1mm.",
+            {"geometric_tolerance", {"-t", "--tolerance"},
+                "Tolerance in mm for geometric approximation such as curve flattening. Default: 0.1mm.",
+                1},
+            {"stroke_width_cutoff", {"--min-stroke-width"},
+                "Don't render strokes thinner than the given width in mm. Default: 0.01mm.",
                 1},
             {"drill_test_polsby_popper_tolerance", {"--drill-test-tolerance"},
                 "Tolerance for identifying circles as drills in outline mode",
@@ -313,7 +316,8 @@ int main(int argc, char **argv) {
     delete vec;
 
     double min_feature_size = args["min_feature_size"].as<double>(0.1); /* mm */
-    double curve_tolerance = args["curve_tolerance"].as<double>(0.1); /* mm */
+    double geometric_tolerance = args["geometric_tolerance"].as<double>(0.1); /* mm */
+    double stroke_width_cutoff = args["stroke_width_cutoff"].as<double>(0.01); /* mm */
     double drill_test_polsby_popper_tolerance = args["drill_test_polsby_popper_tolerance"].as<double>(0.1);
     double aperture_rect_test_tolerance = args["aperture_rect_test_tolerance"].as<double>(0.1);
     double aperture_circle_test_tolerance = args["aperture_circle_test_tolerance"].as<double>(0.1);
@@ -450,7 +454,8 @@ int main(int argc, char **argv) {
 
     RenderSettings rset {
         min_feature_size,
-        curve_tolerance,
+        geometric_tolerance,
+        stroke_width_cutoff,
         drill_test_polsby_popper_tolerance,
         aperture_circle_test_tolerance,
         aperture_rect_test_tolerance,

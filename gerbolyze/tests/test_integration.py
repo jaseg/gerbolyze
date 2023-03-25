@@ -63,3 +63,11 @@ def test_template(reference):
         run_command('python3', '-m', 'gerbolyze', 'template', '--top', '--force', infile, out_svg.name)
         run_command('python3', '-m', 'gerbolyze', 'template', '--bottom', '--force', '--vector', infile, out_svg.name)
 
+def test_convert_layers():
+    infile = reference_path('layers.svg')
+    with tempfile.TemporaryDirectory() as out_dir:
+        run_command('python3', '-m', 'gerbolyze', 'convert', infile, out_dir)
+        out_dir = Path(out_dir)
+        print(list(out_dir.glob('*')))
+        assert False
+

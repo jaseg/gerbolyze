@@ -159,7 +159,7 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
 
     } else {
         clip_path = *lookup;
-        ctx.mat().transform_paths(clip_path);
+        ctx.mat().doc2phys_clipper(clip_path);
     }
 
     /* Clip against parent's clip path (both are now in document coordinates) */
@@ -225,6 +225,13 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
 
 /* Export an SVG path element to gerber. Apply patterns and clip on the fly. */
 void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml_node &node) {
+    /* Important note on the document transform:
+     *
+     * We have to make sure that we dash & stroke (outline) the path *before* transforming into physical units because
+     * the transform may not be uniform, i.e. scale may depend on direction. As an example, imagine you stroke a 10 by
+     * 10mm square with an 1mm stroke, but there is a transform that scales by 1 in y-direction, and 2 in x-direction.
+     * In the output, the stroke is going to be 2mm wide on the left and right, and 1mm wide on the top/bottom.
+     */
     enum gerber_color fill_color = gerber_fill_color(node, ctx.settings());
     enum gerber_color stroke_color = gerber_stroke_color(node, ctx.settings());
     //cerr << "path: resolved colors, stroke=" << stroke_color << ", fill=" << fill_color << endl;
@@ -242,19 +249,22 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         return;
     }
 
-    /* Load path from SVG path data and transform into document units. */
-    stroke_width = ctx.mat().doc2phys_dist(stroke_width);
-
+    /* Load path from SVG path data */
     Paths stroke_open, stroke_closed;
     PolyTree ptree_fill;
     PolyTree ptree;
-    load_svg_path(ctx.mat(), node, stroke_open, stroke_closed, ptree_fill, ctx.settings().curve_tolerance_mm);
+    double geometric_tolerance_px = ctx.mat().doc2phys_min(ctx.settings().geometric_tolerance_mm);
+    load_svg_path(node, stroke_open, stroke_closed, ptree_fill, geometric_tolerance_px);
 
     Paths fill_paths;
     PolyTreeToPaths(ptree_fill, fill_paths);
+    /* Since we do not need to stroke them, transform the fill paths to physical units now. For polsby-popper to work
+     * properly, they need to be transformed already. However, we leave the stroke paths un-transformed since they can
+     * only be transformed after outlining. */ 
+    ctx.mat().doc2phys_clipper(fill_paths);
 
     bool has_fill = fill_color;
-    bool has_stroke = stroke_color && stroke_width > 0.0;
+    bool has_stroke = stroke_color && ctx.mat().doc2phys_min(stroke_width) > ctx.settings().stroke_width_cutoff;
 
     cerr << "processing svg path" << endl;
     cerr << "  * " << fill_paths.size() << " fill paths" << endl;
@@ -288,7 +298,6 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 centroid[0] /= clipper_scale;
                 centroid[1] /= clipper_scale;
                 double diameter = sqrt(4*fabs(area)/M_PI) / clipper_scale;
-                diameter = ctx.mat().doc2phys_dist(diameter); /* FIXME is this correct w.r.t. PolygonScaler? */
                 diameter = round(diameter * 1000.0) / 1000.0; /* Round to micrometer precsion; FIXME: make configurable */
                 ctx.sink() << ApertureToken(diameter) << FlashToken(centroid);
             }
@@ -375,6 +384,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             auto open_copy(stroke_open);
             stroke_open.clear();
 
+            /* FIXME do we handle really really long dashes correctly? */
             for (auto &poly : stroke_closed) {
                 poly.push_back(poly[0]);
                 dash_path(poly, stroke_open, dasharray, stroke_dashoffset);
@@ -387,7 +397,10 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             }
         }
 
-        if (stroke_color != GRB_PATTERN_FILL) {
+        if (stroke_color != GRB_PATTERN_FILL
+                && ctx.sink().can_do_apertures()
+                /* check if we have an uniform transform */
+                && ctx.mat().doc2phys_skew(stroke_width) < ctx.settings().geometric_tolerance_mm) {
             // cerr << "Analyzing direct conversion of stroke" << endl;
             // cerr << "  stroke_closed.size() = " << stroke_closed.size() << endl;
             // cerr << "  stroke_open.size() = " << stroke_open.size() << endl;
@@ -403,11 +416,15 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             Paths dilated_clip;
             ClosedPathsFromPolyTree(clip_ptree, dilated_clip);
 
+            Paths stroke_open_phys(stroke_open), stroke_closed_phys(stroke_closed);
+            ctx.mat().doc2phys_clipper(stroke_open_phys);
+            ctx.mat().doc2phys_clipper(stroke_closed_phys);
+
             Clipper stroke_clip;
             stroke_clip.StrictlySimple(true);
             stroke_clip.AddPaths(dilated_clip, ptClip, /* closed */ true);
-            stroke_clip.AddPaths(stroke_closed, ptSubject, /* closed */ true);
-            stroke_clip.AddPaths(stroke_open, ptSubject, /* closed */ false);
+            stroke_clip.AddPaths(stroke_closed_phys, ptSubject, /* closed */ true);
+            stroke_clip.AddPaths(stroke_open_phys, ptSubject, /* closed */ false);
             stroke_clip.Execute(ctDifference, ptree, pftNonZero, pftNonZero);
             cerr << "  > " << ptree.ChildCount() << " clipped stroke ptree top-level children" << endl;
             
@@ -433,7 +450,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             // cerr << "  ends_can_be_mapped = " << ends_can_be_mapped << endl;
             // cerr << "  joins_can_be_mapped = " << joins_can_be_mapped << endl;
             /* Accept loss of precision in outline mode. */
-            if (ctx.sink().can_do_apertures() && (ctx.settings().outline_mode || gerber_lossless )) {
+            if (ctx.settings().outline_mode || gerber_lossless) {
                 // cerr << "  -> converting directly" << endl;
                 ctx.sink() << ApertureToken(stroke_width);
                 for (auto &path : stroke_closed) {
@@ -452,7 +469,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         }
 
         ClipperOffset offx;
-        offx.ArcTolerance = 0.01 * clipper_scale; /* 10µm; TODO: Make this configurable */
+        offx.ArcTolerance = ctx.mat().phys2doc_min(ctx.settings().geometric_tolerance_mm) * clipper_scale;
         offx.MiterLimit = stroke_miterlimit;
 
         //cerr << "offsetting " << stroke_closed.size() << " closed and " << stroke_open.size() << " open paths" << endl;
@@ -468,9 +485,13 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         if (!ctx.clip().empty()) {
             Paths outline_paths;
             PolyTreeToPaths(ptree, outline_paths);
+
+            Paths clip(ctx.clip());
+            ctx.mat().phys2doc_clipper(clip);
+
             Clipper stroke_clip;
             stroke_clip.StrictlySimple(true);
-            stroke_clip.AddPaths(ctx.clip(), ptClip, /* closed */ true);
+            stroke_clip.AddPaths(clip, ptClip, /* closed */ true);
             stroke_clip.AddPaths(outline_paths, ptSubject, /* closed */ true);
             /* fill rules are nonzero since both subject and clip have already been normalized by clipper. */ 
             stroke_clip.Execute(ctIntersection, ptree, pftNonZero, pftNonZero);
@@ -486,6 +507,8 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             } else {
                 Paths clip;
                 PolyTreeToPaths(ptree, clip);
+                ctx.mat().phys2doc_clipper(clip);
+
                 RenderContext local_ctx(ctx, xform2d(), clip, true);
                 pattern->tile(local_ctx);
             }
@@ -493,6 +516,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
         } else {
             Paths s_polys;
             dehole_polytree(ptree, s_polys);
+            ctx.mat().doc2phys_clipper(s_polys);
             /* color has alredy been pushed above. */
             ctx.sink() << ApertureToken() << s_polys;
         }
@@ -566,7 +590,7 @@ void gerbolyze::SVGDocument::load_clips(const RenderSettings &rset) {
             xform2d child_xf(local_xf);
             child_xf.transform(xform2d(child.attribute("transform").value()));
 
-            load_svg_path(child_xf, child, _stroke_open, _stroke_closed, ptree_fill, rset.curve_tolerance_mm);
+            load_svg_path(child_xf, child, _stroke_open, _stroke_closed, ptree_fill, rset.geometric_tolerance_mm);
 
             Paths paths;
             PolyTreeToPaths(ptree_fill, paths);

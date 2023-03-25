@@ -208,7 +208,8 @@ namespace gerbolyze {
     class RenderSettings {
     public:
         double m_minimum_feature_size_mm = 0.1;
-        double curve_tolerance_mm;
+        double geometric_tolerance_mm = 0.1;
+        double stroke_width_cutoff = 0.01;
         double drill_test_polsby_popper_tolerance = 0.01;
         double aperture_circle_test_tolerance = 0.01;
         double aperture_rect_test_tolerance = 0.01;

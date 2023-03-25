@@ -104,11 +104,26 @@ namespace gerbolyze {
             };
 
             double doc2phys_dist(double dist_doc) {
-                return dist_doc * sqrt(xx*xx + xy * xy);
+                return dist_doc * sqrt(xx*xx + xy*xy);
             }
 
             double phys2doc_dist(double dist_doc) {
-                return dist_doc / sqrt(xx*xx + xy * xy);
+                return dist_doc / sqrt(xx*xx + xy*xy);
+            }
+
+            double doc2phys_skew(double dist_doc) {
+                /* https://math.stackexchange.com/a/3521141 */
+                /* xx yx x0
+                 * xy yy y0 */
+                s_x = sqrt();
+            }
+
+            double doc2phys_min(double dist_doc) {
+                return dist_doc * fmin(sqrt(xx*xx + xy*xy), sqrt(yy*yy + yx*yx));
+            }
+
+            double doc2phys_max(double dist_doc) {
+                return dist_doc * fmax(sqrt(xx*xx + xy*xy), sqrt(yy*yy + yx*yx));
             }
 
             d2p doc2phys(const d2p p) {
@@ -141,13 +156,31 @@ namespace gerbolyze {
             }
 
             /* Transform given clipper paths */
-            void transform_paths(ClipperLib::Paths &paths) {
+            void doc2phys_clipper(ClipperLib::Paths &paths) {
                 for (auto &p : paths) {
-                    transform_clipper_path(p);
+                    doc2phys_clipper(p);
                 }
             }
 
-            void transform_clipper_path(ClipperLib::Path &path) {
+            void doc2phys_clipper(ClipperLib::Path &path) {
+                std::transform(path.begin(), path.end(), path.begin(),
+                        [this](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
+                            d2p out(this->doc2phys(d2p{p.X / clipper_scale, p.Y / clipper_scale}));
+                            return {
+                                (ClipperLib::cInt)round(out[0] * clipper_scale),
+                                (ClipperLib::cInt)round(out[1] * clipper_scale)
+                            };
+                        });
+            }
+
+            /* Transform given clipper paths */
+            void phys2doc_clipper(ClipperLib::Paths &paths) {
+                for (auto &p : paths) {
+                    phys2doc_clipper(p);
+                }
+            }
+
+            void phys2doc_clipper(ClipperLib::Path &path) {
                 std::transform(path.begin(), path.end(), path.begin(),
                         [this](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
                             d2p out(this->doc2phys(d2p{p.X / clipper_scale, p.Y / clipper_scale}));

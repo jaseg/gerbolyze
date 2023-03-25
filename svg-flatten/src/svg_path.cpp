@@ -28,7 +28,7 @@
 
 using namespace std;
 
-static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Paths &stroke_open, ClipperLib::Paths &stroke_closed, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data, double distance_tolerance_mm) {
+static pair<bool, bool> flatten_path(ClipperLib::Paths &stroke_open, ClipperLib::Paths &stroke_closed, ClipperLib::Clipper &c_fill, const pugi::char_t *path_data, double distance_tolerance_px) {
     istringstream in(path_data);
 
     string cmd;
@@ -63,14 +63,6 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Paths 
             in >> a[0] >> a[1];
             assert (!in.fail()); /* guaranteed by usvg */
 
-            /* We need to transform all points ourselves here, and cannot use the transform feature of cairo_to_clipper:
-             * Our transform may contain offsets, and clipper only passes its data into cairo's transform functions
-             * after scaling up to its internal fixed-point ints, but it does not scale the transform accordingly. This
-             * means a scale/rotation we set before calling clipper works out fine, but translations get lost as they
-             * get scaled by something like 1e-6.
-             */
-            a = mat.doc2phys(a);
-
             in_poly.emplace_back(ClipperLib::IntPoint{
                     (ClipperLib::cInt)round(a[0]*clipper_scale),
                     (ClipperLib::cInt)round(a[1]*clipper_scale)
@@ -80,7 +72,6 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Paths 
             in >> a[0] >> a[1];
             assert (!in.fail()); /* guaranteed by usvg */
 
-            a = mat.doc2phys(a);
             in_poly.emplace_back(ClipperLib::IntPoint{
                     (ClipperLib::cInt)round(a[0]*clipper_scale),
                     (ClipperLib::cInt)round(a[1]*clipper_scale)
@@ -93,11 +84,7 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Paths 
             in >> d[0] >> d[1]; /* end point */
             assert (!in.fail()); /* guaranteed by usvg */
 
-            b = mat.doc2phys(b);
-            c = mat.doc2phys(c);
-            d = mat.doc2phys(d);
-
-            gerbolyze::curve4_div c4div(distance_tolerance_mm);
+            gerbolyze::curve4_div c4div(distance_tolerance_px);
             c4div.run(a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1]);
 
             for (auto &pt : c4div.points()) {
@@ -122,7 +109,7 @@ static pair<bool, bool> flatten_path(gerbolyze::xform2d &mat, ClipperLib::Paths 
     return {has_closed, num_subpaths > 1};
 }
 
-void gerbolyze::load_svg_path(xform2d &mat, const pugi::xml_node &node, ClipperLib::Paths &stroke_open, ClipperLib::Paths &stroke_closed, ClipperLib::PolyTree &ptree_fill, double curve_tolerance) {
+void gerbolyze::load_svg_path(const pugi::xml_node &node, ClipperLib::Paths &stroke_open, ClipperLib::Paths &stroke_closed, ClipperLib::PolyTree &ptree_fill, double geometric_tolerance_px) {
     auto *path_data = node.attribute("d").value();
     auto fill_rule = clipper_fill_rule(node);
 
@@ -131,7 +118,7 @@ void gerbolyze::load_svg_path(xform2d &mat, const pugi::xml_node &node, ClipperL
      * open/closed properties for stroke offsetting. */
     ClipperLib::Clipper c_fill;
     c_fill.StrictlySimple(true);
-    auto res = flatten_path(mat, stroke_open, stroke_closed, c_fill, path_data, curve_tolerance);
+    auto res = flatten_path(stroke_open, stroke_closed, c_fill, path_data, geometric_tolerance_px);
     bool has_closed = res.first, has_multiple = res.second;
 
     if (!has_closed && !has_multiple) {
