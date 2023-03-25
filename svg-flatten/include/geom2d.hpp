@@ -113,9 +113,38 @@ namespace gerbolyze {
 
             double doc2phys_skew(double dist_doc) {
                 /* https://math.stackexchange.com/a/3521141 */
+                /* https://stackoverflow.com/a/70381885 */
                 /* xx yx x0
                  * xy yy y0 */
-                s_x = sqrt();
+                double s_x = sqrt(xx*xx + xy*xy);
+
+                if (xx == 0 && xy == 0) {
+                    return std::numeric_limits<double>::infinity;
+                }
+
+                double theta = atan2(xy, xx);
+                double f = (xx*yy - xy*yx);
+
+                if (f == 0) {
+                    return std::numeric_limits<double>::infinity;
+                }
+
+                double m = (xx*yx + yy*xy) / f;
+
+                double f = xx + m*xy;
+                double s_y = 0;
+
+                if (f == 0) {
+                    f = m*xx - xy;
+                    if (f == 0) {
+                        return std::numeric_limits<double>::infinity;
+                    }
+                    s_y = yx*s_x / f;
+                } else {
+                    s_y = yy*s_x / f;
+                }
+
+                return s_x - s_y > 
             }
 
             double doc2phys_min(double dist_doc) {
