@@ -34,7 +34,7 @@ SimpleGerberOutput::SimpleGerberOutput(ostream &out, bool only_polys, int digits
     m_offset(offset),
     m_scale(scale),
     m_flip_pol(flip_polarity),
-    m_current_aperture(0.0),
+    m_current_aperture(0.05),
     m_aperture_set(false),
     m_macro_aperture(false),
     m_aperture_num(10) /* See gerber standard */
@@ -63,11 +63,13 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
 }
 
 SimpleGerberOutput& SimpleGerberOutput::operator<<(const ApertureToken &ap) {
-    if (m_aperture_set && !m_macro_aperture && ap.m_size == m_current_aperture) {
+    cerr << ap.m_size << " / " << m_current_aperture << endl;
+    m_aperture_set = ap.m_has_aperture;
+
+    if (!m_macro_aperture && ap.m_size == m_current_aperture) {
         return *this;
     }
 
-    m_aperture_set = ap.m_has_aperture;
     m_macro_aperture = false;
 
     if (m_aperture_set) {
@@ -78,6 +80,7 @@ SimpleGerberOutput& SimpleGerberOutput::operator<<(const ApertureToken &ap) {
         m_out << "%ADD" << m_aperture_num << "C," << size << "*%" << endl;
         m_out << "D" << m_aperture_num << "*" << endl;
     }
+
     return *this;
 }
 
