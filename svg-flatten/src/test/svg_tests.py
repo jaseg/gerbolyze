@@ -36,12 +36,12 @@ def run_svg_flatten(input_file, output_file, *args, **kwargs):
     args.append(str(output_file))
 
     try:
-        proc = subprocess.run(args, capture_output=True, check=True)
-    except:
+        proc = subprocess.run(args, capture_output=True, check=True, text=True)
+    except subprocess.CalledProcessError as e:
         print('Subprocess stdout:')
-        print(proc.stdout.decode())
+        print(e.stdout)
         print('Subprocess stderr:')
-        print(proc.stderr.decode())
+        print(e.stderr)
         raise
 
 def run_cargo_cmd(cmd, args, **kwargs):
@@ -212,6 +212,19 @@ class SVGRoundTripTests(unittest.TestCase):
                 msg += f'  /tmp/gerbolyze-fail-{test_in_svg.stem}-{{in|out}}.png\n'
                 e.args = (msg, *rest)
                 raise e
+
+class StrokeMappingTests(unittest.TestCase):
+    def test_stroke_mapping(self):
+        test_in_svg = 'testdata/svg/xform_uniformity_threshold.svg'
+
+        with tempfile.NamedTemporaryFile(suffix='.svg') as tmp_out_svg:
+
+            run_svg_flatten(test_in_svg, tmp_out_svg.name, format='svg')
+
+            with open(tmp_out_svg.name, 'r') as f:
+                num_strokes = sum(1 for l in f.readlines() if 'stroke=' in l)
+                self.assertEqual(num_strokes, 84)
+
 
 for test_in_svg in Path('testdata/svg').glob('*.svg'):
     # We need to make sure we capture the loop variable's current value here.
