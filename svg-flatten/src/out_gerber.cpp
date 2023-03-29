@@ -63,7 +63,6 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
 }
 
 SimpleGerberOutput& SimpleGerberOutput::operator<<(const ApertureToken &ap) {
-    cerr << ap.m_size << " / " << m_current_aperture << endl;
     m_aperture_set = ap.m_has_aperture;
 
     if (!m_macro_aperture && ap.m_size == m_current_aperture) {

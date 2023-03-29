@@ -530,9 +530,9 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             Paths s_polys;
             dehole_polytree(ptree, s_polys);
             ctx.mat().doc2phys_clipper(s_polys);
-            /* color has alredy been pushed above. */
+            /* color has already been pushed above. */
             //cerr << "  sinking " << s_polys.size() << " paths" << endl;
-            ctx.sink() << ApertureToken() << s_polys;
+            ctx.sink() << (stroke_color == GRB_DARK ? GRB_POL_DARK : GRB_POL_CLEAR) << ApertureToken() << s_polys;
         }
     }
 }
