@@ -32,7 +32,8 @@ SimpleSVGOutput::SimpleSVGOutput(ostream &out, bool only_polys, int digits_frac,
     m_digits_frac(digits_frac),
     m_dark_color(dark_color),
     m_clear_color(clear_color),
-    m_current_color(dark_color)
+    m_current_color(dark_color),
+    m_stroke_width(std::nan("0"))
 {
 }
 
@@ -57,21 +58,36 @@ SimpleSVGOutput &SimpleSVGOutput::operator<<(GerberPolarityToken pol) {
     return *this;
 }
 
+SimpleSVGOutput &SimpleSVGOutput::operator<<(const ApertureToken &ap) {
+    m_stroke_width = ap.m_has_aperture ? ap.m_size : std::nan("0");
+    return *this;
+}
+
 SimpleSVGOutput &SimpleSVGOutput::operator<<(const Polygon &poly) {
     //cerr << "svg: got poly of size " << poly.size() << endl;
-    if (poly.size() < 3) {
-        cerr << "Warning: " << poly.size() << "-element polygon passed to SimpleGerberOutput" << endl;
+    if (std::isnan(m_stroke_width) && poly.size() < 3) {
+        cerr << "Warning: " << poly.size() << "-element polygon passed to SimpleSVGOutput in fill mode" << endl;
         return *this;
     }
 
-    m_out << "<path fill=\"" << m_current_color << "\" d=\"";
+    if (std::isnan(m_stroke_width)) {
+        m_out << "<path fill=\"" << m_current_color << "\" d=\"";
+    } else {
+        m_out << "<path stroke=\"" << m_current_color << "\" stroke-width=\"" << m_stroke_width << "\" stroke-linejoin=\"round\" stroke-linecap=\"round\" d=\"";
+    }
+
     m_out << "M " << setprecision(m_digits_frac) << (poly[0][0] + m_offset[0])
           << " " << setprecision(m_digits_frac) << (poly[0][1] + m_offset[1]);
+
     for (size_t i=1; i<poly.size(); i++) {
         m_out << " L " << setprecision(m_digits_frac) << (poly[i][0] + m_offset[0])
               << " " << setprecision(m_digits_frac) << (poly[i][1] + m_offset[1]);
     }
-    m_out << " Z";
+
+    if (std::isnan(m_stroke_width)) {
+        m_out << " Z";
+    }
+
     m_out << "\"/>" << endl;
 
     return *this;

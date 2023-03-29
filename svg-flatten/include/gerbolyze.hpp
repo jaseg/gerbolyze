@@ -355,7 +355,9 @@ namespace gerbolyze {
         virtual ~SimpleSVGOutput() {}
         virtual SimpleSVGOutput &operator<<(const Polygon &poly);
         virtual SimpleSVGOutput &operator<<(GerberPolarityToken pol);
+        virtual SimpleSVGOutput &operator<<(const ApertureToken &ap);
         virtual SimpleSVGOutput &operator<<(const FlashToken &tok);
+        virtual bool can_do_apertures() { return true; }
         virtual void header_impl(d2p origin, d2p size);
         virtual void footer_impl();
 
@@ -364,6 +366,7 @@ namespace gerbolyze {
         std::string m_dark_color;
         std::string m_clear_color;
         std::string m_current_color;
+        double m_stroke_width;
         d2p m_offset;
     };
 
