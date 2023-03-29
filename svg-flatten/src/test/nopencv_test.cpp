@@ -7,6 +7,7 @@
 
 #include "util.h"
 #include "nopencv.hpp"
+#include "geom2d.hpp"
 
 #include <subprocess.h>
 #include <minunit.h>
@@ -330,6 +331,31 @@ MU_TEST(chain_approx_test_two_px_inv)         { chain_approx_test("testdata/two-
 MU_TEST(chain_approx_test_contour_tracing_demo_input) { chain_approx_test("testdata/contour_tracing_demo_input.png"); }
 
 
+MU_TEST(test_transform_decomposition) {
+    double scales[] = {0.1, 0.5, 0.9, 0.999999999, 1.0, 1.000000001, 1.1, 1.5, 2.0, 1000};
+    double ms[] = {0, -5.0, -1.0, -0.1, 0.1, 0.5, 1.0, 2.0, 5.0, 6.123, 100.0};
+    for (double &s_x : scales) {
+        for (double &s_y : scales) {
+            for (int i_theta=0; i_theta<25; i_theta++) {
+                double theta = i_theta * std::numbers::pi / 12.0;
+                for (double &m : ms) {
+                    xform2d xf;
+                    //cerr << endl << "testing s_x=" << s_x << ", s_y=" << s_y << ", m=" << m << ", theta=" << theta << endl;
+                    xf.rotate(theta).skew(m).scale(s_x, s_y);
+                    //cerr << "    -> " << xf.dbg_str() << endl;
+                    const auto [dec_s_x, dec_s_y, dec_m, dec_theta] = xf.decompose();
+                    mu_assert(fabs(s_x - dec_s_x) < 1e-9, "s_x incorrect");
+                    mu_assert(fabs(s_y - dec_s_y) < 1e-9, "s_y incorrect");
+                    mu_assert(fabs(m - dec_m) < 1e-9, "m incorrect");
+                    double a = dec_theta - theta + std::numbers::pi;
+                    mu_assert(fabs(a - floor(a/(2*std::numbers::pi)) * 2 * std::numbers::pi - std::numbers::pi) < 1e-12, "theta incorrect");
+                }
+            }
+        }
+    }
+}
+
+
 MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(test_complex_example_from_paper);
 
@@ -384,6 +410,8 @@ MU_TEST_SUITE(nopencv_contours_suite) {
     MU_RUN_TEST(chain_approx_test_two_px);
     MU_RUN_TEST(chain_approx_test_two_px_inv);
     MU_RUN_TEST(chain_approx_test_contour_tracing_demo_input);
+
+    MU_RUN_TEST(test_transform_decomposition);
 };
 
 int main(int argc, char **argv) {

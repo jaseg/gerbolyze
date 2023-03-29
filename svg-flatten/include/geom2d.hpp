@@ -41,8 +41,8 @@ namespace gerbolyze {
 
     class xform2d {
         public:
-            xform2d(double xx, double yx, double xy, double yy, double x0=0.0, double y0=0.0) :
-                xx(xx), yx(yx), xy(xy), yy(yy), x0(x0), y0(y0) {}
+            xform2d(double xx, double xy, double yx, double yy, double x0=0.0, double y0=0.0) :
+                xx(xx), xy(xy), x0(x0), yx(yx), yy(yy), y0(y0) {}
             
             xform2d() : xform2d(1.0, 0.0, 0.0, 1.0) {}
 
@@ -83,6 +83,20 @@ namespace gerbolyze {
                 return *this;
             }
 
+            xform2d &rotate(double theta) {
+                double s = sin(theta);
+                double c = cos(theta);
+                xform2d xf(c, -s, s, c);
+                transform(xf);
+                return *this;
+            }
+
+            xform2d &skew(double m) {
+                xform2d xf(1, m, 0, 1);
+                transform(xf);
+                return *this;
+            }
+
             xform2d &transform(const xform2d &other) {
                 double n_xx = other.xx * xx + other.yx * xy;
                 double n_yx = other.xx * yx + other.yx * yy;
@@ -112,22 +126,22 @@ namespace gerbolyze {
                 return dist_doc / sqrt(xx*xx + xy*xy);
             }
 
-            void decompose() {
+            std::tuple<double, double, double, double> decompose() {
                 /* FIXME unit tests, especially for degenerate cases! */
                 if (decomposed) {
-                    return;
+                    return {s_x, s_y, m, theta};
                 }
 
                 /* https://math.stackexchange.com/a/3521141 */
                 /* https://stackoverflow.com/a/70381885 */
-                /* xx yx x0
-                 * xy yy y0 */
-                s_x = sqrt(xx*xx + xy*xy);
+                /* xx xy x0
+                 * yx yy y0 */
+                s_x = sqrt(xx*xx + yx*yx);
 
-                if (xx == 0 && xy == 0) {
+                if (xx == 0 && yx == 0) {
                     theta = 0;
                 } else {
-                    theta = atan2(xy, xx);
+                    theta = atan2(yx, xx);
                 }
 
                 double f = (xx*yy - xy*yx);
@@ -135,16 +149,17 @@ namespace gerbolyze {
                 if (f == 0) {
                     m = 0;
                 } else {
-                    m = (xx*yx + yy*xy) / f;
+                    m = (xx*xy + yy*yx) / f;
                 }
 
-                f = xx + m*xy;
-                if (f == 0) {
-                    f = m*xx - xy;
-                    if (f == 0) {
+                f = xx + m*yx;
+                if (fabs(f) < 1e-12) {
+                    f = m*xx - yx;
+                    if (fabs(f) < 1e-12) {
                         s_y = 0;
+                    } else {
+                        s_y = xy*s_x / f;
                     }
-                    s_y = yx*s_x / f;
                 } else {
                     s_y = yy*s_x / f;
                 }
@@ -154,6 +169,7 @@ namespace gerbolyze {
                 f_max = fmax(s_x, b);
 
                 decomposed = true;
+                return {s_x, s_y, m, theta};
             }
 
             bool doc2phys_skew_ok(double dist_doc, double rel_tol, double abs_tol) {
@@ -280,6 +296,7 @@ namespace gerbolyze {
             }
 
             string dbg_str() {
+                decompose();
                 ostringstream os;
                 os << "xform2d< " << setw(5);
                 os << xx << ", " << xy << ", " << x0 << " / ";
@@ -291,9 +308,8 @@ namespace gerbolyze {
             }
 
         private:
-            double xx, yx,
-                   xy, yy,
-                   x0, y0;
+            double xx, xy, x0,
+                   yx, yy, y0;
             double theta, m, s_x, s_y;
             double f_min, f_max;
             bool decomposed = false;
