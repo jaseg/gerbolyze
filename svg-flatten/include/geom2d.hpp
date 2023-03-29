@@ -99,6 +99,7 @@ namespace gerbolyze {
                 yy = n_yy;
                 x0 = n_x0;
                 y0 = n_y0;
+                decomposed = false;
 
                 return *this;
             };
@@ -111,48 +112,90 @@ namespace gerbolyze {
                 return dist_doc / sqrt(xx*xx + xy*xy);
             }
 
-            double doc2phys_skew(double dist_doc) {
+            void decompose() {
+                /* FIXME unit tests, especially for degenerate cases! */
+                if (decomposed) {
+                    return;
+                }
+
                 /* https://math.stackexchange.com/a/3521141 */
                 /* https://stackoverflow.com/a/70381885 */
                 /* xx yx x0
                  * xy yy y0 */
-                double s_x = sqrt(xx*xx + xy*xy);
+                s_x = sqrt(xx*xx + xy*xy);
 
                 if (xx == 0 && xy == 0) {
-                    return std::numeric_limits<double>::infinity;
+                    theta = 0;
+                } else {
+                    theta = atan2(xy, xx);
                 }
 
-                double theta = atan2(xy, xx);
                 double f = (xx*yy - xy*yx);
 
                 if (f == 0) {
-                    return std::numeric_limits<double>::infinity;
+                    m = 0;
+                } else {
+                    m = (xx*yx + yy*xy) / f;
                 }
 
-                double m = (xx*yx + yy*xy) / f;
-
-                double f = xx + m*xy;
-                double s_y = 0;
-
+                f = xx + m*xy;
                 if (f == 0) {
                     f = m*xx - xy;
                     if (f == 0) {
-                        return std::numeric_limits<double>::infinity;
+                        s_y = 0;
                     }
                     s_y = yx*s_x / f;
                 } else {
                     s_y = yy*s_x / f;
                 }
 
-                return s_x - s_y > 
+                double b = sqrt(s_y*s_y + m*m);
+                f_min = fmin(s_x, b);
+                f_max = fmax(s_x, b);
+
+                decomposed = true;
+            }
+
+            bool doc2phys_skew_ok(double dist_doc, double rel_tol, double abs_tol) {
+                decompose();
+
+                if (f_min == 0) {
+                    return false;
+                }
+
+                double imbalance = f_max / f_min - 1.0;
+                //cerr << "  * skew check: " << dbg_str();
+                //cerr << "    imbalance=" << imbalance << endl;
+                //cerr << "    rel=" << (imbalance < rel_tol) << " abs=" << (imbalance*fabs(dist_doc) < abs_tol) << endl;
+                return imbalance < rel_tol && imbalance*fabs(dist_doc) < abs_tol;
             }
 
             double doc2phys_min(double dist_doc) {
-                return dist_doc * fmin(sqrt(xx*xx + xy*xy), sqrt(yy*yy + yx*yx));
+                decompose();
+                return dist_doc * f_min;
             }
 
             double doc2phys_max(double dist_doc) {
-                return dist_doc * fmax(sqrt(xx*xx + xy*xy), sqrt(yy*yy + yx*yx));
+                decompose();
+                return dist_doc * f_max;
+            }
+
+            double phys2doc_min(double dist_doc) {
+                decompose();
+
+                if (f_min == 0)
+                    return std::nan("9");
+
+                return dist_doc / f_min;
+            }
+
+            double phys2doc_max(double dist_doc) {
+                decompose();
+
+                if (f_max == 0)
+                    return std::nan("9");
+
+                return dist_doc / f_max;
             }
 
             d2p doc2phys(const d2p p) {
@@ -181,6 +224,7 @@ namespace gerbolyze {
 
                 if (success_out)
                     *success_out = true;
+
                 return *this;
             }
 
@@ -210,9 +254,17 @@ namespace gerbolyze {
             }
 
             void phys2doc_clipper(ClipperLib::Path &path) {
+                xform2d copy(*this);
+                bool inverted = false;
+                copy.invert(&inverted);
+                if (!inverted) {
+                    path.clear();
+                    return;
+                }
+
                 std::transform(path.begin(), path.end(), path.begin(),
-                        [this](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
-                            d2p out(this->doc2phys(d2p{p.X / clipper_scale, p.Y / clipper_scale}));
+                        [this, &copy](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
+                            d2p out(copy.doc2phys(d2p{p.X / clipper_scale, p.Y / clipper_scale}));
                             return {
                                 (ClipperLib::cInt)round(out[0] * clipper_scale),
                                 (ClipperLib::cInt)round(out[1] * clipper_scale)
@@ -231,7 +283,9 @@ namespace gerbolyze {
                 ostringstream os;
                 os << "xform2d< " << setw(5);
                 os << xx << ", " << xy << ", " << x0 << " / ";
-                os << yy << ", " << yx << ", " << y0;
+                os << yy << ", " << yx << ", " << y0 << " / ";
+                os << "θ=" << theta << ", m=" << m << " s=(" << s_x << ", " << s_y << " | ";
+                os << "f_min=" << f_min << ", f_max=" << f_max;
                 os << " >";
                 return os.str();
             }
@@ -240,5 +294,8 @@ namespace gerbolyze {
             double xx, yx,
                    xy, yy,
                    x0, y0;
+            double theta, m, s_x, s_y;
+            double f_min, f_max;
+            bool decomposed = false;
     };
 }

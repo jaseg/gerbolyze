@@ -88,6 +88,9 @@ int main(int argc, char **argv) {
             {"stroke_width_cutoff", {"--min-stroke-width"},
                 "Don't render strokes thinner than the given width in mm. Default: 0.01mm.",
                 1},
+            {"no_stroke_interpolation", {"--no-stroke-interpolation"},
+                "Always outline SVG strokes as regions instead of rendering them using Geber interpolation commands where possible.",
+                0},
             {"drill_test_polsby_popper_tolerance", {"--drill-test-tolerance"},
                 "Tolerance for identifying circles as drills in outline mode",
                 1},
@@ -316,7 +319,7 @@ int main(int argc, char **argv) {
     delete vec;
 
     double min_feature_size = args["min_feature_size"].as<double>(0.1); /* mm */
-    double geometric_tolerance = args["geometric_tolerance"].as<double>(0.1); /* mm */
+    double geometric_tolerance = args["geometric_tolerance"].as<double>(0.01); /* mm */
     double stroke_width_cutoff = args["stroke_width_cutoff"].as<double>(0.01); /* mm */
     double drill_test_polsby_popper_tolerance = args["drill_test_polsby_popper_tolerance"].as<double>(0.1);
     double aperture_rect_test_tolerance = args["aperture_rect_test_tolerance"].as<double>(0.1);
@@ -451,6 +454,7 @@ int main(int argc, char **argv) {
     bool flip_svg_colors = args["flip_svg_color_interpretation"];
     bool pattern_complete_tiles_only = args["pattern_complete_tiles_only"];
     bool use_apertures_for_patterns = args["use_apertures_for_patterns"];
+    bool do_gerber_interpolation = !args["no_stroke_interpolation"];
 
     RenderSettings rset {
         min_feature_size,
@@ -464,6 +468,7 @@ int main(int argc, char **argv) {
         flip_svg_colors,
         pattern_complete_tiles_only,
         use_apertures_for_patterns,
+        do_gerber_interpolation,
     };
 
     SVGDocument doc;

@@ -218,6 +218,7 @@ namespace gerbolyze {
         bool flip_color_interpretation = false;
         bool pattern_complete_tiles_only = false;
         bool use_apertures_for_patterns = false;
+        bool do_gerber_interpolation = true;
     };
 
     class RenderContext {
