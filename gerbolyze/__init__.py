@@ -335,30 +335,6 @@ def parse_subtract_script(script, default_dilation=0.1, default_script=DEFAULT_S
         subtract_script[out_layer] = subtract_script.get(out_layer, []) + [(in_layer, dilation)]
     return subtract_script
 
-# Parameter parsing foo
-#======================
-
-def parse_bbox(bbox):
-    if not bbox:
-        return None
-    elems = [ int(elem) for elem in re.split('[,/ ]', bbox) ]
-    if len(elems) not in (2, 4):
-        raise click.BadParameter(
-                '--bbox must be either two floating-point values like: w,h or four like: x,y,w,h')
-
-    elems = [ float(e) for e in elems ]
-
-    if len(elems) == 2:
-        bounds = [0, 0, *elems]
-    else:
-        bounds = elems
-    
-    # now transform bounds to the format pcb-tools uses. Instead of (x, y, w, h) or even (x1, y1, x2, y2), that
-    # is ((x1, x2), (y1, y2)
-
-    x, y, w, h = bounds
-    return ((x, x+w), (y, y+h))
-
 # Utility foo
 # ===========
 

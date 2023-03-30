@@ -282,7 +282,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             }
 
             double area = nopencv::polygon_area(geom_poly);
-            double polsby_popper = 4*M_PI * area / pow(nopencv::polygon_perimeter(geom_poly), 2);
+            double polsby_popper = 4*std::numbers::pi * area / pow(nopencv::polygon_perimeter(geom_poly), 2);
             polsby_popper = fabs(fabs(polsby_popper) - 1.0);
             if (polsby_popper < ctx.settings().drill_test_polsby_popper_tolerance) {
                 if (!ctx.clip().empty()) {
@@ -298,7 +298,9 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 d2p centroid = nopencv::polygon_centroid(geom_poly);
                 centroid[0] /= clipper_scale;
                 centroid[1] /= clipper_scale;
-                double diameter = sqrt(4*fabs(area)/M_PI) / clipper_scale;
+                /* area of n-gon with circumradius 1 relative to circle with radius 1 */
+                double ngon_area_relative = p.size()/(2*std::numbers::pi) * sin(2*std::numbers::pi / p.size());
+                double diameter = sqrt(4*fabs(area)/std::numbers::pi) / clipper_scale / ngon_area_relative;
                 double tolerance = ctx.settings().geometric_tolerance_mm / 2;
                 diameter = round(diameter/tolerance) * tolerance;
                 ctx.sink() << ApertureToken(diameter) << FlashToken(centroid);

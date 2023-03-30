@@ -20,6 +20,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import gerbonara
 import pytest
 
 
@@ -67,7 +68,20 @@ def test_convert_layers():
     infile = reference_path('layers.svg')
     with tempfile.TemporaryDirectory() as out_dir:
         run_command('python3', '-m', 'gerbolyze', 'convert', infile, out_dir)
-        out_dir = Path(out_dir)
-        print(list(out_dir.glob('*')))
-        assert False
+        stack = gerbonara.layers.LayerStack.open(out_dir)
+        for layer, dia in {
+                'top paste':        0.100,
+                'top silk':         0.110,
+                'top mask':         0.120,
+                'top copper':       0.130,
+                'bottom copper':    0.140,
+                'bottom mask':      0.150,
+                'bottom silk':      0.160,
+                'bottom paste':     0.170,
+                'mechanical outline':    0.09}.items():
+            assert set(round(ap.diameter, 4) for ap in stack[layer].apertures) == {dia, 0.05}
+
+        # Note: svg-flatten rounds these diameters to the geometric tolerance given on the command line (0.01mm by
+        # default). Thus, these values are different from the more precise values in the SVG.
+        assert set(stack.drill_layers[0].drill_sizes()) == {0.67, 0.51}
 
