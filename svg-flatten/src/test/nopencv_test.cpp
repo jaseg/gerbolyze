@@ -336,19 +336,22 @@ MU_TEST(test_transform_decomposition) {
     double ms[] = {0, -5.0, -1.0, -0.1, 0.1, 0.5, 1.0, 2.0, 5.0, 6.123, 100.0};
     for (double &s_x : scales) {
         for (double &s_y : scales) {
-            for (int i_theta=0; i_theta<25; i_theta++) {
-                double theta = i_theta * std::numbers::pi / 12.0;
-                for (double &m : ms) {
-                    xform2d xf;
-                    //cerr << endl << "testing s_x=" << s_x << ", s_y=" << s_y << ", m=" << m << ", theta=" << theta << endl;
-                    xf.rotate(theta).skew(m).scale(s_x, s_y);
-                    //cerr << "    -> " << xf.dbg_str() << endl;
-                    const auto [dec_s_x, dec_s_y, dec_m, dec_theta] = xf.decompose();
-                    mu_assert(fabs(s_x - dec_s_x) < 1e-9, "s_x incorrect");
-                    mu_assert(fabs(s_y - dec_s_y) < 1e-9, "s_y incorrect");
-                    mu_assert(fabs(m - dec_m) < 1e-9, "m incorrect");
-                    double a = dec_theta - theta + std::numbers::pi;
-                    mu_assert(fabs(a - floor(a/(2*std::numbers::pi)) * 2 * std::numbers::pi - std::numbers::pi) < 1e-12, "theta incorrect");
+            for (int s_y_sign=0; s_y_sign<2; s_y_sign++) {
+                double s_y_i = s_y_sign ? -s_y : s_y;
+                for (int i_theta=0; i_theta<25; i_theta++) {
+                    double theta = i_theta * std::numbers::pi / 12.0;
+                    for (double &m : ms) {
+                        xform2d xf;
+                        //cerr << endl << "testing s_x=" << s_x << ", s_y=" << s_y_i << ", m=" << m << ", theta=" << theta << endl;
+                        xf.rotate(theta).skew(m).scale(s_x, s_y_i);
+                        //cerr << "    -> " << xf.dbg_str() << endl;
+                        const auto [dec_s_x, dec_s_y, dec_m, dec_theta] = xf.decompose();
+                        mu_assert(fabs(s_x - dec_s_x) < 1e-9, "s_x incorrect");
+                        mu_assert(fabs(s_y_i - dec_s_y) < 1e-9, "s_y incorrect");
+                        mu_assert(fabs(m - dec_m) < 1e-9, "m incorrect");
+                        double a = dec_theta - theta + std::numbers::pi;
+                        mu_assert(fabs(a - floor(a/(2*std::numbers::pi)) * 2 * std::numbers::pi - std::numbers::pi) < 1e-12, "theta incorrect");
+                    }
                 }
             }
         }
