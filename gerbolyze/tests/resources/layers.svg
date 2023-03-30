@@ -82,7 +82,7 @@
        id="rect1146-5" />
   </defs>
   <sodipodi:namedview
-     inkscape:current-layer="g-outline"
+     inkscape:current-layer="g-plated-drill"
      id="namedview4"
      pagecolor="#ffffff"
      bordercolor="#000000"
@@ -93,14 +93,15 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="1.326224"
-     inkscape:cx="145.52594"
-     inkscape:cy="302.3622"
+     inkscape:zoom="9.8718859"
+     inkscape:cx="110.81976"
+     inkscape:cy="436.59338"
      inkscape:window-width="1920"
      inkscape:window-height="1011"
      inkscape:window-x="0"
      inkscape:window-y="0"
-     inkscape:window-maximized="1" />
+     inkscape:window-maximized="1"
+     showguides="false" />
   <g
      id="g-top-paste"
      inkscape:label="top paste"
@@ -559,12 +560,14 @@
      inkscape:groupmode="layer">
     <g
        id="g3914"
-       transform="translate(-41.733748,63.807618)">
+       transform="matrix(1.0463418,0,0,1.0463418,-43.953115,62.062388)"
+       style="stroke-width:0.955711">
       <g
          id="g3775"
-         transform="translate(59.673046,11.13409)">
+         transform="translate(59.673046,11.13409)"
+         style="stroke-width:0.955711">
         <circle
-           style="fill:#000000;stroke:none;stroke-width:0.1;stroke-linecap:round;stroke-dasharray:none"
+           style="fill:#000000;stroke:none;stroke-width:0.0955711;stroke-linecap:round;stroke-dasharray:none"
            id="path1374"
            cx="-11.447309"
            cy="26.860329"
@@ -577,923 +580,1058 @@
            inkscape:tile-y0="26.525881" />
         <g
            id="g1788"
-           transform="translate(-70.372474)">
+           transform="translate(-70.372474)"
+           style="stroke-width:0.955711">
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              id="use1683"
-             transform="translate(71.659431)" />
+             transform="translate(71.659431)"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,1.0033423)"
-             id="use1685" />
+             id="use1685"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,2.0066846)"
-             id="use1687" />
+             id="use1687"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,3.010027)"
-             id="use1689" />
+             id="use1689"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,4.0133693)"
-             id="use1691" />
+             id="use1691"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,5.0167116)"
-             id="use1693" />
+             id="use1693"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,6.0200539)"
-             id="use1695" />
+             id="use1695"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774)"
-             id="use1697" />
+             id="use1697"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,1.0033423)"
-             id="use1699" />
+             id="use1699"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,2.0066846)"
-             id="use1701" />
+             id="use1701"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,3.010027)"
-             id="use1703" />
+             id="use1703"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,4.0133693)"
-             id="use1705" />
+             id="use1705"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,5.0167116)"
-             id="use1707" />
+             id="use1707"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,6.0200539)"
-             id="use1709" />
+             id="use1709"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116)"
-             id="use1711" />
+             id="use1711"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,1.0033423)"
-             id="use1713" />
+             id="use1713"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,2.0066846)"
-             id="use1715" />
+             id="use1715"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,3.010027)"
-             id="use1717" />
+             id="use1717"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,4.0133693)"
-             id="use1719" />
+             id="use1719"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,5.0167116)"
-             id="use1721" />
+             id="use1721"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,6.0200539)"
-             id="use1723" />
+             id="use1723"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458)"
-             id="use1725" />
+             id="use1725"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,1.0033423)"
-             id="use1727" />
+             id="use1727"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,2.0066846)"
-             id="use1729" />
+             id="use1729"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,3.010027)"
-             id="use1731" />
+             id="use1731"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,4.0133693)"
-             id="use1733" />
+             id="use1733"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,5.0167116)"
-             id="use1735" />
+             id="use1735"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,6.0200539)"
-             id="use1737" />
+             id="use1737"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801)"
-             id="use1739" />
+             id="use1739"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,1.0033423)"
-             id="use1741" />
+             id="use1741"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,2.0066846)"
-             id="use1743" />
+             id="use1743"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,3.010027)"
-             id="use1745" />
+             id="use1745"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,4.0133693)"
-             id="use1747" />
+             id="use1747"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,5.0167116)"
-             id="use1749" />
+             id="use1749"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,6.0200539)"
-             id="use1751" />
+             id="use1751"
+             style="stroke-width:0.955711" />
         </g>
       </g>
       <g
-         id="g3579">
+         id="g3579"
+         style="stroke-width:0.955711">
         <g
            id="g1860"
-           transform="translate(-4.0047091,11.13409)">
+           transform="translate(-4.0047091,11.13409)"
+           style="stroke-width:0.955711">
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              id="use1790"
-             transform="translate(71.659431)" />
+             transform="translate(71.659431)"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,1.0033423)"
-             id="use1792" />
+             id="use1792"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,2.0066846)"
-             id="use1794" />
+             id="use1794"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,3.010027)"
-             id="use1796" />
+             id="use1796"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,4.0133693)"
-             id="use1798" />
+             id="use1798"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,5.0167116)"
-             id="use1800" />
+             id="use1800"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,6.0200539)"
-             id="use1802" />
+             id="use1802"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774)"
-             id="use1804" />
+             id="use1804"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,3.010027)"
-             id="use1810" />
+             id="use1810"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116)"
-             id="use1818" />
+             id="use1818"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,3.010027)"
-             id="use1824" />
+             id="use1824"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458)"
-             id="use1832" />
+             id="use1832"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,3.010027)"
-             id="use1838" />
+             id="use1838"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,1.0033423)"
-             id="use1848" />
+             id="use1848"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,2.0066846)"
-             id="use1850" />
+             id="use1850"
+             style="stroke-width:0.955711" />
         </g>
         <g
            id="g1932"
-           transform="translate(3.0096666,11.13409)">
+           transform="translate(3.0096666,11.13409)"
+           style="stroke-width:0.955711">
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              id="use1862"
-             transform="translate(71.659431)" />
+             transform="translate(71.659431)"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,1.0033423)"
-             id="use1864" />
+             id="use1864"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,2.0066846)"
-             id="use1866" />
+             id="use1866"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,3.010027)"
-             id="use1868" />
+             id="use1868"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,4.0133693)"
-             id="use1870" />
+             id="use1870"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,5.0167116)"
-             id="use1872" />
+             id="use1872"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,6.0200539)"
-             id="use1874" />
+             id="use1874"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,6.0200539)"
-             id="use1888" />
+             id="use1888"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,6.0200539)"
-             id="use1902" />
+             id="use1902"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,6.0200539)"
-             id="use1916" />
+             id="use1916"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,6.0200539)"
-             id="use1930" />
+             id="use1930"
+             style="stroke-width:0.955711" />
         </g>
         <g
            id="g2004"
-           transform="translate(10.024042,11.13409)">
+           transform="translate(10.024042,11.13409)"
+           style="stroke-width:0.955711">
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,1.0033423)"
-             id="use1936" />
+             id="use1936"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,2.0066846)"
-             id="use1938" />
+             id="use1938"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,3.010027)"
-             id="use1940" />
+             id="use1940"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,4.0133693)"
-             id="use1942" />
+             id="use1942"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,5.0167116)"
-             id="use1944" />
+             id="use1944"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,6.0200539)"
-             id="use1946" />
+             id="use1946"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774)"
-             id="use1948" />
+             id="use1948"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,4.0133693)"
-             id="use1956" />
+             id="use1956"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116)"
-             id="use1962" />
+             id="use1962"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,4.0133693)"
-             id="use1970" />
+             id="use1970"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458)"
-             id="use1976" />
+             id="use1976"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,4.0133693)"
-             id="use1984" />
+             id="use1984"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,1.0033423)"
-             id="use1992" />
+             id="use1992"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,2.0066846)"
-             id="use1994" />
+             id="use1994"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,3.010027)"
-             id="use1996" />
+             id="use1996"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,4.0133693)"
-             id="use1998" />
+             id="use1998"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,5.0167116)"
-             id="use2000" />
+             id="use2000"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,6.0200539)"
-             id="use2002" />
+             id="use2002"
+             style="stroke-width:0.955711" />
         </g>
         <g
            id="g2076"
-           transform="translate(17.038418,11.13409)">
+           transform="translate(17.038418,11.13409)"
+           style="stroke-width:0.955711">
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              id="use2006"
-             transform="translate(71.659431)" />
+             transform="translate(71.659431)"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774)"
-             id="use2020" />
+             id="use2020"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116)"
-             id="use2034" />
+             id="use2034"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,1.0033423)"
-             id="use2036" />
+             id="use2036"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,2.0066846)"
-             id="use2038" />
+             id="use2038"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,3.010027)"
-             id="use2040" />
+             id="use2040"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,4.0133693)"
-             id="use2042" />
+             id="use2042"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,5.0167116)"
-             id="use2044" />
+             id="use2044"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,6.0200539)"
-             id="use2046" />
+             id="use2046"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458)"
-             id="use2048" />
+             id="use2048"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801)"
-             id="use2062" />
+             id="use2062"
+             style="stroke-width:0.955711" />
         </g>
         <g
            id="g2148"
-           transform="translate(24.052794,11.13409)">
+           transform="translate(24.052794,11.13409)"
+           style="stroke-width:0.955711">
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              id="use2078"
-             transform="translate(71.659431)" />
+             transform="translate(71.659431)"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,1.0033423)"
-             id="use2080" />
+             id="use2080"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,2.0066846)"
-             id="use2082" />
+             id="use2082"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,3.010027)"
-             id="use2084" />
+             id="use2084"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,4.0133693)"
-             id="use2086" />
+             id="use2086"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,5.0167116)"
-             id="use2088" />
+             id="use2088"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,6.0200539)"
-             id="use2090" />
+             id="use2090"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774)"
-             id="use2092" />
+             id="use2092"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,3.010027)"
-             id="use2098" />
+             id="use2098"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,6.0200539)"
-             id="use2104" />
+             id="use2104"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116)"
-             id="use2106" />
+             id="use2106"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,3.010027)"
-             id="use2112" />
+             id="use2112"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,6.0200539)"
-             id="use2118" />
+             id="use2118"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458)"
-             id="use2120" />
+             id="use2120"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,3.010027)"
-             id="use2126" />
+             id="use2126"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,6.0200539)"
-             id="use2132" />
+             id="use2132"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801)"
-             id="use2134" />
+             id="use2134"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,3.010027)"
-             id="use2140" />
+             id="use2140"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,6.0200539)"
-             id="use2146" />
+             id="use2146"
+             style="stroke-width:0.955711" />
         </g>
         <g
            id="g2508"
-           transform="translate(31.06717,11.13409)">
+           transform="translate(31.06717,11.13409)"
+           style="stroke-width:0.955711">
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              id="use2438"
-             transform="translate(71.659431)" />
+             transform="translate(71.659431)"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,1.0033423)"
-             id="use2440" />
+             id="use2440"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,2.0066846)"
-             id="use2442" />
+             id="use2442"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,3.010027)"
-             id="use2444" />
+             id="use2444"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,4.0133693)"
-             id="use2446" />
+             id="use2446"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,5.0167116)"
-             id="use2448" />
+             id="use2448"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(71.659431,6.0200539)"
-             id="use2450" />
+             id="use2450"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774)"
-             id="use2452" />
+             id="use2452"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(72.662774,6.0200539)"
-             id="use2464" />
+             id="use2464"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116)"
-             id="use2466" />
+             id="use2466"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(73.666116,6.0200539)"
-             id="use2478" />
+             id="use2478"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458)"
-             id="use2480" />
+             id="use2480"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(74.669458,6.0200539)"
-             id="use2492" />
+             id="use2492"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,1.0033423)"
-             id="use2496" />
+             id="use2496"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,2.0066846)"
-             id="use2498" />
+             id="use2498"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,3.010027)"
-             id="use2500" />
+             id="use2500"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,4.0133693)"
-             id="use2502" />
+             id="use2502"
+             style="stroke-width:0.955711" />
           <use
              x="0"
              y="0"
              inkscape:tiled-clone-of="#path1374"
              xlink:href="#path1374"
              transform="translate(75.672801,5.0167116)"
-             id="use2504" />
+             id="use2504"
+             style="stroke-width:0.955711" />
         </g>
       </g>
     </g>
@@ -1504,12 +1642,12 @@
      inkscape:groupmode="layer">
     <g
        id="g3736"
-       transform="matrix(0.75866977,0,0,0.75866977,-36.231589,77.920776)"
-       style="stroke-width:1.3181">
+       transform="matrix(0.74819266,0,0,0.74819266,-35.646202,78.405074)"
+       style="stroke-width:1.33656">
       <g
          id="g2580"
          transform="translate(-4.0047091,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -1517,7 +1655,7 @@
            xlink:href="#path1374"
            id="use2510"
            transform="translate(71.659431)"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1525,7 +1663,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use2512"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1533,7 +1671,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use2514"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1541,7 +1679,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use2516"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1549,7 +1687,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use2518"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1557,7 +1695,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use2520"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1565,7 +1703,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,6.0200539)"
            id="use2522"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1573,7 +1711,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,1.0033423)"
            id="use2526"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1581,7 +1719,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,2.0066846)"
            id="use2542"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1589,7 +1727,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,3.010027)"
            id="use2544"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1597,7 +1735,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,4.0133693)"
            id="use2546"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1605,7 +1743,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,5.0167116)"
            id="use2562"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1613,7 +1751,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801)"
            id="use2566"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1621,7 +1759,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,1.0033423)"
            id="use2568"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1629,7 +1767,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,2.0066846)"
            id="use2570"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1637,7 +1775,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,3.010027)"
            id="use2572"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1645,7 +1783,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,4.0133693)"
            id="use2574"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1653,7 +1791,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,5.0167116)"
            id="use2576"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1661,12 +1799,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801,6.0200539)"
            id="use2578"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g2652"
          transform="translate(3.0096669,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -1674,7 +1812,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use2584"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1682,7 +1820,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use2586"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1690,7 +1828,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use2588"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1698,7 +1836,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use2590"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1706,7 +1844,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use2592"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1714,7 +1852,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774)"
            id="use2596"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1722,7 +1860,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,6.0200539)"
            id="use2608"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1730,7 +1868,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116)"
            id="use2610"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1738,7 +1876,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,6.0200539)"
            id="use2622"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1746,7 +1884,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458)"
            id="use2624"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1754,7 +1892,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,6.0200539)"
            id="use2636"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1762,7 +1900,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,1.0033423)"
            id="use2640"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1770,7 +1908,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,2.0066846)"
            id="use2642"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1778,7 +1916,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,3.010027)"
            id="use2644"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1786,7 +1924,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,4.0133693)"
            id="use2646"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1794,12 +1932,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801,5.0167116)"
            id="use2648"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g2796"
          transform="translate(10.032133,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -1807,7 +1945,7 @@
            xlink:href="#path1374"
            id="use2726"
            transform="translate(71.659431)"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1815,7 +1953,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use2728"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1823,7 +1961,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use2730"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1831,7 +1969,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use2732"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1839,7 +1977,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use2734"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1847,7 +1985,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use2736"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1855,7 +1993,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,6.0200539)"
            id="use2738"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1863,7 +2001,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,1.0033423)"
            id="use2742"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1871,7 +2009,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,2.0066846)"
            id="use2758"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1879,7 +2017,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,3.010027)"
            id="use2760"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1887,7 +2025,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,4.0133693)"
            id="use2762"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1895,7 +2033,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,5.0167116)"
            id="use2778"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1903,7 +2041,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801)"
            id="use2782"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1911,7 +2049,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,1.0033423)"
            id="use2784"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1919,7 +2057,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,2.0066846)"
            id="use2786"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1927,7 +2065,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,3.010027)"
            id="use2788"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1935,7 +2073,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,4.0133693)"
            id="use2790"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1943,7 +2081,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,5.0167116)"
            id="use2792"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1951,12 +2089,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801,6.0200539)"
            id="use2794"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g3315"
          transform="translate(17.33907,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -1964,7 +2102,7 @@
            xlink:href="#path1374"
            id="use3285"
            transform="translate(71.659431)"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1972,7 +2110,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use3287"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1980,7 +2118,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use3289"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1988,7 +2126,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use3291"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -1996,7 +2134,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use3293"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2004,7 +2142,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use3295"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2012,7 +2150,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,6.0200539)"
            id="use3297"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2020,7 +2158,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774)"
            id="use3299"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2028,7 +2166,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,3.010027)"
            id="use3301"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2036,7 +2174,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116)"
            id="use3303"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2044,7 +2182,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,3.010027)"
            id="use3305"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2052,7 +2190,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458)"
            id="use3307"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2060,7 +2198,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,3.010027)"
            id="use3309"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2068,7 +2206,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,1.0033423)"
            id="use3311"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2076,12 +2214,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801,2.0066846)"
            id="use3313"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g3339"
          transform="translate(24.353446,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -2089,7 +2227,7 @@
            xlink:href="#path1374"
            id="use3317"
            transform="translate(71.659431)"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2097,7 +2235,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use3319"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2105,7 +2243,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use3321"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2113,7 +2251,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use3323"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2121,7 +2259,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use3325"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2129,7 +2267,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use3327"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2137,7 +2275,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,6.0200539)"
            id="use3329"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2145,7 +2283,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,6.0200539)"
            id="use3331"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2153,7 +2291,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,6.0200539)"
            id="use3333"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2161,7 +2299,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,6.0200539)"
            id="use3335"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2169,12 +2307,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801,6.0200539)"
            id="use3337"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g3377"
          transform="translate(31.367821,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -2182,7 +2320,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use3341"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2190,7 +2328,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use3343"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2198,7 +2336,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use3345"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2206,7 +2344,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use3347"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2214,7 +2352,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use3349"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2222,7 +2360,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,6.0200539)"
            id="use3351"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2230,7 +2368,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774)"
            id="use3353"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2238,7 +2376,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,4.0133693)"
            id="use3355"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2246,7 +2384,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116)"
            id="use3357"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2254,7 +2392,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,4.0133693)"
            id="use3359"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2262,7 +2400,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458)"
            id="use3361"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2270,7 +2408,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,4.0133693)"
            id="use3363"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2278,7 +2416,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,1.0033423)"
            id="use3365"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2286,7 +2424,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,2.0066846)"
            id="use3367"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2294,7 +2432,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,3.010027)"
            id="use3369"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2302,7 +2440,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,4.0133693)"
            id="use3371"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2310,7 +2448,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,5.0167116)"
            id="use3373"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2318,12 +2456,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801,6.0200539)"
            id="use3375"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g3401"
          transform="translate(38.382197,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -2331,7 +2469,7 @@
            xlink:href="#path1374"
            id="use3379"
            transform="translate(71.659431)"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2339,7 +2477,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774)"
            id="use3381"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2347,7 +2485,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116)"
            id="use3383"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2355,7 +2493,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,1.0033423)"
            id="use3385"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2363,7 +2501,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,2.0066846)"
            id="use3387"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2371,7 +2509,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,3.010027)"
            id="use3389"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2379,7 +2517,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,4.0133693)"
            id="use3391"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2387,7 +2525,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,5.0167116)"
            id="use3393"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2395,7 +2533,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,6.0200539)"
            id="use3395"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2403,7 +2541,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458)"
            id="use3397"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2411,12 +2549,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801)"
            id="use3399"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g3441"
          transform="translate(45.396573,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -2424,7 +2562,7 @@
            xlink:href="#path1374"
            id="use3403"
            transform="translate(71.659431)"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2432,7 +2570,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use3405"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2440,7 +2578,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use3407"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2448,7 +2586,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use3409"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2456,7 +2594,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use3411"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2464,7 +2602,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use3413"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2472,7 +2610,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,6.0200539)"
            id="use3415"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2480,7 +2618,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774)"
            id="use3417"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2488,7 +2626,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,3.010027)"
            id="use3419"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2496,7 +2634,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,6.0200539)"
            id="use3421"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2504,7 +2642,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116)"
            id="use3423"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2512,7 +2650,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,3.010027)"
            id="use3425"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2520,7 +2658,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,6.0200539)"
            id="use3427"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2528,7 +2666,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458)"
            id="use3429"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2536,7 +2674,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,3.010027)"
            id="use3431"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2544,7 +2682,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,6.0200539)"
            id="use3433"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2552,7 +2690,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801)"
            id="use3435"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2560,7 +2698,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,3.010027)"
            id="use3437"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2568,12 +2706,12 @@
            xlink:href="#path1374"
            transform="translate(75.672801,6.0200539)"
            id="use3439"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
       <g
          id="g3479"
          transform="translate(52.410949,19.69856)"
-         style="stroke-width:1.3181">
+         style="stroke-width:1.33656">
         <use
            x="0"
            y="0"
@@ -2581,7 +2719,7 @@
            xlink:href="#path1374"
            id="use3443"
            transform="translate(71.659431)"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2589,7 +2727,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,1.0033423)"
            id="use3445"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2597,7 +2735,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,2.0066846)"
            id="use3447"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2605,7 +2743,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,3.010027)"
            id="use3449"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2613,7 +2751,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,4.0133693)"
            id="use3451"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2621,7 +2759,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,5.0167116)"
            id="use3453"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2629,7 +2767,7 @@
            xlink:href="#path1374"
            transform="translate(71.659431,6.0200539)"
            id="use3455"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2637,7 +2775,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774)"
            id="use3457"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2645,7 +2783,7 @@
            xlink:href="#path1374"
            transform="translate(72.662774,6.0200539)"
            id="use3459"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2653,7 +2791,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116)"
            id="use3461"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2661,7 +2799,7 @@
            xlink:href="#path1374"
            transform="translate(73.666116,6.0200539)"
            id="use3463"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2669,7 +2807,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458)"
            id="use3465"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2677,7 +2815,7 @@
            xlink:href="#path1374"
            transform="translate(74.669458,6.0200539)"
            id="use3467"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2685,7 +2823,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,1.0033423)"
            id="use3469"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2693,7 +2831,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,2.0066846)"
            id="use3471"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2701,7 +2839,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,3.010027)"
            id="use3473"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2709,7 +2847,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,4.0133693)"
            id="use3475"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
         <use
            x="0"
            y="0"
@@ -2717,7 +2855,7 @@
            xlink:href="#path1374"
            transform="translate(75.672801,5.0167116)"
            id="use3477"
-           style="stroke-width:1.3181" />
+           style="stroke-width:1.33656" />
       </g>
     </g>
   </g>

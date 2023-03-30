@@ -298,10 +298,12 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 d2p centroid = nopencv::polygon_centroid(geom_poly);
                 centroid[0] /= clipper_scale;
                 centroid[1] /= clipper_scale;
+                
                 /* area of n-gon with circumradius 1 relative to circle with radius 1 */
-                double ngon_area_relative = p.size()/(2*std::numbers::pi) * sin(2*std::numbers::pi / p.size());
-                double diameter = sqrt(4*fabs(area)/std::numbers::pi) / clipper_scale / ngon_area_relative;
-                double tolerance = ctx.settings().geometric_tolerance_mm / 2;
+                //double ngon_area_relative = p.size()/(2*std::numbers::pi) * sin(2*std::numbers::pi / p.size());
+                // ^- correction not necessary, we already do a very good job.
+                double diameter = sqrt(4*fabs(area)/std::numbers::pi) / clipper_scale;
+                double tolerance = ctx.settings().geometric_tolerance_mm;
                 diameter = round(diameter/tolerance) * tolerance;
                 ctx.sink() << ApertureToken(diameter) << FlashToken(centroid);
             }
