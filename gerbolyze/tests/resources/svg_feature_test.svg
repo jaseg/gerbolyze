@@ -904,12 +904,12 @@
     </g>
   </g>
   <g
-     id="g-plated-drill"
-     inkscape:label="plated drill"
+     id="g-drill-plated"
+     inkscape:label="drill plated"
      inkscape:groupmode="layer" />
   <g
-     id="g-nonplated-drill"
-     inkscape:label="nonplated drill"
+     id="g-drill-nonplated"
+     inkscape:label="drill nonplated"
      inkscape:groupmode="layer" />
   <g
      id="g-comments"

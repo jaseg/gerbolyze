@@ -266,7 +266,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
     subtract_map = parse_subtract_script('' if no_subtract else subtract, dilate, default_script=DEFAULT_CONVERT_SUB_SCRIPT)
     output_is_zip = output_gerbers.name.lower().endswith('.zip') if is_zip is None else is_zip
 
-    stack = gn.LayerStack({}, [], board_name=input_svg.stem, original_path=input_svg)
+    stack = gn.LayerStack({}, None, None, [], board_name=input_svg.stem, original_path=input_svg)
 
     for group_id, label in get_layers_from_svg(input_svg.read_text()):
         if not group_id or not label or 'no export' in label:
@@ -324,7 +324,6 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
         stack.save_to_zipfile(output_gerbers, naming_scheme=naming_scheme)
     else:
         stack.save_to_directory(output_gerbers, naming_scheme=naming_scheme)
-
 
 
 # Subtraction script handling

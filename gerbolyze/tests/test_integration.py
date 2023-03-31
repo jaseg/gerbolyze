@@ -33,6 +33,8 @@ reference_path = lambda reference: Path(__file__).parent / 'resources' / str(ref
 def run_command(*args):
     try:
         proc = subprocess.run(args, check=True, capture_output=True)
+        print(proc.stdout.decode())
+        print(proc.stderr.decode(), file=sys.stderr)
     except subprocess.CalledProcessError as e:
         print(e.stdout.decode())
         print(e.stderr.decode(), file=sys.stderr)
@@ -69,6 +71,7 @@ def test_convert_layers():
     with tempfile.TemporaryDirectory() as out_dir:
         run_command('python3', '-m', 'gerbolyze', 'convert', infile, out_dir)
         stack = gerbonara.layers.LayerStack.open(out_dir)
+
         for layer, dia in {
                 'top paste':        0.100,
                 'top silk':         0.110,
