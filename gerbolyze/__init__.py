@@ -1,6 +1,8 @@
 import tempfile
+import logging
 import os.path as path
 from pathlib import Path
+import shlex
 import textwrap
 import subprocess
 import functools
@@ -13,6 +15,7 @@ import shutil
 from zipfile import ZipFile, is_zipfile
 from pathlib import Path
 
+from bs4 import BeautifulSoup
 from lxml import etree
 import numpy as np
 import click
@@ -35,13 +38,19 @@ def cli():
 @click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
+@click.option('--excellon-conversion-errors', type=click.Choice(['raise', 'warn', 'ignore']), default='raise', help='Method of error handling during SVG to Excellon conversion')
 @click.option('--preserve-aspect-ratio', help='PNG/JPG files only: passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
+@click.option('--circle-test-tolerance', help='passed through to svg-flatten')
+@click.option('--log-level', default='info', type=click.Choice(['debug', 'info', 'warning', 'error', 'critical']), help='log level')
 def paste(input_gerbers, input_svg, output_gerbers, is_zip,
         dilate, curve_tolerance, no_subtract, subtract,
-        preserve_aspect_ratio,
-        trace_space, vectorizer, vectorizer_map, exclude_groups):
+        preserve_aspect_ratio, circle_test_tolerance,
+        trace_space, vectorizer, vectorizer_map, exclude_groups,
+        excellon_conversion_errors, log_level):
     """ Render vector data and raster images from SVG file into gerbers. """
+
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
 
     subtract_map = parse_subtract_script('' if no_subtract else subtract, dilate)
 
@@ -57,39 +66,67 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
     @functools.lru_cache()
     def do_dilate(layer, amount):
         return dilate_gerber(layer, bounds, amount, curve_tolerance)
+
+    with tempfile.NamedTemporaryFile(suffix='.svg') as processed_svg:
+        run_cargo_command('usvg', *shlex.split(os.environ.get('USVG_OPTIONS', '')), input_svg, processed_svg.name)
+
+        with open(processed_svg.name) as f:
+            soup = BeautifulSoup(f.read(), features='lxml')
     
-    for (side, use), layer in stack.graphic_layers.items():
-        overlay_grb = svg_to_gerber(input_svg,
-                trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
-                exclude_groups=exclude_groups, curve_tolerance=curve_tolerance,
-                preserve_aspect_ratio=preserve_aspect_ratio,
-                outline_mode=(use == 'outline'),
-                only_groups=f'g-{side}-{use}')
+        for (side, use), layer in [
+                *stack.graphic_layers.items(),
+                (('drill', 'plated'), stack.drill_pth),
+                (('drill', 'nonplated'), stack.drill_npth)]:
+            logging.info(f'Layer {side} {use}')
+            if (soup_layer := soup.find(id=f'g-{side}-{use}')):
+                if not soup_layer.contents:
+                    logging.info(f'    Corresponding overlay layer is empty. Skipping.')
+            else:
+                logging.info(f'    Corresponding overlay layer not found. Skipping.')
+                continue
 
-        if not overlay_grb:
-            print(f'Overlay {side} {use} layer is empty. Skipping.')
-            continue
+            if layer is None:
+                loggin.error(f'    Corresponding overlay layer is non-empty, but the corresponding layer could not be found in the input gerbers. Skipping.')
+                continue
+            
+            # only open lazily loaded layer if we need it. Replace lazy wrapper in stack with loaded layer.
+            layer = layer.instance
+            logging.info(f'    Loaded layer: {layer}')
 
-        # only open lazily loaded layer if we need it. Replace lazy wrapper in stack with loaded layer.
-        stack.graphic_layers[(side, use)] = layer = layer.instance
+            overlay_grb = svg_to_gerber(processed_svg.name, no_usvg=True,
+                    trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
+                    exclude_groups=exclude_groups, curve_tolerance=curve_tolerance,
+                    preserve_aspect_ratio=preserve_aspect_ratio, circle_test_tolerance=circle_test_tolerance,
+                    outline_mode=(use == 'outline' or side == 'drill'),
+                    only_groups=f'g-{side}-{use}')
 
-        # move overlay from svg origin to gerber origin
-        overlay_grb.offset(bb_min_x, bb_min_y)
+            logging.info(f'    Converted overlay: {overlay_grb}')
 
-        # dilated subtract layers on top of overlay
-        if side in ('top', 'bottom'): # do not process subtraction scripts for inner layers
-            dilations = subtract_map.get(use, [])
-            for d_layer, amount in dilations:
-                dilated = do_dilate(stack[(side, d_layer)], amount)
-                layer.merge(dilated, mode='below', keep_settings=True)
+            # move overlay from svg origin to gerber origin
+            overlay_grb.offset(bb_min_x, bb_min_y)
 
-        # overlay on bottom
-        layer.merge(overlay_grb, mode='below', keep_settings=True)
+            # dilated subtract layers on top of overlay
+            if side in ('top', 'bottom'): # do not process subtraction scripts for inner layers, outline, and drill files
+                dilations = subtract_map.get(use, [])
+                for d_layer, amount in dilations:
+                    dilated = do_dilate(stack[(side, d_layer)], amount)
+                    layer.merge(dilated, mode='below', keep_settings=True)
 
-    if output_is_zip:
-        stack.save_to_zipfile(output_gerbers)
-    else:
-        stack.save_to_directory(output_gerbers)
+            if side == 'drill':
+                try:
+                    overlay_grb = overlay_grb.to_excellon(plated=layer.is_plated_tristate,
+                                                          errors=excellon_conversion_errors)
+                except ValueError as e:
+                    raise click.ClickException(f'Some objects on the {use} drill layer could not be converted from SVG to Excellon. This may be because they are not sufficiently circular to be matched. You can either increase the --circle-test-tolerance parameter from its default value of 0.1, or you can convert this error into a warning by passing --excellon-conversion-errors "warn" or "ignore".') from e
+
+            # overlay on bottom
+            layer.merge(overlay_grb, mode='below', keep_settings=True)
+            logging.info(f'    Merged layer and overlay: {layer}')
+
+        if output_is_zip:
+            stack.save_to_zipfile(output_gerbers)
+        else:
+            stack.save_to_directory(output_gerbers)
 
 @cli.command()
 @click.argument('input_gerbers', type=click.Path(exists=True))
@@ -129,7 +166,8 @@ def template(input_gerbers, output_svg, top, bottom, force, vector, raster_dpi):
     stack = gn.LayerStack.open(source, lazy=True)
     svg = stack.to_pretty_svg(side=('top' if top else 'bottom'), inkscape=True)
 
-    template_layers = [ f'{ttype}-{use}' for use in [ 'copper', 'mask', 'silk' ] ] + ['mechanical outline']
+    template_layers = [f'{ttype}-copper', f'{ttype}-mask', f'{ttype}-silk', f'{ttype}-paste',
+                       'mechanical outline', 'drill plated', 'drill nonplated']
     silk = template_layers[-2]
 
     if vector:
@@ -139,7 +177,7 @@ def template(input_gerbers, output_svg, top, bottom, force, vector, raster_dpi):
         with tempfile.NamedTemporaryFile(suffix='.svg') as temp_svg, \
             tempfile.NamedTemporaryFile(suffix='.png') as temp_png:
             Path(temp_svg.name).write_text(str(svg))
-            run_resvg(temp_svg.name, temp_png.name, dpi=f'{raster_dpi:.0f}')
+            run_cargo_command('resvg', temp_svg.name, temp_png.name, dpi=f'{raster_dpi:.0f}')
             output_svg.write_text(template_svg_for_png(stack.board_bounds(), Path(temp_png.name).read_bytes(),
                 template_layers, current_layer=silk))
 
@@ -189,7 +227,7 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
             layers += ['top copper', *inner, 'bottom copper'][:copper_layers]
 
         layers += ['bottom mask', 'bottom silk', 'bottom paste']
-        layers += ['outline', 'plated drill', 'nonplated drill', 'comments']
+        layers += ['mechanical outline', 'drill plated', 'drill nonplated', 'other comments']
     if layers and current_layer is None:
         current_layer = layers[0]
 
@@ -213,10 +251,11 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
 @click.option('--exclude-groups', help='passed through to svg-flatten')
+@click.option('--circle-test-tolerance', help='passed through to svg-flatten')
 @click.option('--pattern-complete-tiles-only', is_flag=True, help='passed through to svg-flatten')
 @click.option('--use-apertures-for-patterns', is_flag=True, help='passed through to svg-flatten')
 def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtract, subtract, trace_space, vectorizer,
-        vectorizer_map, exclude_groups, composite_drill, naming_scheme,
+        vectorizer_map, exclude_groups, composite_drill, naming_scheme, circle_test_tolerance,
         pattern_complete_tiles_only, use_apertures_for_patterns):
     ''' Convert SVG file directly to gerbers.
 
@@ -246,15 +285,15 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
         grb = svg_to_gerber(input_svg,
                 trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
                 exclude_groups=exclude_groups, curve_tolerance=curve_tolerance, only_groups=group_id,
-                pattern_complete_tiles_only=pattern_complete_tiles_only,
+                circle_test_tolerance=circle_test_tolerance, pattern_complete_tiles_only=pattern_complete_tiles_only,
                 use_apertures_for_patterns=(use_apertures_for_patterns and use not in ('outline', 'drill')),
-                outline_mode=(use == 'outline' or use == 'drill'))
+                outline_mode=(use == 'outline' or side == 'drill'))
         grb.original_path = Path()
 
-        if use == 'drill':
-            if side == 'plated':
+        if side == 'drill':
+            if use == 'plated':
                 stack.drill_pth = grb.to_excellon(plated=True)
-            elif side == 'nonplated':
+            elif use == 'nonplated':
                 stack.drill_npth = grb.to_excellon(plated=False)
             else:
                 warnings.warn(f'Invalid drill layer type "{side}". Must be one of "plated" or "nonplated"')
@@ -277,7 +316,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
                 layer.merge(dilated, mode='above', keep_settings=True)
 
     if composite_drill:
-        print('Merging drill layers...')
+        logging.info('Merging drill layers...')
         stack.merge_drill_layers()
 
     naming_scheme = getattr(gn.layers.NamingScheme, naming_scheme)
@@ -338,47 +377,47 @@ def parse_subtract_script(script, default_dilation=0.1, default_script=DEFAULT_S
 # Utility foo
 # ===========
 
-def run_resvg(input_file, output_file, **resvg_args):
-
-    args = []
-    for key, value in resvg_args.items():
+def run_cargo_command(binary, *args, **kwargs):
+    cmd_args = []
+    for key, value in kwargs.items():
         if value is not None:
             if value is False:
                 continue
 
-            args.append(f'--{key.replace("_", "-")}')
+            cmd_args.append(f'--{key.replace("_", "-")}')
 
             if value is not True:
-                args.append(value)
-
-    args += [input_file, output_file]
+                cmd_args.append(value)
+    cmd_args.extend(map(str, args))
 
     # By default, try a number of options:
     candidates = [
         # somewhere in $PATH
-        'resvg',
-        'wasi-resvg',
+        binary,
+        # wasi-wrapper in $PATH
+        f'wasi-{binary}',
         # in user-local cargo installation
-        Path.home() / '.cargo' / 'bin' / 'resvg',
-        # wasi-resvg in user-local pip installation
-        Path.home() / '.local' / 'bin' / 'wasi-resvg',
+        Path.home() / '.cargo' / 'bin' / binary,
+        # wasi-wrapper in user-local pip installation
+        Path.home() / '.local' / 'bin' / f'wasi-{binary}',
         # next to our current python interpreter (e.g. in virtualenv)
-        str(Path(sys.executable).parent / 'wasi-resvg')
+        str(Path(sys.executable).parent / f'wasi-{binary}')
         ]
 
-    # if RESVG envvar is set, try that first.
-    if 'RESVG' in os.environ:
-        candidates = [os.environ['RESVG'], *candidates]
+    # if envvar is set, try that first.
+    if (env_var := os.environ.get(binary.upper())):
+        candidates = [env_var, *candidates]
 
-    for candidate in candidates:
+    for cand in candidates:
         try:
-            res = subprocess.run([candidate, *args], check=True)
-            print('used resvg:', candidate)
+            logging.debug(f'using {binary}: {cand}')
+            logging.debug(f'with args: {" ".join(cmd_args)}')
+            res = subprocess.run([cand, *cmd_args], check=True)
             break
         except FileNotFoundError:
             continue
     else:
-        raise SystemError('resvg executable not found')
+        raise SystemError(f'{binary} executable not found')
 
 
 
@@ -470,13 +509,15 @@ def create_template_from_svg(svg, extra_layers, current_layer):
 #==================
 
 def dilate_gerber(layer, bounds, dilation, curve_tolerance):
-    with tempfile.NamedTemporaryFile(suffix='.svg') as temp_svg:
-        Path(temp_svg.name).write_text(str(layer.instance.to_svg(force_bounds=bounds, fg='white')))
+    with tempfile.NamedTemporaryFile(suffix='.svg') as temp_in_svg,\
+         tempfile.NamedTemporaryFile(suffix='.svg') as temp_out_svg:
+        Path(temp_in_svg.name).write_text(str(layer.instance.to_svg(force_bounds=bounds, fg='white')))
+        run_cargo_command('usvg', temp_in_svg.name, temp_out_svg.name)
 
         # dilate & render back to gerber
         # NOTE: Maybe reconsider or nicely document dilation semantics ; It is weird that negative dilations affect
         # clear color and positive affects dark colors
-        out = svg_to_gerber(temp_svg.name, dilate=-dilation, curve_tolerance=curve_tolerance)
+        out = svg_to_gerber(temp_out_svg.name, no_usvg=True, dilate=-dilation, curve_tolerance=curve_tolerance)
         return out
 
 def svg_to_gerber(infile, outline_mode=False, **kwargs):
@@ -494,11 +535,12 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
 
     with tempfile.NamedTemporaryFile(suffix='.gbr') as temp_gbr:
         args += [str(infile), str(temp_gbr.name)]
-        print(' '.join(args))
+
+        logging.debug(f'svg-flatten args: {" ".join(args)}')
 
         if 'SVG_FLATTEN' in os.environ:
+            logging.debug('using svg-flatten at $SVG_FLATTEN')
             subprocess.run([os.environ['SVG_FLATTEN'], *args], check=True)
-            print('used svg-flatten at $SVG_FLATTEN')
 
         else:
             # By default, try four options:
@@ -523,11 +565,11 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
                     if candidate is None:
                         import svg_flatten_wasi
                         svg_flatten_wasi.run_svg_flatten.callback(args[-2], args[-1], args[:-2], no_usvg=False)
-                        print('used svg_flatten_wasi python package') 
+                        logging.debug('using svg_flatten_wasi python package') 
 
                     else:
                         subprocess.run([candidate, *args], check=True)
-                        print('used svg-flatten at', candidate)
+                        logging.debug('using svg-flatten at', candidate)
 
                     break
                 except (FileNotFoundError, ModuleNotFoundError):

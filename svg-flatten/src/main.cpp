@@ -242,12 +242,12 @@ int main(int argc, char **argv) {
     PolygonSink *sink = nullptr;
     PolygonSink *flattener = nullptr;
     PolygonSink *dilater = nullptr;
-    cerr << "Render sink stack:" << endl;
+    //cerr << "Render sink stack:" << endl;
     if (fmt == "svg") {
         string dark_color = args["svg_dark_color"] ? args["svg_dark_color"].as<string>() : "#000000";
         string clear_color = args["svg_clear_color"] ? args["svg_clear_color"].as<string>() : "#ffffff";
         sink = new SimpleSVGOutput(*out_f, only_polys, precision, dark_color, clear_color);
-        cerr << "  * SVG sink " << endl;
+        //cerr << "  * SVG sink " << endl;
 
     } else if (fmt == "gbr" || fmt == "grb" || fmt == "gerber" || fmt == "gerber-outline") {
         outline_mode = fmt == "gerber-outline";
@@ -258,7 +258,7 @@ int main(int argc, char **argv) {
         }
 
         sink = new SimpleGerberOutput(*out_f, only_polys, 4, precision, gerber_scale, {0,0}, args["flip_gerber_polarity"]);
-        cerr << "  * Gerber sink " << endl;
+        //cerr << "  * Gerber sink " << endl;
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
         if (!args["sexp_mod_name"]) {
@@ -269,7 +269,7 @@ int main(int argc, char **argv) {
         sink = new KicadSexpOutput(*out_f, args["sexp_mod_name"], sexp_layer, only_polys);
         force_flatten = true;
         is_sexp = true;
-        cerr << "  * KiCAD SExp sink " << endl;
+        //cerr << "  * KiCAD SExp sink " << endl;
 
     } else {
         cerr << "Error: Unknown output format \"" << fmt << "\"" << endl;
@@ -281,13 +281,13 @@ int main(int argc, char **argv) {
     if (args["dilate"]) {
         dilater = new Dilater(*top_sink, args["dilate"].as<double>());
         top_sink = dilater;
-        cerr << "  * Dilater " << endl;
+        //cerr << "  * Dilater " << endl;
     }
 
     if (args["flatten"] || (force_flatten && !args["no_flatten"])) {
         flattener = new Flattener(*top_sink);
         top_sink = flattener;
-        cerr << "  * Flattener " << endl;
+        //cerr << "  * Flattener " << endl;
     }
 
     /* Because the C++ stdlib is bullshit */
@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
     /* Check argument */
     ImageVectorizer *vec = makeVectorizer(vectorizer);
     if (!vec) {
-        cerr << "Unknown vectorizer \"" << vectorizer << "\"." << endl;
+        cerr << "Error: Unknown vectorizer \"" << vectorizer << "\"." << endl;
         argagg::fmt_ostream fmt(cerr);
         fmt << usage.str() << argparser;
         return EXIT_FAILURE;
@@ -406,13 +406,12 @@ int main(int argc, char **argv) {
     }
 
     if (args["skip_usvg"]) {
-        cerr << "Info: Skipping usvg" << endl; 
         frob = barf;
 
     } else {
 #ifndef NOFORK
         //cerr << "calling usvg on " << barf << " and " << frob << endl; 
-        vector<string> command_line = {"--keep-named-groups"};
+        vector<string> command_line;
 
         string options[] = {
             "usvg-dpi",

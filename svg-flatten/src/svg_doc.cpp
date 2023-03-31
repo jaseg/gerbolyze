@@ -43,13 +43,13 @@ bool gerbolyze::SVGDocument::load(istream &in, double scale) {
     /* Load XML document */
     auto res = svg_doc.load(in);
     if (!res) {
-        cerr << "Cannot parse input file" << endl;
+        cerr << "Error: Cannot parse input file" << endl;
         return false;
     }
 
     root_elem = svg_doc.child("svg");
     if (!root_elem) {
-        cerr << "Input file is missing root <svg> element" << endl;
+        cerr << "Error: Input file is missing root <svg> element" << endl;
         return false;
     }
 
@@ -207,7 +207,7 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
 
             ImageVectorizer *vec = ctx.settings().m_vec_sel.select(node);
             if (!vec) {
-                cerr << "Cannot resolve vectorizer for node \"" << node.attribute("id").value() << "\"" << endl;
+                cerr << "Warning: Cannot resolve vectorizer for node \"" << node.attribute("id").value() << "\", ignoring." << endl;
                 continue;
             }
 
@@ -218,7 +218,7 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
         } else if (name == "defs") {
             /* ignore */
         } else {
-            cerr << "  Unexpected child: <" << node.name() << ">" << endl;
+            cerr << "Warning: Ignoring unexpected child: <" << node.name() << ">" << endl;
         }
     }
 }
@@ -266,11 +266,11 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
     bool has_fill = fill_color;
     bool has_stroke = stroke_color && ctx.mat().doc2phys_min(stroke_width) > ctx.settings().stroke_width_cutoff;
 
-    cerr << "processing svg path" << endl;
-    cerr << "  * " << (has_stroke ? "has stroke" : "no stroke") << " / " << (has_fill ? "has fill" : "no fill") << endl;
-    cerr << "  * " << fill_paths.size() << " fill paths" << endl;
-    cerr << "  * " << stroke_closed.size() << " closed strokes" << endl;
-    cerr << "  * " << stroke_open.size() << " open strokes" << endl;
+    //cerr << "processing svg path" << endl;
+    //cerr << "  * " << (has_stroke ? "has stroke" : "no stroke") << " / " << (has_fill ? "has fill" : "no fill") << endl;
+    //cerr << "  * " << fill_paths.size() << " fill paths" << endl;
+    //cerr << "  * " << stroke_closed.size() << " closed strokes" << endl;
+    //cerr << "  * " << stroke_open.size() << " open strokes" << endl;
 
     /* In outline mode, identify drills before applying clip */
     if (ctx.settings().outline_mode && has_fill && fill_color != GRB_PATTERN_FILL) {
@@ -570,7 +570,7 @@ void gerbolyze::SVGDocument::render_to_list(const RenderSettings &rset, vector<p
 void gerbolyze::SVGDocument::setup_viewport_clip() {
     /* Set up view port clip path */
     Path vb_path;
-    cerr << "setting up viewport clip at " << vb_x << ", " << vb_y << " with size " << vb_w << ", " << vb_h << endl;
+    //cerr << "setting up viewport clip at " << vb_x << ", " << vb_y << " with size " << vb_w << ", " << vb_h << endl;
     for (d2p &p : vector<d2p> {
             {vb_x,      vb_y},
             {vb_x+vb_w, vb_y},
