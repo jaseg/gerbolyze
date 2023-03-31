@@ -204,7 +204,7 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
 @click.argument('output_gerbers', type=click.Path(path_type=Path))
 @click.option('-n', '--naming-scheme', default='kicad', type=click.Choice(['kicad', 'altium']), help='Naming scheme for gerber output file names.')
 @click.option('--zip/--no-zip', 'is_zip', default=None, help='zip output files. Default: zip if output path ends with ".zip" or when outputting to stdout.')
-@click.option('--separate-drill-file/--composite-drill-file', 'separate_drill', help='Use Altium composite Excellon drill file format (default)')
+@click.option('--composite-drill-file/--separate-drill-file', 'composite_drill', help='Use Altium composite Excellon drill file format (default)')
 @click.option('--dilate', default=0.1, type=float, help='Default dilation for subtraction operations in mm')
 @click.option('--curve-tolerance', type=float, help='Tolerance for curve flattening in mm')
 @click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
@@ -216,7 +216,7 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
 @click.option('--pattern-complete-tiles-only', is_flag=True, help='passed through to svg-flatten')
 @click.option('--use-apertures-for-patterns', is_flag=True, help='passed through to svg-flatten')
 def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtract, subtract, trace_space, vectorizer,
-        vectorizer_map, exclude_groups, separate_drill, naming_scheme,
+        vectorizer_map, exclude_groups, composite_drill, naming_scheme,
         pattern_complete_tiles_only, use_apertures_for_patterns):
     ''' Convert SVG file directly to gerbers.
 
@@ -276,7 +276,7 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtr
                 dilated = do_dilate(d_layer, amount)
                 layer.merge(dilated, mode='above', keep_settings=True)
 
-    if not separate_drill:
+    if composite_drill:
         print('Merging drill layers...')
         stack.merge_drill_layers()
 

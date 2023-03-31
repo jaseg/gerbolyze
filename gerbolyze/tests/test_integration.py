@@ -83,5 +83,6 @@ def test_convert_layers():
 
         # Note: svg-flatten rounds these diameters to the geometric tolerance given on the command line (0.01mm by
         # default).
-        assert set(stack.drill_layers[0].drill_sizes()) == {0.7, 0.5}
+        assert stack.drill_pth.drill_sizes() == [0.7]
+        assert stack.drill_npth.drill_sizes() == [0.5]
 
