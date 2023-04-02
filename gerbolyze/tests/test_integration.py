@@ -86,15 +86,6 @@ def test_paste():
 
             bbox_old = layer_old.bounding_box(gerbonara.utils.MM)
             bbox_new = layer_new.bounding_box(gerbonara.utils.MM)
-            print(side, use, bbox_old, bbox_new)
-            print('  -> ',
-                bbox_new[0][0]-bbox_old[0][0], bbox_new[0][1]-bbox_old[0][1],
-                bbox_new[1][0]-bbox_old[1][0], bbox_new[1][1]-bbox_old[1][1])
-            print('  -> ',
-                bbox_new[0][0], bbox_new[0][1],
-                bbox_new[1][0], bbox_new[1][1])
-            print('  old ->', layer_old)
-            print('  new ->', layer_new)
 
             e = 0.8
             assert math.isclose(bbox_new[0][0], bbox_old[0][0]-e, abs_tol=0.1)
