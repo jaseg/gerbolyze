@@ -16,7 +16,6 @@ from zipfile import ZipFile, is_zipfile
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from lxml import etree
 import numpy as np
 import click
 
@@ -71,7 +70,7 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
         run_cargo_command('usvg', *shlex.split(os.environ.get('USVG_OPTIONS', '')), input_svg, processed_svg.name)
 
         with open(processed_svg.name) as f:
-            soup = BeautifulSoup(f.read(), features='lxml')
+            soup = BeautifulSoup(f.read(), features='xml')
     
         for (side, use), layer in [
                 *stack.graphic_layers.items(),
@@ -245,8 +244,7 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
 @click.option('--composite-drill-file/--separate-drill-file', 'composite_drill', help='Use Altium composite Excellon drill file format (default)')
 @click.option('--dilate', default=0.1, type=float, help='Default dilation for subtraction operations in mm')
 @click.option('--curve-tolerance', type=float, help='Tolerance for curve flattening in mm')
-@click.option('--no-subtract', 'no_subtract', flag_value=True, help='Disable subtraction')
-@click.option('--subtract', help='Use user subtraction script from argument (see description above)')
+@click.option('--subtract', help='Use user subtraction script from argument (default for "convert": none)')
 @click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
 @click.option('--vectorizer', help='passed through to svg-flatten')
 @click.option('--vectorizer-map', help='passed through to svg-flatten')
@@ -254,76 +252,89 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
 @click.option('--circle-test-tolerance', help='passed through to svg-flatten')
 @click.option('--pattern-complete-tiles-only', is_flag=True, help='passed through to svg-flatten')
 @click.option('--use-apertures-for-patterns', is_flag=True, help='passed through to svg-flatten')
-def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, no_subtract, subtract, trace_space, vectorizer,
+@click.option('--log-level', default='info', type=click.Choice(['debug', 'info', 'warning', 'error', 'critical']), help='log level')
+def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, subtract, trace_space, vectorizer,
         vectorizer_map, exclude_groups, composite_drill, naming_scheme, circle_test_tolerance,
-        pattern_complete_tiles_only, use_apertures_for_patterns):
+        pattern_complete_tiles_only, use_apertures_for_patterns, log_level):
     ''' Convert SVG file directly to gerbers.
 
     Unlike `gerbolyze paste`, this does not add the SVG's contents to existing gerbers. It allows you to directly create
     PCBs using Inkscape similar to PCBModE.
     '''
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
 
-    subtract_map = parse_subtract_script('' if no_subtract else subtract, dilate, default_script=DEFAULT_CONVERT_SUB_SCRIPT)
+    subtract_map = parse_subtract_script(subtract, dilate, default_script='')
     output_is_zip = output_gerbers.name.lower().endswith('.zip') if is_zip is None else is_zip
 
-    stack = gn.LayerStack({}, None, None, [], board_name=input_svg.stem, original_path=input_svg)
+    with tempfile.NamedTemporaryFile(suffix='.svg') as processed_svg:
+        run_cargo_command('usvg', *shlex.split(os.environ.get('USVG_OPTIONS', '')), input_svg, processed_svg.name)
 
-    for group_id, label in get_layers_from_svg(input_svg.read_text()):
-        if not group_id or not label or 'no export' in label:
-            continue
+        soup = BeautifulSoup(input_svg.read_text(), features='xml')
+        layers = {e.get('id'): e.get('inkscape:label') for e in soup.find_all('g', recursive=True)}
 
-        if label == 'outline':
-            side, use = 'mechanical', 'outline'
-        elif label == 'comments':
-            side, use = 'other', 'comments'
-        elif len(label.split()) != 2:
-            warnings.warn('Unknown layer {label}')
-            continue
-        else:
-            side, use = label.split()
+        stack = gn.LayerStack({}, None, None, [], board_name=input_svg.stem, original_path=input_svg)
 
-        grb = svg_to_gerber(input_svg,
-                trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
-                exclude_groups=exclude_groups, curve_tolerance=curve_tolerance, only_groups=group_id,
-                circle_test_tolerance=circle_test_tolerance, pattern_complete_tiles_only=pattern_complete_tiles_only,
-                use_apertures_for_patterns=(use_apertures_for_patterns and use not in ('outline', 'drill')),
-                outline_mode=(use == 'outline' or side == 'drill'))
-        grb.original_path = Path()
+        for group_id, label in layers.items():
+            label = label or ''
+            if not group_id or 'no export' in label:
+                continue
 
-        if side == 'drill':
-            if use == 'plated':
-                stack.drill_pth = grb.to_excellon(plated=True)
-            elif use == 'nonplated':
-                stack.drill_npth = grb.to_excellon(plated=False)
+            if not group_id.startswith('g-'):
+                continue
+            group_id = group_id[2:]
+
+            if group_id == 'outline':
+                side, use = 'mechanical', 'outline'
+            elif group_id == 'comments':
+                side, use = 'other', 'comments'
+            elif len(group_id.split('-')) != 2:
+                warnings.warn(f'Unknown layer {group_id}')
+                continue
             else:
-                warnings.warn(f'Invalid drill layer type "{side}". Must be one of "plated" or "nonplated"')
+                side, use = group_id.split('-')
 
+            grb = svg_to_gerber(processed_svg.name, no_usvg=True,
+                    trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
+                    exclude_groups=exclude_groups, curve_tolerance=curve_tolerance, only_groups=f'g-{group_id}',
+                    circle_test_tolerance=circle_test_tolerance, pattern_complete_tiles_only=pattern_complete_tiles_only,
+                    use_apertures_for_patterns=(use_apertures_for_patterns and use not in ('outline', 'drill')),
+                    outline_mode=(use == 'outline' or side == 'drill'))
+            grb.original_path = Path()
+
+            if side == 'drill':
+                if use == 'plated':
+                    stack.drill_pth = grb.to_excellon(plated=True)
+                elif use == 'nonplated':
+                    stack.drill_npth = grb.to_excellon(plated=False)
+                else:
+                    warnings.warn(f'Invalid drill layer type "{side}". Must be one of "plated" or "nonplated"')
+
+            else:
+                stack.graphic_layers[(side, use)] = grb
+
+        bounds = stack.board_bounds()
+        @functools.lru_cache()
+        def do_dilate(layer, amount):
+            return dilate_gerber(layer, bounds, amount, curve_tolerance)
+
+        for (side, use), layer in stack.graphic_layers.items():
+            # dilated subtract layers on top of overlay
+            if side in ('top', 'bottom'): # do not process subtraction scripts for inner layers
+                dilations = subtract_map.get(use, [])
+                for d_layer, amount in dilations:
+                    d_layer =  stack.graphic_layers[(side, d_layer)]
+                    dilated = do_dilate(d_layer, amount)
+                    layer.merge(dilated, mode='above', keep_settings=True)
+
+        if composite_drill:
+            logging.info('Merging drill layers...')
+            stack.merge_drill_layers()
+
+        naming_scheme = getattr(gn.layers.NamingScheme, naming_scheme)
+        if output_is_zip:
+            stack.save_to_zipfile(output_gerbers, naming_scheme=naming_scheme)
         else:
-            stack.graphic_layers[(side, use)] = grb
-
-    bounds = stack.board_bounds()
-    @functools.lru_cache()
-    def do_dilate(layer, amount):
-        return dilate_gerber(layer, bounds, amount, curve_tolerance)
-
-    for (side, use), layer in stack.graphic_layers.items():
-        # dilated subtract layers on top of overlay
-        if side in ('top', 'bottom'): # do not process subtraction scripts for inner layers
-            dilations = subtract_map.get(use, [])
-            for d_layer, amount in dilations:
-                d_layer =  stack.graphic_layers[(side, d_layer)]
-                dilated = do_dilate(d_layer, amount)
-                layer.merge(dilated, mode='above', keep_settings=True)
-
-    if composite_drill:
-        logging.info('Merging drill layers...')
-        stack.merge_drill_layers()
-
-    naming_scheme = getattr(gn.layers.NamingScheme, naming_scheme)
-    if output_is_zip:
-        stack.save_to_zipfile(output_gerbers, naming_scheme=naming_scheme)
-    else:
-        stack.save_to_directory(output_gerbers, naming_scheme=naming_scheme)
+            stack.save_to_directory(output_gerbers, naming_scheme=naming_scheme)
 
 
 # Subtraction script handling
@@ -578,16 +589,6 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
                 raise SystemError('svg-flatten executable not found')
 
         return gn.rs274x.GerberFile.open(temp_gbr.name)
-
-def get_layers_from_svg(svg_data):
-    svg = etree.fromstring(svg_data.encode('utf-8'))
-    SVG_NS = '{http://www.w3.org/2000/svg}'
-    INKSCAPE_NS = '{http://www.inkscape.org/namespaces/inkscape}'
-
-    # find groups
-    for group in svg.findall(SVG_NS+'g'):
-        yield group.get('id'), group.get(INKSCAPE_NS+'label')
-   
 
 if __name__ == '__main__':
     cli()

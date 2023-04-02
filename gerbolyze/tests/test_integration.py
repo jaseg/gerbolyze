@@ -16,6 +16,7 @@
 #
 
 import sys
+import math
 import subprocess
 import tempfile
 from pathlib import Path
@@ -65,6 +66,41 @@ def test_template(reference):
         infile = reference_path(reference)
         run_command('python3', '-m', 'gerbolyze', 'template', '--top', '--force', infile, out_svg.name)
         run_command('python3', '-m', 'gerbolyze', 'template', '--bottom', '--force', '--vector', infile, out_svg.name)
+
+def test_paste():
+    in_gerbers = reference_path('layers-gerber')
+    top_overlay = reference_path('tpl-top.svg')
+    bottom_overlay = reference_path('tpl-bottom.svg')
+    with tempfile.TemporaryDirectory() as intermediate_gerbers,\
+            tempfile.TemporaryDirectory() as output_gerbers:
+        run_command('python3', '-m', 'gerbolyze', 'paste', '--no-subtract', in_gerbers, top_overlay, intermediate_gerbers)
+        run_command('python3', '-m', 'gerbolyze', 'paste', '--no-subtract', intermediate_gerbers, bottom_overlay, output_gerbers)
+
+        stack_old = gerbonara.layers.LayerStack.open(in_gerbers)
+        stack_new = gerbonara.layers.LayerStack.open(output_gerbers)
+
+        for (side, use), layer_old in stack_old.graphic_layers.items():
+            if use == 'outline':
+                continue
+            layer_new = stack_new[side, use]
+
+            bbox_old = layer_old.bounding_box(gerbonara.utils.MM)
+            bbox_new = layer_new.bounding_box(gerbonara.utils.MM)
+            print(side, use, bbox_old, bbox_new)
+            print('  -> ',
+                bbox_new[0][0]-bbox_old[0][0], bbox_new[0][1]-bbox_old[0][1],
+                bbox_new[1][0]-bbox_old[1][0], bbox_new[1][1]-bbox_old[1][1])
+            print('  -> ',
+                bbox_new[0][0], bbox_new[0][1],
+                bbox_new[1][0], bbox_new[1][1])
+            print('  old ->', layer_old)
+            print('  new ->', layer_new)
+
+            e = 0.8
+            assert math.isclose(bbox_new[0][0], bbox_old[0][0]-e, abs_tol=0.1)
+            assert math.isclose(bbox_new[0][1], bbox_old[0][1]-e, abs_tol=0.1)
+            assert math.isclose(bbox_new[1][0], bbox_old[1][0]+e, abs_tol=0.1)
+            assert math.isclose(bbox_new[1][1], bbox_old[1][1]+e, abs_tol=0.1)
 
 def test_convert_layers():
     infile = reference_path('layers.svg')
