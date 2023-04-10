@@ -1,8 +1,8 @@
 [ ] Do not just return "error 255" if usvg is not installed
 [ ] Straighten up svg-flatten input unit handling
-[ ] split up python code into modules
-[ ] Add backwards-compatible vectorize drop-in
-[ ] Figure out handling of drill layers
-[ ] Re-publish my own pcb-tools, pcb-tools-extension forks with actual maintenance
+[x] split up python code into modules
+[x] Add backwards-compatible vectorize drop-in
+[x] Figure out handling of drill layers
+[x] Re-publish my own pcb-tools, pcb-tools-extension forks with actual maintenance
 [ ] For pattern rendering: validate pattern origin aligns with what the svg spec expects
 [ ] Invert SVG color interpretation (use saturation maybe? or sat * val?)
