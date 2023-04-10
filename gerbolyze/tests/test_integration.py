@@ -73,8 +73,8 @@ def test_paste():
     bottom_overlay = reference_path('tpl-bottom.svg')
     with tempfile.TemporaryDirectory() as intermediate_gerbers,\
             tempfile.TemporaryDirectory() as output_gerbers:
-        run_command('python3', '-m', 'gerbolyze', 'paste', '--no-subtract', in_gerbers, top_overlay, intermediate_gerbers)
-        run_command('python3', '-m', 'gerbolyze', 'paste', '--no-subtract', intermediate_gerbers, bottom_overlay, output_gerbers)
+        run_command('python3', '-m', 'gerbolyze', 'paste', '--log-level', 'debug', '--no-subtract', in_gerbers, top_overlay, intermediate_gerbers)
+        run_command('python3', '-m', 'gerbolyze', 'paste', '--log-level', 'debug', '--no-subtract', intermediate_gerbers, bottom_overlay, output_gerbers)
 
         stack_old = gerbonara.layers.LayerStack.open(in_gerbers)
         stack_new = gerbonara.layers.LayerStack.open(output_gerbers)
@@ -109,7 +109,7 @@ def test_convert_layers():
                 'bottom silk':      0.160,
                 'bottom paste':     0.170,
                 'mechanical outline':    0.09}.items():
-            assert set(round(ap.diameter, 4) for ap in stack[layer].apertures) == {dia, 0.05}
+            assert set(round(ap.diameter, 4) for ap in stack[layer].apertures) == {dia}
 
         # Note: svg-flatten rounds these diameters to the geometric tolerance given on the command line (0.01mm by
         # default).

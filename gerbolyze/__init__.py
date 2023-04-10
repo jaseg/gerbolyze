@@ -420,7 +420,7 @@ def run_cargo_command(binary, *args, **kwargs):
 
     for cand in candidates:
         try:
-            logging.debug(f'using {binary}: {cand}')
+            logging.debug(f'trying {binary}: {cand}')
             logging.debug(f'with args: {" ".join(cmd_args)}')
             res = subprocess.run([cand, *cmd_args], check=True)
             break
