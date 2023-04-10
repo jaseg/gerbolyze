@@ -44,7 +44,7 @@ setup(
     },
     author = 'jaseg',
     author_email = 'gerbonara@jaseg.de',
-    install_requires = ['gerbonara', 'numpy', 'python-slugify', 'lxml', 'click', 'resvg-wasi >= 0.23.0', 'svg-flatten-wasi[resvg-wasi]'],
+    install_requires = ['gerbonara >= 1.0.0', 'numpy', 'python-slugify', 'lxml', 'click', 'svg-flatten-wasi'],
     license = 'AGPLv3',
     classifiers = [
         'Development Status :: 5 - Production/Stable',
