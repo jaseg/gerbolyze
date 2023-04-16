@@ -188,13 +188,11 @@ void gerbolyze::dash_path(const ClipperLib::Path &in, ClipperLib::Paths &out, co
 
     ClipperLib::Path current_dash;
     current_dash.push_back(in[0]);
-    double dbg_total_len = 0.0;
     for (size_t i=1; i<in.size(); i++) {
         ClipperLib::IntPoint p1(in[i-1]), p2(in[i]);
 
         double x1 = p1.X / clipper_scale, y1 = p1.Y / clipper_scale, x2 = p2.X / clipper_scale, y2 = p2.Y / clipper_scale;
         double dist = sqrt(pow(x2-x1, 2) + pow(y2-y1, 2));
-        dbg_total_len += dist;
 
         if (dist < dash_remaining) {
             /* dash extends beyond this segment, append this segment and continue. */

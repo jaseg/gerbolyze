@@ -279,7 +279,7 @@ namespace gerbolyze {
                 }
 
                 std::transform(path.begin(), path.end(), path.begin(),
-                        [this, &copy](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
+                        [&copy](ClipperLib::IntPoint p) -> ClipperLib::IntPoint {
                             d2p out(copy.doc2phys(d2p{p.X / clipper_scale, p.Y / clipper_scale}));
                             return {
                                 (ClipperLib::cInt)round(out[0] * clipper_scale),
