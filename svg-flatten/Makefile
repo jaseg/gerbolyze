@@ -10,8 +10,8 @@ CACHEDIR ?= cache
 PREFIX ?= /usr/local
 UPSTREAM_DIR ?= upstream
 
-WASI_SDK ?= wasi-sdk-11.0
-WASI_SDK_URL ?= https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-11/wasi-sdk-11.0-linux.tar.gz
+WASI_SDK ?= wasi-sdk-20.0
+WASI_SDK_URL ?= https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-20/wasi-sdk-20.0-linux.tar.gz
 WASI_SDK_PATH ?= $(CACHEDIR)/$(WASI_SDK)
 WASI_CXX ?= $(WASI_SDK_PATH)/bin/clang++ --sysroot=$(WASI_SDK_PATH)/share/wasi-sysroot
 

@@ -7,8 +7,8 @@
 #ifndef NOFORK
 #include <pwd.h>
 #include <subprocess.h>
-#endif
 #include <filesystem>
+#endif
 
 #include "util.h"
 

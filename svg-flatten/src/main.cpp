@@ -1,7 +1,9 @@
 
 #include <cstdlib>
 #include <cstdio>
+#ifndef WASI
 #include <filesystem>
+#endif
 #include <iostream>
 #include <iomanip>
 #include <fstream>
