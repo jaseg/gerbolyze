@@ -23,7 +23,7 @@ publish:svg-flatten-wasi:
   script:
     - pip install -U --user twine
     - export TWINE_USERNAME TWINE_PASSWORD
-    - ~/.local/bin/twine upload svg-flatten/dist/*
+    - twine upload svg-flatten/dist/*
   dependencies:
     - build:svg-flatten-wasi
   only:
