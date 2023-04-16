@@ -109,7 +109,7 @@ $(BUILDDIR)/nopencv-test: src/test/nopencv_test.cpp src/nopencv.cpp src/util.cpp
 .PHONY: tests
 tests: $(BUILDDIR)/nopencv-test
 	$(BUILDDIR)/nopencv-test
-	$(PYTHON3) src/test/svg_tests.py || ( mkdir testcase-fails && cp /tmp/gerbolyze-*.{svg,png} testcase-fails/ && false )
+	$(PYTHON3) src/test/svg_tests.py || ( mkdir -p testcase-fails && cp /tmp/gerbolyze-*.{svg,png} testcase-fails/ && false )
 
 .PHONY: install
 install:
