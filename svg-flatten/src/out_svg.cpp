@@ -73,7 +73,7 @@ SimpleSVGOutput &SimpleSVGOutput::operator<<(const Polygon &poly) {
     if (std::isnan(m_stroke_width)) {
         m_out << "<path fill=\"" << m_current_color << "\" d=\"";
     } else {
-        m_out << "<path stroke=\"" << m_current_color << "\" stroke-width=\"" << m_stroke_width << "\" stroke-linejoin=\"round\" stroke-linecap=\"round\" d=\"";
+        m_out << "<path fill=\"none\" stroke=\"" << m_current_color << "\" stroke-width=\"" << m_stroke_width << "\" stroke-linejoin=\"round\" stroke-linecap=\"round\" d=\"";
     }
 
     m_out << "M " << setprecision(m_digits_frac) << (poly[0][0] + m_offset[0])
