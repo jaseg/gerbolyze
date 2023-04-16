@@ -37,17 +37,18 @@ publish:gerbolyze:
   only:
     - /^v.*$/
 
-build:svg-flatten-debian_11:
-  stage: build
-  image: "registry.gitlab.com/gerbolyze/build-containers/debian:11"
-  script:
-    - "export CXX=clang++"
-    - "make -C svg-flatten"
-  artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-deb11"
-    paths:
-      - svg-flatten/build/svg-flatten
-      - svg-flatten/build/nopencv-test
+# Builds for debian are disabled until they get a C++20-capable compiler.
+#build:svg-flatten-debian_11:
+#  stage: build
+#  image: "registry.gitlab.com/gerbolyze/build-containers/debian:11"
+#  script:
+#    - "export CXX=clang++"
+#    - "make -C svg-flatten"
+#  artifacts:
+#    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-deb11"
+#    paths:
+#      - svg-flatten/build/svg-flatten
+#      - svg-flatten/build/nopencv-test
 
 # Tests for debian are disabled until they get python 3.10.
 # test:svg-flatten-debian_11:
