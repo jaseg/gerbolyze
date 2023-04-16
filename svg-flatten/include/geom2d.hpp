@@ -234,8 +234,8 @@ namespace gerbolyze {
                     return *this;
                 }
 
-                *this = xform2d(yy/det, -yx/det,
-                        -xy/det, xx/det,
+                *this = xform2d(yy/det, -xy/det,
+                        -yx/det, xx/det,
                         (xy*y0 - yy*x0)/det, (yx*x0 - xx*y0)/det);
 
                 if (success_out)
@@ -300,8 +300,8 @@ namespace gerbolyze {
                 ostringstream os;
                 os << "xform2d< " << setw(5);
                 os << xx << ", " << xy << ", " << x0 << " / ";
-                os << yy << ", " << yx << ", " << y0 << " / ";
-                os << "θ=" << theta << ", m=" << m << " s=(" << s_x << ", " << s_y << " | ";
+                os << yx << ", " << yy << ", " << y0 << " / ";
+                os << "θ=" << theta << ", m=" << m << " s=(" << s_x << ", " << s_y << ") | ";
                 os << "f_min=" << f_min << ", f_max=" << f_max;
                 os << " >";
                 return os.str();
