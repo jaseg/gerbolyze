@@ -75,7 +75,7 @@ def _run_wasm_app(wasm_filename, argv, cachedir="svg-flatten-wasi"):
 
 def run_usvg(input_file, output_file, **usvg_args):
 
-    args = ['--keep-named-groups']
+    args = []
     for key, value in usvg_args.items():
         if value is not None:
             if value is False:
