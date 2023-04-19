@@ -68,7 +68,9 @@ Quick Start Installation (Any Platform)
 
 .. code-block:: shell
 
-    python -m pip install --user gerbolyze
+    python -m pip install --user gerbolyze resvg-wasi
+
+If you already have resvg installed, you can omit the resvg-wasi package.
 
 To uninstall, run 
 
