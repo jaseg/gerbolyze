@@ -22,6 +22,7 @@
 #include <string>
 #include <sstream>
 #include <cmath>
+#include <cstdint>
 #include <algorithm>
 #include <assert.h>
 
