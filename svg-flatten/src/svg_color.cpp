@@ -64,6 +64,10 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
 
         if (alpha < 0.5f) {
             //cerr << "  -> none" << endl;
+            if (alpha > 0.01) {
+                cerr << "Info: Found an object with opacity set to " << alpha << ". This object will be omitted from the output." << endl; 
+            }
+
             return GRB_NONE;
         }
 
@@ -73,6 +77,10 @@ enum gerber_color gerbolyze::svg_color_to_gerber(string color, string opacity, e
         } else {
             //cerr << "  -> dark" << endl;
             return GRB_DARK;
+        }
+
+        if (hsv.v >= 0.4 && hsv.v <= 0.6) {
+            cerr << "Warning: color \"" << color << "\" is ambiguous. Gerbolyze decides whether to map colors to clear or dark polarity by checking if their HSV value (i.e. brightness) is above 50 %. This color has a value of " << hsv.v << ", close to 50 %." << endl; 
         }
     }
 

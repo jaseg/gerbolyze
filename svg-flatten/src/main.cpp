@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
                 "Flip polarity of all output gerber primitives for --format gerber.",
                 0},
             {"flip_svg_color_interpretation", {"-i", "--svg-white-is-gerber-dark"},
-                "Flip polarity of SVG color interpretation. This affects only SVG primitives like paths and NOT embedded bitmaps. With -i: white -> silk there/\"dark\" gerber primitive.",
+                "Flip polarity of SVG color interpretation. This affects only SVG primitives like paths and NOT embedded bitmaps. With -i: white -> \"dark\" gerber primitive, i.e. silk or copper present, or mask absent.",
                 0},
             {"pattern_complete_tiles_only", {"--pattern-complete-tiles-only"},
                 "Break SVG spec by only rendering complete pattern tiles, i.e. pattern tiles that entirely fit the target area, instead of performing clipping.",

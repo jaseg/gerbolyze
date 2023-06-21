@@ -92,7 +92,7 @@ void KicadSexpOutput::header_impl(d2p, d2p) {
 
 KicadSexpOutput &KicadSexpOutput::operator<<(GerberPolarityToken pol) {
     if (pol == GRB_POL_CLEAR) {
-        cerr << "Warning: clear polarity not supported since KiCAD manages to have an even worse graphics model than gerber, except it can't excuse itself by its age..... -.-" << endl;
+        cerr << "Warning: Some shapes in this file were interpreted by svg-flatten as gerber \"clear\" polarity (background color). KiCad does not support clear polarity. Thus, these shapes will be omitted in the S-Expression output." << endl;
     }
 
     return *this;
