@@ -79,7 +79,7 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
                 (('drill', 'plated'), stack.drill_pth),
                 (('drill', 'nonplated'), stack.drill_npth)]:
             logging.info(f'Layer {side} {use}')
-            if (soup_layer := soup.find(id=f'g-{side}-{use}')):
+            if (soup_layer := soup.find('g', id=f'g-{side}-{use}')):
                 if not soup_layer.contents:
                     logging.info(f'    Corresponding overlay layer is empty. Skipping.')
             else:

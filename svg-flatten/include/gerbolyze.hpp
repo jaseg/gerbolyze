@@ -22,6 +22,7 @@
 #include <iostream>
 #include <string>
 #include <array>
+#include <cstdint>
 
 #include <pugixml.hpp>
 

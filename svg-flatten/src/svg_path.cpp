@@ -77,8 +77,7 @@ static pair<bool, bool> flatten_path(ClipperLib::Paths &stroke_open, ClipperLib:
                     (ClipperLib::cInt)round(a[1]*clipper_scale)
             });
 
-        } else { /* Curve to */
-            assert(cmd == "C"); /* guaranteed by usvg */
+        } else if (cmd == "C") { /* Curve to */
             in >> b[0] >> b[1]; /* first control point */
             in >> c[0] >> c[1]; /* second control point */
             in >> d[0] >> d[1]; /* end point */
@@ -95,6 +94,24 @@ static pair<bool, bool> flatten_path(ClipperLib::Paths &stroke_open, ClipperLib:
             }
 
             a = d; /* set last point to curve end point */
+
+        } else { /* Curve to */
+            assert(cmd == "Q"); /* guaranteed by usvg */
+            in >> b[0] >> b[1]; /* control point */
+            in >> c[0] >> c[1]; /* end point */
+            assert (!in.fail()); /* guaranteed by usvg */
+
+            gerbolyze::curve3_div c3div(distance_tolerance_px);
+            c3div.run(a[0], a[1], b[0], b[1], c[0], c[1]);
+
+            for (auto &pt : c3div.points()) {
+                in_poly.emplace_back(ClipperLib::IntPoint{
+                        (ClipperLib::cInt)round(pt[0]*clipper_scale),
+                        (ClipperLib::cInt)round(pt[1]*clipper_scale)
+                });
+            }
+
+            a = c; /* set last point to curve end point */
         }
 
         first = false;
