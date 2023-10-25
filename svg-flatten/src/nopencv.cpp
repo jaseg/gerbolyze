@@ -9,7 +9,7 @@
 #include <stb_image.h>
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include <stb_image_resize.h>
+#include <stb_image_resize2.h>
 
 #define IIR_GAUSS_BLUR_IMPLEMENTATION
 #include "iir_gauss_blur.h"
@@ -574,22 +574,24 @@ template<>
 void gerbolyze::nopencv::Image<float>::resize(int new_w, int new_h) {
     float *old_data = m_data;
     m_data = new float[new_w * new_h];
-    stbir_resize_float(old_data, m_cols, m_rows, 0,
+    stbir_resize_float_linear(old_data, m_cols, m_rows, 0,
                         m_data, new_w, new_h, 0,
-                        1);
+                        STBIR_1CHANNEL);
     m_cols = new_w;
     m_rows = new_h;
+    delete old_data;
 }
 
 template<>
 void gerbolyze::nopencv::Image<uint8_t>::resize(int new_w, int new_h) {
     uint8_t *old_data = m_data;
     m_data = new uint8_t[new_w * new_h];
-    stbir_resize_uint8(old_data, m_cols, m_rows, 0,
+    stbir_resize_uint8_linear(old_data, m_cols, m_rows, 0,
                         m_data, new_w, new_h, 0,
-                        1);
+                        STBIR_1CHANNEL);
     m_cols = new_w;
     m_rows = new_h;
+    delete old_data;
 }
 
 template gerbolyze::nopencv::Image<int32_t>::Image(int size_x, int size_y, const int32_t *data);
