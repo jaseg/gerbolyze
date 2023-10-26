@@ -21,7 +21,7 @@ publish:svg-flatten-wasi:
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
   cache: {}
   script:
-    - pip install -U --user twine
+    - pip install -U --user --break-system-packages twine
     - export TWINE_USERNAME TWINE_PASSWORD
     - twine upload svg-flatten/dist/*
   dependencies:

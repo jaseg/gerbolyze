@@ -16,7 +16,9 @@ build:gerbolyze:
     GIT_SUBMODULE_STRATEGY: none
   script:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - pip3 install --user wheel
+      # --break-system-packages to work around the latest way some galaxy brain messed up python's packaging stuff even
+      # further just to break this CI pipeline for no reason :/
+    - pip3 install --user --break-system-packages wheel
     - python3 setup.py sdist bdist_wheel
   artifacts:
     name: "gerbolyze-$CI_COMMIT_REF_NAME-gerbolyze"
@@ -93,7 +95,7 @@ test:svg-flatten-ubuntu_rolling:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
-    - pip3 install --user 'pillow>=9.1.1'
+    - pip3 install --user --break-system-packages 'pillow>=9.1.1'
     - "python3 setup.py install --user"
     - "gerbolyze --help"
     - "make -C svg-flatten tests"
