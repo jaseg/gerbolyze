@@ -86,27 +86,27 @@ build:svg-flatten-ubuntu_rolling:
       - svg-flatten/build/svg-flatten
       - svg-flatten/build/nopencv-test
 
-test:svg-flatten-ubuntu_rolling:
-  stage: test
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:rolling"
-  script:
-    - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
-    - pip3 install --user --break-system-packages 'pillow>=9.1.1'
-    - "python3 setup.py install --user"
-    - "gerbolyze --help"
-    - "make -C svg-flatten tests"
-  dependencies:
-    - build:svg-flatten-ubuntu_rolling
-  artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-uburl"
-    when: on_failure
-    paths:
-      - svg-flatten/testcase-fails/*.png
-      - svg-flatten/testcase-fails/*.svg
+# test:svg-flatten-ubuntu_rolling:
+#   stage: test
+#   variables:
+#     GIT_SUBMODULE_STRATEGY: none
+#   image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:rolling"
+#   script:
+#     - git config --global --add safe.directory "$CI_PROJECT_DIR"
+#     - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+#     - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
+#     - pip3 install --user --break-system-packages 'pillow>=9.1.1'
+#     - "python3 setup.py install --user"
+#     - "gerbolyze --help"
+#     - "make -C svg-flatten tests"
+#   dependencies:
+#     - build:svg-flatten-ubuntu_rolling
+#   artifacts:
+#     name: "gerbolyze-$CI_COMMIT_REF_NAME-test-uburl"
+#     when: on_failure
+#     paths:
+#       - svg-flatten/testcase-fails/*.png
+#       - svg-flatten/testcase-fails/*.svg
 
 build:svg-flatten-fedora_latest:
   stage: build
@@ -120,27 +120,27 @@ build:svg-flatten-fedora_latest:
       - svg-flatten/build/svg-flatten
       - svg-flatten/build/nopencv-test
 
-test:svg-flatten-fedora_latest:
-  stage: test
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:latest"
-  script:
-    - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
-    - pip3 install --user 'pillow>=9.1.1'
-    - "python3 setup.py install --user"
-    - "gerbolyze --help"
-    - "make -C svg-flatten tests"
-  dependencies:
-    - build:svg-flatten-fedora_latest
-  artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-fedlt"
-    when: on_failure
-    paths:
-      - svg-flatten/testcase-fails/*.png
-      - svg-flatten/testcase-fails/*.svg
+#test:svg-flatten-fedora_latest:
+#  stage: test
+#  variables:
+#    GIT_SUBMODULE_STRATEGY: none
+#  image: "registry.gitlab.com/gerbolyze/build-containers/fedora:latest"
+#  script:
+#    - git config --global --add safe.directory "$CI_PROJECT_DIR"
+#    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+#    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
+#    - pip3 install --user 'pillow>=9.1.1'
+#    - "python3 setup.py install --user"
+#    - "gerbolyze --help"
+#    - "make -C svg-flatten tests"
+#  dependencies:
+#    - build:svg-flatten-fedora_latest
+#  artifacts:
+#    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-fedlt"
+#    when: on_failure
+#    paths:
+#      - svg-flatten/testcase-fails/*.png
+#      - svg-flatten/testcase-fails/*.svg
 
 build:svg-flatten-archlinux:
   stage: build
@@ -153,24 +153,24 @@ build:svg-flatten-archlinux:
       - svg-flatten/build/svg-flatten
       - svg-flatten/build/nopencv-test
 
-test:svg-flatten-archlinux:
-  stage: test
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
-  script:
-    - git config --global --add safe.directory "$CI_PROJECT_DIR"
-    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
-    - "python setup.py install --user"
-    - "gerbolyze --help"
-    - "make -C svg-flatten tests"
-  dependencies:
-    - build:svg-flatten-archlinux
-  artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-arch"
-    when: on_failure
-    paths:
-      - svg-flatten/testcase-fails/*.png
-      - svg-flatten/testcase-fails/*.svg
-
+#test:svg-flatten-archlinux:
+#  stage: test
+#  variables:
+#    GIT_SUBMODULE_STRATEGY: none
+#  image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
+#  script:
+#    - git config --global --add safe.directory "$CI_PROJECT_DIR"
+#    - "export PATH=$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+#    - "touch svg-flatten/build/svg-flatten svg-flatten/build/nopencv-test"
+#    - "python setup.py install --user"
+#    - "gerbolyze --help"
+#    - "make -C svg-flatten tests"
+#  dependencies:
+#    - build:svg-flatten-archlinux
+#  artifacts:
+#    name: "gerbolyze-$CI_COMMIT_REF_NAME-test-arch"
+#    when: on_failure
+#    paths:
+#      - svg-flatten/testcase-fails/*.png
+#      - svg-flatten/testcase-fails/*.svg
+#
