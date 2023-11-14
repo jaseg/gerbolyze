@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#s -*- coding: utf-8 -*-
 #
 # Copyright 2022 Jan Götte <code@jaseg.de>
 #
@@ -109,7 +109,7 @@ def test_convert_layers():
                 'bottom silk':      0.160,
                 'bottom paste':     0.170,
                 'mechanical outline':    0.09}.items():
-            assert set(round(ap.diameter, 4) for ap in stack[layer].apertures) == {dia}
+            assert set(round(ap.diameter, 4) for ap in stack[layer].apertures()) == {dia}
 
         # Note: svg-flatten rounds these diameters to the geometric tolerance given on the command line (0.01mm by
         # default).
