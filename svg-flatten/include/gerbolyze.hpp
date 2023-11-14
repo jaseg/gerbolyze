@@ -31,7 +31,7 @@
 
 namespace gerbolyze {
 
-    constexpr char lib_version[] = "2.0";
+    constexpr char lib_version[] = "3.1.7";
 
     typedef std::function<std::vector<d2p> *(double, double, double)> sampling_fun;
 

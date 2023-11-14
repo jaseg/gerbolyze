@@ -21,7 +21,7 @@ import click
 
 import gerbonara as gn
 
-__version__ = '3.1.6'
+__version__ = '3.1.7'
 
 @click.group()
 def cli():
