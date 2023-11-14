@@ -122,14 +122,37 @@ static void dehole_polytree_worker(PolyNode &ptree, Paths &out, queue<PolyTree> 
             /* Find a viable cut: Cut from top-left bounding box corner, through two subsequent points on the hole
              * outline and to top-right bbox corner. */
             IntRect bbox = c.GetBounds();
-            Path tri = { { bbox.left, bbox.top }, nod->Childs[0]->Contour[0], nod->Childs[0]->Contour[1], { bbox.right, bbox.top } };
-            c.AddPath(tri, ptClip, true);
 
-            c.StrictlySimple(true);
-            /* Execute twice, once for intersection fragment and once for difference fragment. Note that this will yield
-             * at least two, but possibly more polygons. */
-            c.Execute(ctDifference, todo.emplace(), pftNonZero);
-            c.Execute(ctIntersection, todo.emplace(), pftNonZero);
+            /* Clipper might return a polygon with a zero-length, or an exactly vertical outline segment. We iterate
+             * until we find a point that has a different X coordinate than our starting point. If we can't find one
+             * because the polygon only consists only of points on a vertical line, we can safely discard it and do
+             * nothing since it has zero area anyway. */
+            for (size_t i=0; i<nod->Childs[0]->Contour.size(); i++) {
+                if (nod->Childs[0]->Contour[i].X == nod->Childs[0]->Contour[0].X) {
+                    continue;
+                }
+
+                /* We now have found that Contour[0] - Contour[i] has a non-zero horizontal component, and is a
+                 * candidate for our cut. However, we have to make sure that the first point is left (lower X
+                 * coordinate) of the second point, or the cutting polygon we create here would have a
+                 * self-intersection, which with high likelihood would lead to a new hole being created when cutting.
+                 */
+                int a=0, b=i;
+                if (nod->Childs[0]->Contour[i].X < nod->Childs[0]->Contour[0].X) {
+                    /* Swap points */
+                    a = i;
+                    b = 0;
+                }
+                Path tri = { { bbox.left, bbox.top }, nod->Childs[0]->Contour[a], nod->Childs[0]->Contour[b], { bbox.right, bbox.top } };
+                c.AddPath(tri, ptClip, true);
+
+                /* Execute twice, once for intersection fragment and once for difference fragment. Note that this will yield
+                 * at least two, but possibly more polygons. */
+                c.StrictlySimple(true);
+                c.Execute(ctDifference, todo.emplace(), pftNonZero);
+                c.Execute(ctIntersection, todo.emplace(), pftNonZero);
+                break;
+            }
         }
     }
 }
