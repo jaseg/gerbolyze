@@ -10,8 +10,11 @@ from pathlib import Path
 import re
 
 def get_tag():
-    res = subprocess.run(['git', 'describe', '--tags', '--match', 'v*'], capture_output=True, check=True, text=True)
-    return res.stdout.strip()
+    try:
+        res = subprocess.run(['git', '--git-dir', str(Path(__file__).with_name('.git')), 'describe', '--tags', '--match', 'v*'], capture_output=True, check=True, text=True)
+        return res.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        return 'v0.0.0-dev'
 
 def get_version():
     version, _, _rest = get_tag()[1:].partition('-')
