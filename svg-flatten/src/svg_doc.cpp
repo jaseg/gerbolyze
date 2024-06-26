@@ -54,12 +54,33 @@ bool gerbolyze::SVGDocument::load(istream &in, double scale) {
         return false;
     }
 
+    page_w = usvg_double_attr(root_elem, "width", std::nan(""));
+    page_h = usvg_double_attr(root_elem, "height", std::nan(""));
+
     /* Set up the document's viewport transform */
     istringstream vb_stream(root_elem.attribute("viewBox").value());
     vb_stream >> vb_x >> vb_y >> vb_w >> vb_h;
+    if (vb_stream.eof() || vb_stream.fail()) {
+        if (root_elem.attribute("viewBox")) { /* A document with just width/height and no viewBox is okay. */
+            cerr << "Warning: Invalid viewBox, defaulting to width/height values" << endl;
+        }
 
-    page_w = usvg_double_attr(root_elem, "width");
-    page_h = usvg_double_attr(root_elem, "height");
+        if (isnan(page_w) || isnan(page_h)) {
+            cerr << "Warning: Neither width/height nor viewBox given on <svg> root element. Guessing document scale and size." << endl;
+            vb_w = vb_h = page_w = page_h = 200000 / 25.4 * assumed_usvg_dpi / scale;
+            vb_x = vb_y = -vb_w/2;
+        } else {
+            cerr << "No viewBox given on <svg> root, using width/height attributes." << endl;
+            vb_x = vb_y = 0;
+            vb_w = page_w;
+            vb_h = page_h;
+        }
+    } else if (isnan(page_w) || isnan(page_h)) {
+        cerr << "No page width or height given, defaulting to viewBox values units." << endl;
+        page_w = vb_w;
+        page_h = vb_h;
+    }
+
     /* usvg resolves all units, but instead of outputting some reasonable absolute length like mm, it converts
      * everything to px, which depends on usvg's DPI setting (--dpi).
      */
@@ -72,6 +93,9 @@ bool gerbolyze::SVGDocument::load(istream &in, double scale) {
     if (fabs((vb_w / page_w) / (vb_h / page_h) - 1.0) > 0.001) {
         cerr << "Warning: Document has different document unit scale in x and y direction! Output will likely be garbage!" << endl;
     }
+
+    cerr << "Resulting page width " << page_w_mm << " mm x " << page_h_mm << " mm" << endl;
+    cerr << "Resulting document scale " << fabs(vb_w/page_w) << " x " << fabs(vb_h/page_h) << endl;
 
     /* Get the one document defs element */
     defs_node = root_elem.child("defs");
@@ -304,7 +328,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 //double ngon_area_relative = p.size()/(2*std::numbers::pi) * sin(2*std::numbers::pi / p.size());
                 // ^- correction not necessary, we already do a very good job.
                 double diameter = sqrt(4*fabs(area)/std::numbers::pi) / clipper_scale;
-                double tolerance = ctx.settings().geometric_tolerance_mm;
+                double tolerance = mm_to_doc_units(ctx.settings().geometric_tolerance_mm);
                 diameter = round(diameter/tolerance) * tolerance;
                 ctx.sink() << ApertureToken(diameter) << FlashToken(centroid);
             }
