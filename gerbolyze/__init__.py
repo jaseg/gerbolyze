@@ -14,14 +14,19 @@ import warnings
 import shutil
 from zipfile import ZipFile, is_zipfile
 from pathlib import Path
+from xml.etree import ElementTree
 
-from bs4 import BeautifulSoup
 import numpy as np
 import click
 
 import gerbonara as gn
 
 __version__ = '3.1.8'
+
+ET_NS= {'svg': 'http://www.w3.org/2000/svg',
+          'inkscape': 'http://www.inkscape.org/namespaces/inkscape'}
+SVG_NS = f'{{{ET_NS["svg"]}}}'
+INKSCAPE_NS = f'{{{ET_NS["inkscape"]}}}'
 
 @click.group()
 def cli():
@@ -71,16 +76,17 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
     with tempfile.NamedTemporaryFile(suffix='.svg') as processed_svg:
         run_cargo_command('usvg', *shlex.split(os.environ.get('USVG_OPTIONS', '')), input_svg, processed_svg.name)
 
-        with open(processed_svg.name) as f:
-            soup = BeautifulSoup(f.read(), features='xml')
+        et = ElementTree.parse(processed_svg)
     
         for (side, use), layer in [
                 *stack.graphic_layers.items(),
                 (('drill', 'plated'), stack.drill_pth),
                 (('drill', 'nonplated'), stack.drill_npth)]:
             logging.info(f'Layer {side} {use}')
-            if (soup_layer := soup.find('g', id=f'g-{side}-{use}')):
-                if not soup_layer.contents:
+
+            et_layer = et.find(f".//{SVG_NS}g[@id='g-{side}-{use}']")
+            if et_layer is not None:
+                if not len(et_layer):
                     logging.info(f'    Corresponding overlay layer is empty. Skipping.')
             else:
                 logging.info(f'    Corresponding overlay layer not found. Skipping.')
@@ -271,8 +277,9 @@ def convert(input_svg, output_gerbers, is_zip, dilate, curve_tolerance, subtract
     with tempfile.NamedTemporaryFile(suffix='.svg') as processed_svg:
         run_cargo_command('usvg', *shlex.split(os.environ.get('USVG_OPTIONS', '')), input_svg, processed_svg.name)
 
-        soup = BeautifulSoup(input_svg.read_text(), features='xml')
-        layers = {e.get('id'): e.get('inkscape:label') for e in soup.find_all('g', recursive=True)}
+        et = ElementTree.fromstring(input_svg.read_text())
+        layers = {node.get(f'id'): node.get(f'{INKSCAPE_NS}label')
+                  for node in et.findall(f'{SVG_NS}g')}
 
         stack = gn.LayerStack({}, None, None, [], board_name=input_svg.stem, original_path=input_svg)
 
