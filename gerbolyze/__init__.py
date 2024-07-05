@@ -21,7 +21,7 @@ import click
 
 import gerbonara as gn
 
-__version__ = '3.1.8'
+__version__ = '3.1.9'
 
 ET_NS= {'svg': 'http://www.w3.org/2000/svg',
           'inkscape': 'http://www.inkscape.org/namespaces/inkscape'}
