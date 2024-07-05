@@ -92,6 +92,7 @@ bool gerbolyze::SVGDocument::load(istream &in, double scale) {
 
     if (fabs((vb_w / page_w) / (vb_h / page_h) - 1.0) > 0.001) {
         cerr << "Warning: Document has different document unit scale in x and y direction! Output will likely be garbage!" << endl;
+        cerr << "         Viewbox size " << vb_w << " x " << vb_h << ", document size " << page_w << " x " << page_h << " -> scale " << (vb_w/page_w) << " x " << (vb_h/page_h) << endl;
     }
 
     cerr << "Resulting page width " << page_w_mm << " mm x " << page_h_mm << " mm" << endl;

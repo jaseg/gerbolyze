@@ -52,6 +52,7 @@ void SimpleGerberOutput::header_impl(d2p origin, d2p size) {
     
     if (pow(10, m_digits_int-1) < max(m_width, m_height)) {
         cerr << "Warning: Input has bounding box too large for " << m_digits_int << "." << m_digits_frac << " gerber resolution!" << endl;
+        cerr << "         Bounding box in gerber units: " << m_width << " x " << m_height << endl;
     }
 
     m_out << "%FSLAX" << m_digits_int << m_digits_frac << "Y" << m_digits_int << m_digits_frac << "*%" << endl;
