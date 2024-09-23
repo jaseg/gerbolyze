@@ -180,10 +180,11 @@ namespace gerbolyze {
                 }
 
                 double imbalance = f_max / f_min - 1.0;
-                //cerr << "  * skew check: " << dbg_str();
+                bool okay =  imbalance < rel_tol && (f_max - f_min)*fabs(dist_doc) < abs_tol;
+                //cerr << "  " << (okay ? "." : "#") << " skew check: " << dbg_str();
                 //cerr << "    imbalance=" << imbalance << endl;
                 //cerr << "    rel=" << (imbalance < rel_tol) << " abs=" << (imbalance*fabs(dist_doc) < abs_tol) << endl;
-                return imbalance < rel_tol && imbalance*fabs(dist_doc) < abs_tol;
+                return okay;
             }
 
             double doc2phys_min(double dist_doc) {
