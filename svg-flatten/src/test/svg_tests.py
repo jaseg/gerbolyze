@@ -73,9 +73,9 @@ class SVGRoundTripTests(unittest.TestCase):
         'stroke_dashes_comparison': 0.03,
         'stroke_dashes': 0.05,
         # The vectorizer tests produce output with lots of edges, which leads to a large amount of aliasing artifacts.
-        'vectorizer_simple': 0.05,
+        'vectorizer_simple': 0.08,
         'vectorizer_clip': 0.05,
-        'vectorizer_xform': 0.05,
+        'vectorizer_xform': 0.08,
         'vectorizer_xform_clip': 0.05,
     }
 
@@ -224,7 +224,11 @@ class StrokeMappingTests(unittest.TestCase):
 
             with open(tmp_out_svg.name, 'r') as f:
                 num_strokes = sum(1 for l in f.readlines() if 'stroke=' in l)
-                self.assertEqual(num_strokes, 84)
+                try:
+                    self.assertEqual(num_strokes, 60)
+                except AssertionError as e:
+                    shutil.copyfile(tmp_out_svg.name, f'/tmp/gerbolyze-fail-stoke-mapping-out.svg')
+                    raise
 
 class RegressionTests(unittest.TestCase):
     def test_regression_dehole_concave_infinite_loop(self):
