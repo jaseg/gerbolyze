@@ -6,13 +6,14 @@ import unittest
 from pathlib import Path
 import subprocess
 import itertools
+import textwrap
 import os
 import sys
 
 from PIL import Image
 import numpy as np
 
-def run_svg_flatten(input_file, output_file, *args, **kwargs):
+def run_svg_flatten(input_file, output_file, *args, timeout=None, **kwargs):
     if 'SVG_FLATTEN' in os.environ:
         svg_flatten = os.environ.get('SVG_FLATTEN')
         if not hasattr(run_svg_flatten, 'custom_svg_flatten_warned'):
@@ -36,7 +37,7 @@ def run_svg_flatten(input_file, output_file, *args, **kwargs):
     args.append(str(output_file))
 
     try:
-        proc = subprocess.run(args, capture_output=True, check=True, text=True)
+        proc = subprocess.run(args, capture_output=True, check=True, text=True, timeout=timeout)
     except subprocess.CalledProcessError as e:
         print('Subprocess stdout:')
         print(e.stdout)
@@ -224,6 +225,25 @@ class StrokeMappingTests(unittest.TestCase):
             with open(tmp_out_svg.name, 'r') as f:
                 num_strokes = sum(1 for l in f.readlines() if 'stroke=' in l)
                 self.assertEqual(num_strokes, 84)
+
+class RegressionTests(unittest.TestCase):
+    def test_regression_dehole_concave_infinite_loop(self):
+        test_svg = textwrap.dedent('''<svg width="185.19685" height="132.28346" xmlns="http://www.w3.org/2000/svg">
+                <defs/>
+                <g transform="matrix(3.7795274 0 0 3.7795274 0.00000763 0)">
+                    <g id="g-bottom-silk">
+                        <path fill="#000000" stroke="#000000" stroke-miterlimit="10" stroke-width="0.025" stroke-linecap="round" d="M 29.1075 7.2762494 L 29.1075 29.296247 L 32.26216 34.975 L 16.74945 34.975 L 19.8675 29.376247 L 19.8675 7.2762494 Z"/>
+                    </g>
+                </g>
+            </svg>''')
+
+        with tempfile.NamedTemporaryFile(suffix='.svg') as tmp_svg,\
+                tempfile.NamedTemporaryFile(suffix='.gbr') as tmp_gbr:
+            tmp_svg.write(test_svg.encode())
+            tmp_svg.flush()
+
+            # This will raise subprocess.TimeoutExpired if the test fails.
+            run_svg_flatten(tmp_svg.name, tmp_gbr.name, format='svg', timeout=15)
 
 
 for test_in_svg in Path('testdata/svg').glob('*.svg'):
