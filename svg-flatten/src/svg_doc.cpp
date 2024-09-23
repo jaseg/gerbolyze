@@ -550,7 +550,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
             } else {
                 Paths clip;
                 PolyTreeToPaths(ptree, clip);
-                ctx.mat().phys2doc_clipper(clip);
+                ctx.mat().doc2phys_clipper(clip);
 
                 RenderContext local_ctx(ctx, xform2d(), clip, true);
                 pattern->tile(local_ctx);
