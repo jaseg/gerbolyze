@@ -91,6 +91,64 @@ enum ClipperLib::JoinType gerbolyze::clipper_join_type(const pugi::xml_node &nod
     return ClipperLib::jtMiter;
 }
 
+/* Some debugging helpers */
+static double toplevel_winding_direction(PolyNode &ptree) {
+    double sum = 0.0;
+    size_t sz = ptree.Contour.size();
+    for (size_t i=0; i<sz; i++) {
+        size_t j = (i+1) % sz;
+        double x1 = ptree.Contour[i].X, y1 = ptree.Contour[i].Y;
+        double x2 = ptree.Contour[j].X, y2 = ptree.Contour[j].Y;
+        sum += (x2-x1)*(y2+y1);
+    }
+    return sum;
+}
+
+static void dump_ptree(PolyNode &ptree) {
+    /* dumps node count, winding direction and tree structure */
+    double sum = toplevel_winding_direction(ptree);
+    char sign = '.';
+    if (sum > 0) {
+        sign = '+';
+    } else if (sum < 0) {
+        sign = '-';
+    }
+
+    cerr << sign << ptree.Contour.size() <<  "[";
+    for (size_t i=0; i<ptree.ChildCount(); i++) {
+        if (i > 0) {
+            cerr << ",";
+        }
+        dump_ptree(*ptree.Childs[i]);
+    }
+    cerr << "]";
+}
+
+static void dump_clipper2svg(Path &path, string stroke) {
+    /* dumps the ptree to SVG */
+    /* use together with
+            cerr << "<svg width=\"200\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\">" << endl;
+            ...
+            dump_clipper2svg(...); // can be used multiple times
+            ...
+            cerr << "</svg>" << endl;
+    */
+
+    size_t sz = path.size();
+    if (sz == 0) {
+        return;
+    }
+
+    cerr << "<path fill=\"" << stroke << "\" d=\"M ";
+    for (size_t i=0; i<sz; i++) {
+        if (i>0) {
+            cerr << " L ";
+        }
+        cerr << (path[i].X / 1e7) << ", " << (path[i].Y / 1e7);
+    }
+    cerr << " Z\"/>" << endl;
+}
+
 static void dehole_polytree_worker(PolyNode &ptree, Paths &out, queue<PolyTree> &todo) {
     for (int i=0; i<ptree.ChildCount(); i++) {
         PolyNode *nod = ptree.Childs[i];
@@ -127,21 +185,21 @@ static void dehole_polytree_worker(PolyNode &ptree, Paths &out, queue<PolyTree> 
              * until we find a point that has a different X coordinate than our starting point. If we can't find one
              * because the polygon only consists only of points on a vertical line, we can safely discard it and do
              * nothing since it has zero area anyway. */
-            for (size_t i=0; i<nod->Childs[0]->Contour.size(); i++) {
-                if (nod->Childs[0]->Contour[i].X == nod->Childs[0]->Contour[0].X) {
+            for (size_t i=1; i<nod->Childs[0]->Contour.size(); i++) {
+                if (nod->Childs[0]->Contour[i].X == nod->Childs[0]->Contour[i-1].X) {
                     continue;
                 }
 
-                /* We now have found that Contour[0] - Contour[i] has a non-zero horizontal component, and is a
+                /* We now have found that Contour[i-1] - Contour[i] has a non-zero horizontal component, and is a
                  * candidate for our cut. However, we have to make sure that the first point is left (lower X
                  * coordinate) of the second point, or the cutting polygon we create here would have a
                  * self-intersection, which with high likelihood would lead to a new hole being created when cutting.
                  */
-                int a=0, b=i;
-                if (nod->Childs[0]->Contour[i].X < nod->Childs[0]->Contour[0].X) {
+                int a=i-1, b=i;
+                if (nod->Childs[0]->Contour[i].X < nod->Childs[0]->Contour[i-1].X) {
                     /* Swap points */
                     a = i;
-                    b = 0;
+                    b = i-1;
                 }
                 Path tri = { { bbox.left, bbox.top }, nod->Childs[0]->Contour[a], nod->Childs[0]->Contour[b], { bbox.right, bbox.top } };
                 c.AddPath(tri, ptClip, true);
