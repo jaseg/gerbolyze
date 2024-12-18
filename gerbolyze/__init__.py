@@ -77,7 +77,7 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
         run_cargo_command('usvg', *shlex.split(os.environ.get('USVG_OPTIONS', '')), input_svg, processed_svg.name)
 
         et = ElementTree.parse(processed_svg)
-    
+
         for (side, use), layer in [
                 *stack.graphic_layers.items(),
                 (('drill', 'plated'), stack.drill_pth),
@@ -95,7 +95,7 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
             if layer is None:
                 loggin.error(f'    Corresponding overlay layer is non-empty, but the corresponding layer could not be found in the input gerbers. Skipping.')
                 continue
-            
+
             # only open lazily loaded layer if we need it. Replace lazy wrapper in stack with loaded layer.
             layer = layer.instance
             logging.info(f'    Loaded layer: {layer}')
@@ -159,7 +159,7 @@ def template(input_gerbers, output_svg, top, bottom, force, vector, raster_dpi):
         # /path/to/gerber/dir -> /path/to/gerber/dir.preview-{top|bottom}.svg
         # /path/to/gerbers.zip -> /path/to/gerbers.zip.preview-{top|bottom}.svg
         # /path/to/single/file.grb -> /path/to/single/file.grb.preview-{top|bottom}.svg
-    
+
         output_svg = source.parent / f'{source.name}.template-{ttype}.svg'
         click.echo(f'Writing output to {output_svg}')
 
@@ -223,7 +223,7 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
                 raise click.ClickException(f'Output file "{out}" already exists, exiting.')
         out = out.open('w')
 
-    layers = layer or []
+    layers = list(layer) or []
     current_layer = None
     if not no_default_layers:
         layers += ['top paste', 'top silk', 'top mask']
@@ -380,7 +380,7 @@ def parse_subtract_script(script, default_dilation=0.1, default_script=DEFAULT_S
         match = re.fullmatch(fr'{varname}-={varname}{floatnum}?', line)
         if not match:
             raise ValueError(f'Cannot parse line: {line}')
-        
+
         out_var, in_var, dilation = match.groups()
         if not out_var.startswith('out.') or not in_var.startswith('in.'):
             raise ValueError('All left-hand side values must be outputs, right-hand side values must be inputs.')
@@ -545,7 +545,7 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
     args = [ '--format', ('gerber-outline' if outline_mode else 'gerber'),
             '--precision', '6', # intermediate file, use higher than necessary precision
             ]
-    
+
     for k, v in kwargs.items():
         if v:
             args.append('--' + k.replace('_', '-'))
@@ -584,7 +584,7 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
                     if candidate is None:
                         import svg_flatten_wasi
                         svg_flatten_wasi.run_svg_flatten.callback(args[-2], args[-1], args[:-2], no_usvg=False)
-                        logging.debug('using svg_flatten_wasi python package') 
+                        logging.debug('using svg_flatten_wasi python package')
 
                     else:
                         subprocess.run([candidate, *args], check=True)
