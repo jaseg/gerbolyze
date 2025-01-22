@@ -94,6 +94,11 @@ int gerbolyze::run_cargo_command(const char *cmd_name, std::vector<std::string> 
 
     if (proc_rc) {
         std::cerr << cmd_name << " returned an error code: " << proc_rc << std::endl;
+        std::cerr << "Command line:";
+        for (auto elem:cmdline) {
+            std::cerr << " " << elem;
+        }
+        std::cerr << std::endl;
         return EXIT_FAILURE;
     }
 

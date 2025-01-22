@@ -60,7 +60,7 @@ bool gerbolyze::SVGDocument::load(istream &in, double scale) {
     /* Set up the document's viewport transform */
     istringstream vb_stream(root_elem.attribute("viewBox").value());
     vb_stream >> vb_x >> vb_y >> vb_w >> vb_h;
-    if (vb_stream.eof() || vb_stream.fail()) {
+    if (vb_stream.fail()) {
         if (root_elem.attribute("viewBox")) { /* A document with just width/height and no viewBox is okay. */
             cerr << "Warning: Invalid viewBox, defaulting to width/height values" << endl;
         }
