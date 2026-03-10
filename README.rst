@@ -61,7 +61,7 @@ Gerbolyze works in three steps.
 
    .. code::
 
-        $ gerbolyze paste --top template_top_edited.svg [--bottom ...] my_gerber_dir output_gerber_dir
+        $ gerbolyze paste template_top_edited.svg my_gerber_dir output_gerber_dir
 
 Quick Start Installation (Any Platform)
 ---------------------------------------
