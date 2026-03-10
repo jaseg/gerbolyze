@@ -9,11 +9,7 @@ from pathlib import Path
 import hashlib
 import lzma
 import appdirs
-from importlib import resources as importlib_resources
-try:
-    importlib_resources.files # py3.9+ stdlib
-except AttributeError:
-    import importlib_resources # py3.8- shim
+from importlib.resources import files as package_files
 
 
 # ==============================
@@ -33,7 +29,9 @@ except AttributeError:
 
 def _run_wasm_app(wasm_filename, argv, cachedir="svg-flatten-wasi"):
 
-    module_binary = importlib_resources.read_binary(__package__, wasm_filename)
+    print('foo')
+    module_binary = package_files(__package__).joinpath(wasm_filename).read_binary()
+    print('bar')
 
     module_path_digest = hashlib.sha256(__file__.encode()).hexdigest()
     module_digest = hashlib.sha256(module_binary).hexdigest()

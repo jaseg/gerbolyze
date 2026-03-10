@@ -1,0 +1,3 @@
+*.wasm
+__pycache__
+cache

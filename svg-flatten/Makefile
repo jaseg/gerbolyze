@@ -78,6 +78,7 @@ all: $(BUILDDIR)/$(BINARY) $(BUILDDIR)/nopencv-test
 
 .PHONY: wasm
 wasm: $(BUILDDIR)/$(BINARY).wasm
+	cp $(BUILDDIR)/$(BINARY).wasm svg_flatten_wasi/
 
 $(CACHEDIR)/$(WASI_SDK):
 	mkdir -p $(dir $@)

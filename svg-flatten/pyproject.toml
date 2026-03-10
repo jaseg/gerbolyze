@@ -1,0 +1,42 @@
+[project]
+name = "svg-flatten-wasi"
+version = "3.1.9"
+description = "svg-flatten SVG downconverter"
+readme = { file = "README.rst", content-type = "text/x-rst" }
+license = { text = "AGPLv3+" }
+authors = [{ name = "jaseg", email = "pypi@jaseg.de" }]
+requires-python = ">=3.12"
+dependencies = [
+    "appdirs~=1.4.4",
+    "wasmtime>=42.0.0",
+    "click>=8.3.0",
+]
+
+[project.optional-dependencies]
+resvg-wasi = ["resvg-wasi >= 0.47.0"]
+
+[project.scripts]
+wasi-svg-flatten = "svg_flatten_wasi:run_svg_flatten"
+
+[project.urls]
+"Source Code" = "https://git.jaseg.de/gerbolyze"
+"Bug Tracker" = "https://github.com/jaseg/gerbolyze/issues"
+
+[build-system]
+requires = ["uv-build >= 0.10.9, <= 0.11.0"]
+build-backend = "uv_build"
+
+[tool.uv-build.include]
+"svg_flatten_wasi/*.wasm" = "svg_flatten_wasi/"
+
+[tool.uv.build-backend]
+module-name = "svg_flatten_wasi"
+module-root = ""
+
+[tool.hatch.metadata]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Topic :: Utilities",
+]
