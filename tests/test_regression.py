@@ -25,7 +25,7 @@ from xml.etree import ElementTree
 import gerbonara
 import pytest
 
-from .test_integration import run_command
+from .test_integration import run_gerbolyze
 
 
 
@@ -36,7 +36,7 @@ def test_template_round_trip():
     with tempfile.NamedTemporaryFile(suffix='.svg') as out_svg,\
             tempfile.NamedTemporaryFile(suffix='.svg') as proc_svg,\
             tempfile.TemporaryDirectory() as out_dir:
-            run_command('python3', 'gerbolyze', 'empty-template', '--force', '--size', f'{2*(r)}x{2*(r)}mm', out_svg.name)
+            run_gerbolyze('empty-template', '--force', '--size', f'{2*(r)}x{2*(r)}mm', out_svg.name)
 
             ElementTree.register_namespace('', 'http://www.w3.org/2000/svg')
             ElementTree.register_namespace('svg', 'http://www.w3.org/2000/svg')
@@ -52,7 +52,7 @@ def test_template_round_trip():
             et.write(proc_svg)
             proc_svg.flush()
 
-            run_command('python3', 'gerbolyze', 'convert', proc_svg.name, out_dir)
+            run_gerbolyze('convert', proc_svg.name, out_dir)
             out_dir = Path(out_dir)
 
             excellon_files = [f.stat().st_size for f in out_dir.glob('*.drl')]
@@ -66,7 +66,7 @@ def test_template_round_trip():
 
             for f, size in gerber_files.items():
                 _name, _, layer = f.stem.rpartition('-')
-                if layer in ('F.Cu', 'B.Cu'):
+                if layer in ('F_Cu', 'B_Cu'):
                     # These layers should contain a very large G36 polygon
                     assert 10e6 < size < 100e6
                 else:

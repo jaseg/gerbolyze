@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+import os
 import sys
 import math
 import subprocess
@@ -28,12 +29,16 @@ import pytest
 REFERENCE_GERBERS = ['test_gerber_8seg.zip']
 REFERENCE_SVGS = ['svg_feature_test.svg']
 
-reference_path = lambda reference: Path(__file__).parent / 'resources' / str(reference)
+reference_path = lambda reference: Path(__file__).with_name('resources') / str(reference)
+svg_flatten_path = Path(__file__).parent.parent  / 'svg-flatten' / 'build' / 'svg-flatten'
 
 
-def run_command(*args):
+def run_gerbolyze(*args):
     try:
-        proc = subprocess.run(args, check=True, capture_output=True)
+        env = dict(os.environ)
+        if 'SVG_FLATTEN' not in env:
+            env['SVG_FLATTEN'] = str(svg_flatten_path.absolute())
+        proc = subprocess.run(['gerbolyze', *args], env=env, check=True, capture_output=True)
         print(proc.stdout.decode())
         print(proc.stderr.decode(), file=sys.stderr)
     except subprocess.CalledProcessError as e:
@@ -44,28 +49,28 @@ def run_command(*args):
 def test_template_round_trip():
     with tempfile.NamedTemporaryFile(suffix='.svg') as out_svg,\
             tempfile.TemporaryDirectory() as out_dir:
-        run_command('python3', '-m', 'gerbolyze', 'empty-template', '--force', out_svg.name)
-        run_command('python3', '-m', 'gerbolyze', 'convert', out_svg.name, out_dir)
+        run_gerbolyze('empty-template', '--force', out_svg.name)
+        run_gerbolyze('convert', out_svg.name, out_dir)
 
 def test_zip_write():
     with tempfile.NamedTemporaryFile(suffix='.svg') as out_svg,\
             tempfile.NamedTemporaryFile(suffix='.zip') as out_zip:
-        run_command('python3', '-m', 'gerbolyze', 'empty-template', '--force', out_svg.name)
-        run_command('python3', '-m', 'gerbolyze', 'convert', out_svg.name, out_zip.name)
+        run_gerbolyze('empty-template', '--force', out_svg.name)
+        run_gerbolyze('convert', out_svg.name, out_zip.name)
 
 @pytest.mark.parametrize('reference', REFERENCE_SVGS)
 def test_complex_conversion(reference):
     infile = reference_path(reference)
     with tempfile.NamedTemporaryFile(suffix='.zip') as out_zip:
-        run_command('python3', '-m', 'gerbolyze', 'convert', infile, out_zip.name)
-        run_command('python3', '-m', 'gerbolyze', 'convert', '--pattern-complete-tiles-only', '--use-apertures-for-patterns', infile, out_zip.name)
+        run_gerbolyze('convert', infile, out_zip.name)
+        run_gerbolyze('convert', '--pattern-complete-tiles-only', '--use-apertures-for-patterns', infile, out_zip.name)
 
 @pytest.mark.parametrize('reference', REFERENCE_GERBERS)
 def test_template(reference):
     with tempfile.NamedTemporaryFile(suffix='.zip') as out_svg:
         infile = reference_path(reference)
-        run_command('python3', '-m', 'gerbolyze', 'template', '--top', '--force', infile, out_svg.name)
-        run_command('python3', '-m', 'gerbolyze', 'template', '--bottom', '--force', '--vector', infile, out_svg.name)
+        run_gerbolyze('template', '--top', '--force', infile, out_svg.name)
+        run_gerbolyze('template', '--bottom', '--force', '--vector', infile, out_svg.name)
 
 def test_paste():
     in_gerbers = reference_path('layers-gerber')
@@ -73,8 +78,8 @@ def test_paste():
     bottom_overlay = reference_path('tpl-bottom.svg')
     with tempfile.TemporaryDirectory() as intermediate_gerbers,\
             tempfile.TemporaryDirectory() as output_gerbers:
-        run_command('python3', '-m', 'gerbolyze', 'paste', '--log-level', 'debug', '--no-subtract', in_gerbers, top_overlay, intermediate_gerbers)
-        run_command('python3', '-m', 'gerbolyze', 'paste', '--log-level', 'debug', '--no-subtract', intermediate_gerbers, bottom_overlay, output_gerbers)
+        run_gerbolyze('paste', '--log-level', 'debug', '--no-subtract', in_gerbers, top_overlay, intermediate_gerbers)
+        run_gerbolyze('paste', '--log-level', 'debug', '--no-subtract', intermediate_gerbers, bottom_overlay, output_gerbers)
 
         stack_old = gerbonara.layers.LayerStack.open(in_gerbers)
         stack_new = gerbonara.layers.LayerStack.open(output_gerbers)
@@ -96,7 +101,7 @@ def test_paste():
 def test_convert_layers():
     infile = reference_path('layers.svg')
     with tempfile.TemporaryDirectory() as out_dir:
-        run_command('python3', '-m', 'gerbolyze', 'convert', infile, out_dir)
+        run_gerbolyze('convert', infile, out_dir)
         stack = gerbonara.layers.LayerStack.open(out_dir)
 
         for layer, dia in {

@@ -575,10 +575,7 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
 
                     # next to our current python interpreter (e.g. in virtualenv)
                     str(Path(sys.executable).parent / 'svg-flatten'),
-                    str(Path(sys.executable).parent / 'wasi-svg-flatten'),
-
-                    # next to this python source file in the development repo
-                    str(Path(__file__).parent.parent / 'svg-flatten' / 'build' / 'svg-flatten') ]:
+                    str(Path(sys.executable).parent / 'wasi-svg-flatten')]:
 
                 try:
                     if candidate is None:

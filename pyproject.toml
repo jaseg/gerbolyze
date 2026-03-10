@@ -1,0 +1,75 @@
+[project]
+name = "gerbolyze"
+version = "3.1.9"
+description = """A high-resolution image-to-PCB converter. Gerbolyze plots SVG, PNG and JPG onto existing gerber \
+files. It handles almost the full SVG spec and deals with text, path outlines, patterns, arbitrary paths with \
+self-intersections and holes, etc. fully automatically. It can vectorize raster images both by contour tracing and by \
+grayscale dithering. All processing is done at the vector level without intermediate conversions to raster images \
+accurately preserving the input."""
+readme = "README.rst"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.12"
+dependencies = [
+    'gerbonara >= 1.2.0',
+    'beautifulsoup4',
+    'numpy',
+    'python-slugify',
+    'lxml',
+    'click',
+    'svg-flatten-wasi >= 3.1.9',
+    'resvg-wasi >= 0.47.0']
+
+authors = [
+  { name = "jaseg" },
+]
+
+maintainers = [
+  { name = "Gerbolyze maintainers", email = "gerbonara@jaseg.de" },
+]
+
+keywords = ["gerber", "excellon", "pcb", "RS274x", "EDA"]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Religion",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Artistic Software",
+    "Topic :: Utilities",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Printing",
+]
+
+[project.urls]
+Homepage = "https://jaseg.de/projects/gerbolyze/"
+Source = "https://git.jaseg.de/gerbolyze"
+Tracker = "https://github.com/jaseg/gerbolyze/issues"
+
+[project.scripts]
+gerbolyze = "gerbolyze:cli"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-xdist",
+    "numpy",
+    "scipy",
+    "tqdm",
+    "beautifulsoup4",
+    "lxml",
+    "pillow"
+    ]
+
+[build-system]
+requires = ["uv-build"]
+build-backend = "uv_build"
+
+[tool.pytest]
+testpaths = ["tests"]
+norecursedirs = ["*"]

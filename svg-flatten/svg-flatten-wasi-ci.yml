@@ -15,6 +15,9 @@ build:svg-flatten-wasi:
 
 publish:svg-flatten-wasi:
   stage: publish
+  id_tokens:
+    PYPI_ID_TOKEN:
+      aud: pypi
   variables:
     GIT_SUBMODULE_STRATEGY: none
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"

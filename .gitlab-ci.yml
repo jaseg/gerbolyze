@@ -16,10 +16,7 @@ build:gerbolyze:
     GIT_SUBMODULE_STRATEGY: none
   script:
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
-      # --break-system-packages to work around the latest way some galaxy brain messed up python's packaging stuff even
-      # further just to break this CI pipeline for no reason :/
-    - pip3 install --user --break-system-packages wheel
-    - python3 setup.py sdist bdist_wheel
+    - uv build
   artifacts:
     name: "gerbolyze-$CI_COMMIT_REF_NAME-gerbolyze"
     paths:
@@ -27,6 +24,9 @@ build:gerbolyze:
 
 publish:gerbolyze:
   stage: publish
+  id_tokens:
+    PYPI_ID_TOKEN:
+      aud: pypi
   variables:
     GIT_SUBMODULE_STRATEGY: none
   image: "registry.gitlab.com/gerbolyze/build-containers/archlinux:latest"
