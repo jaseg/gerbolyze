@@ -1,6 +1,6 @@
 [project]
 name = "gerbolyze"
-version = "3.1.9"
+version = "3.2.0"
 description = """A high-resolution image-to-PCB converter. Gerbolyze plots SVG, PNG and JPG onto existing gerber \
 files. It handles almost the full SVG spec and deals with text, path outlines, patterns, arbitrary paths with \
 self-intersections and holes, etc. fully automatically. It can vectorize raster images both by contour tracing and by \
@@ -16,7 +16,7 @@ dependencies = [
     'python-slugify',
     'lxml',
     'click',
-    'svg-flatten-wasi >= 3.1.9',
+    'svg-flatten-wasi >= 3.2.0',
     'resvg-wasi >= 0.47.0']
 
 authors = [
