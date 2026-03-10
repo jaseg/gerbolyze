@@ -93,7 +93,7 @@ def paste(input_gerbers, input_svg, output_gerbers, is_zip,
                 continue
 
             if layer is None:
-                loggin.error(f'    Corresponding overlay layer is non-empty, but the corresponding layer could not be found in the input gerbers. Skipping.')
+                logging.error(f'    Corresponding overlay layer is non-empty, but the corresponding layer could not be found in the input gerbers. Skipping.')
                 continue
 
             # only open lazily loaded layer if we need it. Replace lazy wrapper in stack with loaded layer.
