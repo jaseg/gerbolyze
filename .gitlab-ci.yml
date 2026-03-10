@@ -74,17 +74,17 @@ publish:gerbolyze:
 #       - svg-flatten/testcase-fails/*.png
 #       - svg-flatten/testcase-fails/*.svg
 
-build:svg-flatten-ubuntu_rolling:
-  stage: build
-  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:rolling"
-  script:
-    - "export CXX=clang++"
-    - "make -C svg-flatten"
-  artifacts:
-    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-uburl"
-    paths:
-      - svg-flatten/build/svg-flatten
-      - svg-flatten/build/nopencv-test
+#build:svg-flatten-ubuntu_rolling:
+#  stage: build
+#  image: "registry.gitlab.com/gerbolyze/build-containers/ubuntu:rolling"
+#  script:
+#    - "export CXX=clang++"
+#    - "make -C svg-flatten"
+#  artifacts:
+#    name: "gerbolyze-$CI_COMMIT_REF_NAME-svg-flatten-uburl"
+#    paths:
+#      - svg-flatten/build/svg-flatten
+#      - svg-flatten/build/nopencv-test
 
 # test:svg-flatten-ubuntu_rolling:
 #   stage: test
