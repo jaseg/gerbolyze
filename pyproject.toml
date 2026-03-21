@@ -16,8 +16,7 @@ dependencies = [
     'python-slugify',
     'lxml',
     'click',
-    'svg-flatten-wasi >= 3.2.0',
-    'resvg-wasi >= 0.47.0']
+    'svg-flatten-wasi >= 3.2.0']
 
 authors = [
   { name = "jaseg" },
@@ -54,6 +53,9 @@ Tracker = "https://github.com/jaseg/gerbolyze/issues"
 [project.scripts]
 gerbolyze = "gerbolyze:cli"
 
+[project.optional-dependencies]
+resvg-wasi = ["resvg-wasi >= 0.47.0"]
+
 [dependency-groups]
 dev = [
     "pytest",
@@ -67,7 +69,7 @@ dev = [
     ]
 
 [build-system]
-requires = ["uv-build"]
+requires = ["uv-build < 0.11"]
 build-backend = "uv_build"
 
 [tool.pytest]
