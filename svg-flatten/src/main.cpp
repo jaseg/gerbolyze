@@ -194,6 +194,7 @@ int main(int argc, char **argv) {
     }
 
     string in_f_name;
+    string in_f_stem;
     istream *in_f = &cin;
     ifstream in_f_file;
     string out_f_name;
@@ -209,6 +210,10 @@ int main(int argc, char **argv) {
     }
 
     if (!in_f_name.empty() && in_f_name != "-") {
+#ifndef WASI
+        filesystem::path in_f_path(in_f_name);
+        in_f_stem = in_f_path.stem();
+#endif /* WASI */
         in_f_file.open(in_f_name);
         if (!in_f_file) {
             cerr << "Cannot open input file \"" << in_f_name << "\"" << endl;
@@ -263,12 +268,23 @@ int main(int argc, char **argv) {
         //cerr << "  * Gerber sink " << endl;
 
     } else if (fmt == "s-exp" || fmt == "sexp" || fmt == "kicad") {
-        if (!args["sexp_mod_name"]) {
-            cerr << "Error: --sexp-mod-name must be given for sexp export" << endl;
+        string mod_name(args["sexp_mod_name"] ? args["sexp_mod_name"].as<string>() : "");
+        if (mod_name.empty()) {
+#ifdef WASI
+            cerr << "In WASI builds, --sexp-mod-name must be given for s-expression output." << endl;
             return EXIT_FAILURE;
+#else
+            if (in_f_stem.empty()) {
+                cerr << "If no input filename is given, --sexp-mod-name must be given for s-expression output." << endl;
+                return EXIT_FAILURE;
+            } else {
+                mod_name = in_f_stem;
+                cout << "Using filename stem \"" << in_f_stem << "\" as s-expression footprint name. Override with --sexp-mod-name." << endl;
+            }
+#endif /* WASI */
         }
 
-        sink = new KicadSexpOutput(*out_f, args["sexp_mod_name"], sexp_layer, only_polys);
+        sink = new KicadSexpOutput(*out_f, mod_name, sexp_layer, only_polys);
         force_flatten = true;
         is_sexp = true;
         //cerr << "  * KiCAD SExp sink " << endl;
