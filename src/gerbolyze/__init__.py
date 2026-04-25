@@ -246,6 +246,74 @@ def empty_template(output_svg, size, force, copper_layers, no_default_layers, la
 
 @cli.command()
 @click.argument('input_svg', type=click.Path(exists=True, path_type=Path))
+@click.argument('output_dir', type=click.Path(path_type=Path))
+@click.option('--trace-space', type=float, default=0.1, help='passed through to svg-flatten')
+@click.option('--width', help='Comma-separated list of mm widths (without units) to scale the SVG page to in the output. Mutually exclusive with --height and --scale.')
+@click.option('--height', help='Comma-separated list of mm heights (without units) to scale the SVG page to in the output. Mutually exclusive with --width and --scale.')
+@click.option('--scale', help='Comma-separated list of scales for output. Mutually exclusive with --widht and --height.')
+@click.option('--vectorizer', help='passed through to svg-flatten')
+@click.option('--vectorizer-map', help='passed through to svg-flatten')
+@click.option('--exclude-groups', help='passed through to svg-flatten')
+@click.option('--pattern-complete-tiles-only', is_flag=True, help='passed through to svg-flatten')
+@click.option('--circle-test-tolerance', help='passed through to svg-flatten')
+@click.option('--curve_tolerance', help='passed through to svg-flatten')
+@click.option('--use-apertures-for-patterns', is_flag=True, help='passed through to svg-flatten')
+@click.option('--log-level', default='info', type=click.Choice(['debug', 'info', 'warning', 'error', 'critical']), help='log level')
+def scale_series(input_svg, output_dir, trace_space, vectorizer, vectorizer_map, exclude_groups, width, height, scale,
+                 curve_tolerance, circle_test_tolerance, pattern_complete_tiles_only, use_apertures_for_patterns,
+                 log_level):
+    ''' Convert an SVG file to a series of Kicad footprints at various scales
+
+        Use gerbolyze empty-template to create a template for the input SVG that has the layers set up correctly.
+        
+        Drills are not currently supported.
+    '''
+    logging.basicConfig(level=getattr(logging, log_level.upper()))
+
+    output_dir.mkdir(exist_ok=True, parents=False)
+
+    with tempfile.NamedTemporaryFile(suffix='.svg') as processed_svg:
+        run_cargo_command('usvg', *shlex.split(os.environ.get('USVG_OPTIONS', '')), input_svg, processed_svg.name)
+
+        et = ElementTree.parse(processed_svg)
+        et_svg_elem = et.getroot()
+        in_w, in_h = float(et_svg_elem.get('width')), float(et_svg_elem.get('height'))
+        # convert sizes to mm. usvg uses 96 dpi pixel scale.
+        in_w = in_w / 96 * 25.4
+        in_h = in_h / 96 * 25.4
+
+        if (int(bool(width)) + int(bool(height)) + int(bool(scale))) > 1:
+            raise click.ClickException('--width, --height, and --scale are mutually exclusive')
+        
+        if not width or height or scale:
+            width = '2,3,4,5,7.5,10,12.5,15,17.5,20,25,30,35,40,45,50,60,70,80'
+
+        for target in (width or height or scale).split(','):
+            target = float(target)
+            if width:
+                scale = target / in_w
+                size = f'w{target:.2f}mm'
+            elif height:
+                scale = target / in_h
+                size = f'h{target:.2f}mm'
+            else:
+                scale = target
+                size = f'{target:.3f}x'
+            mod_name = f'{output_dir.stem}_{size}'
+
+            sexp = svg_to_gerber(processed_svg.name, no_usvg=True,
+                    scale=str(scale), format='s-exp', sexp_mod_name=mod_name,
+                    trace_space=trace_space, vectorizer=vectorizer, vectorizer_map=vectorizer_map,
+                    exclude_groups=exclude_groups, curve_tolerance=curve_tolerance,
+                    circle_test_tolerance=circle_test_tolerance, pattern_complete_tiles_only=pattern_complete_tiles_only,
+                    use_apertures_for_patterns=use_apertures_for_patterns)
+            
+            outf = output_dir / f'{mod_name}.kicad_mod'
+            outf.write_text(sexp)
+
+
+@cli.command()
+@click.argument('input_svg', type=click.Path(exists=True, path_type=Path))
 @click.argument('output_gerbers', type=click.Path(path_type=Path))
 @click.option('-n', '--naming-scheme', default='kicad', type=click.Choice(['kicad', 'altium']), help='Naming scheme for gerber output file names.')
 @click.option('--zip/--no-zip', 'is_zip', default=None, help='zip output files. Default: zip if output path ends with ".zip" or when outputting to stdout.')
@@ -539,10 +607,10 @@ def dilate_gerber(layer, bounds, dilation, curve_tolerance):
         out = svg_to_gerber(temp_out_svg.name, no_usvg=True, dilate=-dilation, curve_tolerance=curve_tolerance)
         return out
 
-def svg_to_gerber(infile, outline_mode=False, **kwargs):
+def svg_to_gerber(infile, outline_mode=False, format='gerber', **kwargs):
     infile = Path(infile)
 
-    args = [ '--format', ('gerber-outline' if outline_mode else 'gerber'),
+    args = [ '--format', ('gerber-outline' if outline_mode else format),
             '--precision', '6', # intermediate file, use higher than necessary precision
             ]
 
@@ -593,8 +661,11 @@ def svg_to_gerber(infile, outline_mode=False, **kwargs):
 
             else:
                 raise SystemError('svg-flatten executable not found')
-
-        return gn.rs274x.GerberFile.open(temp_gbr.name)
+ 
+        if format != 'gerber':
+            return Path(temp_gbr.name).read_text()
+        else:
+            return gn.rs274x.GerberFile.open(temp_gbr.name)
 
 if __name__ == '__main__':
     cli()
