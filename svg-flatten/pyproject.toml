@@ -1,6 +1,6 @@
 [project]
 name = "svg-flatten-wasi"
-version = "3.2.0"
+version = "3.3.0"
 description = "svg-flatten SVG downconverter"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 license = { text = "AGPLv3+" }
