@@ -62,14 +62,24 @@ int gerbolyze::run_cargo_command(const char *cmd_name, std::vector<std::string> 
         struct subprocess_s subprocess;
         int rc = subprocess_create(cmdline_c.data(), subprocess_option_inherit_environment, &subprocess);
         if (rc) {
-            std::cerr << "Error calling " << cmd_name << std::endl;
+            std::cerr << "Error calling " << cmd_name << " with cmdline \"";
+            bool first = true;
+            for (const char *s : cmdline_c) {
+                if (first) {
+                    first = false;
+                } else {
+                    std::cerr << " ";
+                }
+                std::cerr << s;
+            }
+            std::cerr << "\"" << std::endl;
             return EXIT_FAILURE;
         }
 
         proc_rc = -1;
         rc = subprocess_join(&subprocess, &proc_rc);
         if (rc) {
-            std::cerr << "Error calling " << cmd_name << std::endl;
+            std::cerr << "usvg returned error code " << rc << std::endl;
             return EXIT_FAILURE;
         }
 
