@@ -234,7 +234,8 @@ namespace gerbolyze {
             RenderContext(RenderContext &parent,
                     xform2d transform,
                     ClipperLib::Paths &clip,
-                    bool included);
+                    bool included,
+                    bool seen_id);
             RenderContext(RenderContext &parent,
                     PolygonSink &sink,
                     ClipperLib::Paths &clip);
@@ -243,21 +244,23 @@ namespace gerbolyze {
             const ElementSelector &sel() { return m_sel; }
             const RenderSettings &settings() { return m_settings; }
             xform2d &mat() { return m_mat; }
-            bool root() const { return m_root; }
+            int level() const { return m_level; }
+            bool has_seen_id() const { return m_seen_id; }
             bool included() const { return m_included; }
             ClipperLib::Paths &clip() { return m_clip; }
             void transform(xform2d &transform) {
                 m_mat.transform(transform);
             }
             bool match(const pugi::xml_node &node) {
-                return m_sel.match(node, m_root, m_included);
+                return m_sel.match(node, m_level < 2 && !m_seen_id, m_included);
             }
 
         private:
             PolygonSink &m_sink;
             const RenderSettings &m_settings;
             xform2d m_mat;
-            bool m_root;
+            int m_level;
+            bool m_seen_id;
             bool m_included; /* TODO: refactor name */
             const ElementSelector &m_sel;
             ClipperLib::Paths &m_clip;

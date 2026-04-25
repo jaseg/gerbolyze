@@ -206,25 +206,32 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
     for (const auto &node : group.children()) {
         string name(node.name());
         bool match = ctx.match(node);
-        RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path, match);
 
         if (name == "g") {
-            if (ctx.root()) { /* Treat top-level groups as "layers" like inkscape does. */
+            /* We treat as the "layer" the first group in the hierarchy's first two levels that we find that has an ID set.
+             *
+             * This is due to a recent change in usvg, where usvg sometimes introduces an unnamed top-level parent group
+             * with a transform matrix to calculate out mismatching viewBox and width/height attributes on the input SVG
+             ` root element. */
+            if (!ctx.has_seen_id() && ctx.level() < 2 && node.attribute("id")) {
+                RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path, match, true);
                 LayerNameToken tok { node.attribute("id").value() };
                 elem_ctx.sink() << tok;
-            }
 
-            export_svg_group(elem_ctx, node);
-            
-            if (ctx.root()) {
-                LayerNameToken tok {""};
-                elem_ctx.sink() << tok;
+                export_svg_group(elem_ctx, node);
+
+                elem_ctx.sink() << LayerNameToken {""};
+
+            } else {
+                RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path, match, ctx.has_seen_id());
+                export_svg_group(elem_ctx, node);
             }
 
         } else if (name == "path") {
             if (!match)
                 continue;
 
+            RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path, match, ctx.has_seen_id());
             export_svg_path(elem_ctx, node);
 
         } else if (name == "image") {
@@ -237,6 +244,7 @@ void gerbolyze::SVGDocument::export_svg_group(RenderContext &ctx, const pugi::xm
                 continue;
             }
 
+            RenderContext elem_ctx(ctx, xform2d(node.attribute("transform").value()), clip_path, match, ctx.has_seen_id());
             double min_feature_size_px = mm_to_doc_units(ctx.settings().m_minimum_feature_size_mm);
             vec->vectorize_image(elem_ctx, node, min_feature_size_px);
             delete vec;
@@ -362,7 +370,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
 
             } else {
                 PolyTreeToPaths(ptree_fill, fill_paths);
-                RenderContext local_ctx(ctx, xform2d(), fill_paths, true);
+                RenderContext local_ctx(ctx, xform2d(), fill_paths, true, ctx.has_seen_id());
                 pattern->tile(local_ctx);
             }
 
@@ -552,7 +560,7 @@ void gerbolyze::SVGDocument::export_svg_path(RenderContext &ctx, const pugi::xml
                 PolyTreeToPaths(ptree, clip);
                 ctx.mat().doc2phys_clipper(clip);
 
-                RenderContext local_ctx(ctx, xform2d(), clip, true);
+                RenderContext local_ctx(ctx, xform2d(), clip, true, ctx.has_seen_id());
                 pattern->tile(local_ctx);
             }
 
@@ -671,7 +679,8 @@ gerbolyze::RenderContext::RenderContext(const RenderSettings &settings,
     m_sink(sink),
     m_settings(settings),
     m_mat(),
-    m_root(true),
+    m_level(0),
+    m_seen_id(false),
     m_included(false),
     m_sel(sel),
     m_clip(clip)
@@ -679,15 +688,16 @@ gerbolyze::RenderContext::RenderContext(const RenderSettings &settings,
 }
 
 gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform) :
-    RenderContext(parent, transform, parent.clip(), parent.included())
+    RenderContext(parent, transform, parent.clip(), parent.included(), parent.has_seen_id())
 {
 }
 
-gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform, ClipperLib::Paths &clip, bool included) :
+gerbolyze::RenderContext::RenderContext(RenderContext &parent, xform2d transform, ClipperLib::Paths &clip, bool included, bool seen_id) :
     m_sink(parent.sink()),
     m_settings(parent.settings()),
     m_mat(parent.mat()),
-    m_root(false),
+    m_level(parent.level() + 1),
+    m_seen_id(seen_id),
     m_included(included),
     m_sel(parent.sel()),
     m_clip(clip)
@@ -699,7 +709,8 @@ gerbolyze::RenderContext::RenderContext(RenderContext &parent, PolygonSink &sink
     m_sink(sink),
     m_settings(parent.settings()),
     m_mat(parent.mat()),
-    m_root(false),
+    m_level(parent.level() + 1),
+    m_seen_id(parent.has_seen_id()),
     m_included(true),
     m_sel(parent.sel()),
     m_clip(clip)
