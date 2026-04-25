@@ -169,6 +169,7 @@ namespace gerbolyze {
     };
     
     extern const std::vector<std::string> kicad_default_layers;
+    extern const std::map<std::string, std::string> svg_id_layer_map;
 
     class ElementSelector {
     public:

@@ -62,6 +62,21 @@ const std::vector<std::string> gerbolyze::kicad_default_layers ({
         "User.1", "User.2", "User.3", "User.4", "User.5", "User.6", "User.7", "User.8", "User.9",
     });
 
+const std::map<std::string, std::string> gerbolyze::svg_id_layer_map {
+    {"g-top-copper", "F.Cu"},
+    {"g-top-mask", "F.Mask"},
+    {"g-top-silk", "F.SilkS"},
+    {"g-top-paste", "F.Paste"},
+    {"g-bottom-copper", "B.Cu"},
+    {"g-bottom-mask", "B.Mask"},
+    {"g-bottom-silk", "B.SilkS"},
+    {"g-bottom-paste", "B.Paste"},
+    {"g-mechanical-outline", "Edge.Cuts"},
+    {"g-drill-plated", "Edge.Cuts"},
+    {"g-drill-nonplated", "Edge.Cuts"},
+    {"g-other-comments", "Cmts.User"},
+};
+
 
 KicadSexpOutput::KicadSexpOutput(ostream &out, string mod_name, string layer, bool only_polys, string ref_text, string val_text, d2p ref_pos, d2p val_pos)
     : StreamPolygonSink(out, only_polys),
@@ -102,10 +117,14 @@ KicadSexpOutput &KicadSexpOutput::operator<<(const LayerNameToken &layer_name) {
     if (!m_auto_layer)
         return *this;
 
-    cerr << "Setting S-Exp export layer to \"" << layer_name.m_name << "\"" << endl;
     if (!layer_name.m_name.empty()) {
         m_layer = layer_name.m_name;
+        if (svg_id_layer_map.contains(m_layer)) {
+            m_layer = svg_id_layer_map.at(m_layer);
+        }
+        cout << "Entering S-Exp export layer \"" << m_layer << "\"" << endl;
     } else {
+        cout << "Leaving S-Exp export layer \"" << m_layer << "\"" << endl;
         m_layer = "unknown";
     }
 
