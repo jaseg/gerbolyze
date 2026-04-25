@@ -91,7 +91,7 @@ wheels = [
 
 [[package]]
 name = "gerbolyze"
-version = "3.1.9"
+version = "3.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -100,8 +100,12 @@ dependencies = [
     { name = "lxml" },
     { name = "numpy" },
     { name = "python-slugify" },
-    { name = "resvg-wasi" },
     { name = "svg-flatten-wasi" },
+]
+
+[package.optional-dependencies]
+resvg-wasi = [
+    { name = "resvg-wasi" },
 ]
 
 [package.dev-dependencies]
@@ -124,9 +128,10 @@ requires-dist = [
     { name = "lxml" },
     { name = "numpy" },
     { name = "python-slugify" },
-    { name = "resvg-wasi", specifier = ">=0.47.0" },
-    { name = "svg-flatten-wasi", specifier = ">=3.1.9" },
+    { name = "resvg-wasi", marker = "extra == 'resvg-wasi'", specifier = ">=0.47.0" },
+    { name = "svg-flatten-wasi", specifier = ">=3.2.0" },
 ]
+provides-extras = ["resvg-wasi"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -710,7 +715,7 @@ wheels = [
 
 [[package]]
 name = "svg-flatten-wasi"
-version = "3.1.9"
+version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "appdirs" },
@@ -718,7 +723,7 @@ dependencies = [
     { name = "wasmtime" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/4d/738f12e7771791a76fb7341708dee498b7d8cbf0a10f4199bdd8098bd2cc/svg_flatten_wasi-3.1.9-py3-none-any.whl", hash = "sha256:2a88adafa94075a03a06e9303020bbfb36a0a38f2eb870c3cebd19a64e7e486b", size = 2585713, upload-time = "2024-07-05T17:30:54.847Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/b5/353f8e5bcac5a096bfae00fe7782a3dfbc523ef833b2a293d814718b000e/svg_flatten_wasi-3.2.0-py3-none-any.whl", hash = "sha256:ca789d67c4e069b7ccea5524b2e575d3ab0a77b46c05e9e25a30b79635a49ad5", size = 3868, upload-time = "2026-03-10T21:49:53.058Z" },
 ]
 
 [[package]]
