@@ -29,10 +29,7 @@ from importlib.resources import files as package_files
 
 def _run_wasm_app(wasm_filename, argv, cachedir="svg-flatten-wasi"):
 
-    print('foo')
-    module_binary = package_files(__package__).joinpath(wasm_filename).read_binary()
-    print('bar')
-
+    module_binary = package_files(__package__).joinpath(wasm_filename).read_bytes()
     module_path_digest = hashlib.sha256(__file__.encode()).hexdigest()
     module_digest = hashlib.sha256(module_binary).hexdigest()
     cache_path = Path(os.getenv("SVG_FLATTEN_WASI_CACHE_DIR", appdirs.user_cache_dir(cachedir)))
@@ -85,7 +82,6 @@ def run_usvg(input_file, output_file, **usvg_args):
                 args.append(value)
 
     args += [input_file, output_file]
-    print(args)
 
     # By default, try a number of options:
     candidates = [
@@ -107,7 +103,7 @@ def run_usvg(input_file, output_file, **usvg_args):
     for candidate in candidates:
         try:
             res = subprocess.run([candidate, *args], check=True)
-            print('used usvg:', candidate)
+            print('Used usvg at ', candidate)
             break
         except FileNotFoundError:
             continue
